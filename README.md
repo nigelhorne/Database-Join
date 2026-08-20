@@ -15,8 +15,9 @@ Version 0.01
     my $loyalty   = Database::Loyalty->new(directory  => '/data');
 
     my $join = Database::Join->new(
-        databases   => [ $customers, $loyalty ],
-        join_column => 'entry',    # shared key column (default: 'entry')
+        databases      => [ $customers, $loyalty ],
+        join_column    => 'entry',             # shared key column (default: 'entry')
+        remove_columns => [ 'email', 'notes' ], # columns to hide (optional)
     );
 
     # Same API as Database::Abstraction ---------------------------------
@@ -31,9 +32,12 @@ Version 0.01
     # AUTOLOAD column shortcut
     my $name = $join->name(entry => 'C001');
 
-    # Introspection
+    # Introspection (hidden columns are absent)
     my $all_cols = $join->columns();   # union of all databases' columns
     my $schema   = $join->schema();    # merged schema
+
+    # Remove a column after construction
+    $join->remove_column('internal_id');
 
 # DESCRIPTION
 
@@ -94,11 +98,12 @@ from the caller is not propagated.
 ### SYNOPSIS
 
     my $join = Database::Join->new(
-        databases   => [ $db1, $db2 ],   # required
-        join_column => 'entry',           # optional, default 'entry'
-        join_type   => 'left',            # optional, default 'left'
-        logger      => $log,             # optional
-        i18n        => $locale,          # optional
+        databases      => [ $db1, $db2 ],          # required
+        join_column    => 'entry',                  # optional, default 'entry'
+        join_type      => 'left',                   # optional, default 'left'
+        remove_columns => [ 'email', 'internal_id' ], # optional
+        logger         => $log,                     # optional
+        i18n           => $locale,                  # optional
     );
 
 ### DESCRIPTION
@@ -107,16 +112,22 @@ Constructs and returns a new `Database::Join` object.  Each element of
 `databases` must be an instantiated subclass of `Database::Abstraction`.
 The `join_column` must be present in all component databases.
 
+Columns listed in `remove_columns` are hidden from the merged view: they
+do not appear in `columns()`, `schema()`, or any returned row hashref,
+and criteria that reference them are silently dropped.  This is equivalent
+to calling `remove_column` once per name after construction.
+
 ### API SPECIFICATION
 
 #### Input
 
-    databases   => { type => 'arrayref', required => 1 }
-    join_column => { type => 'string',   optional => 1, default => 'entry' }
-    join_type   => { type => 'string',   optional => 1, default => 'left',
-                     enum => ['inner','left','outer'] }
-    logger      => { type => 'object',   optional => 1 }
-    i18n        => { type => 'object',   optional => 1 }
+    databases      => { type => 'arrayref', required => 1 }
+    join_column    => { type => 'string',   optional => 1, default => 'entry' }
+    join_type      => { type => 'string',   optional => 1, default => 'left',
+                        enum => ['inner','left','outer'] }
+    remove_columns => { type => 'arrayref', optional => 1 }
+    logger         => { type => 'object',   optional => 1 }
+    i18n           => { type => 'object',   optional => 1 }
 
 #### Output
 
@@ -124,14 +135,16 @@ The `join_column` must be present in all component databases.
 
 ### FORMAL SPECIFICATION
 
-    # new : seq DA_Object x String? x JoinType? -> Database_Join
+    # new : seq DA_Object x String? x JoinType? x seq String? -> Database_Join
     # pre:  len databases >= 1
     #       forall db : databases | db.isa('Database::Abstraction')
     #       forall db : databases | join_column in db.columns
-    # post: self._dbs       = databases
-    #       self._join_col  = join_column
-    #       self._join_type = join_type
-    #       self._col_db    = build_col_index(databases)
+    #       join_column not in remove_columns
+    # post: self._dbs          = databases
+    #       self._join_col     = join_column
+    #       self._join_type    = join_type
+    #       self._removed_cols = set(remove_columns)
+    #       self._col_db       = build_col_index(databases) \ remove_columns
 
 ## selectall\_arrayref
 
@@ -343,6 +356,46 @@ locally for `Database::Join`'s own diagnostic output.
 
     Returns $self for chaining.
 
+## remove\_column
+
+### SYNOPSIS
+
+    $join->remove_column('email');
+    $join->remove_column('internal_id')->remove_column('audit_ts');  # chainable
+
+### DESCRIPTION
+
+Hides a column from the merged view.  After calling this method:
+
+- The column is absent from `columns()` and `schema()`.
+- Returned row hashrefs no longer contain the column key.
+- Criteria referencing the column are dropped with a `carp` warning (the
+same behaviour as querying by a column that was never present).
+
+Removing the `join_column` is not permitted and will `croak`.
+Removing a column that does not exist in any database is silently ignored
+(idempotent).  The `columns()` and `schema()` memoisation caches are
+cleared automatically.
+
+### API SPECIFICATION
+
+#### Input
+
+    $col    Positional string: the column name to remove (required)
+
+#### Output
+
+    Returns C<$self> to support method chaining.
+
+### FORMAL SPECIFICATION
+
+    # remove_column : String -> Database_Join
+    # pre:  col != self._join_col
+    # post: self._removed_cols = self._removed_cols union {col}
+    #       self._col_db       = self._col_db \ {col}
+    #       self._col_cache    = undef
+    #       self._schema_cache = undef
+
 ## query
 
 Not supported.  `Database::Join` does not implement the chained query
@@ -372,6 +425,7 @@ All messages that the module can croak or carp, and how to resolve them.
     error_no_databases        | Empty databases arrayref           | Pass at least one D::A object
     error_invalid_db          | Element is not a D::A subclass     | Instantiate subclass first
     error_join_col_missing    | join_column absent from a database | Add the column or change join_column
+    error_remove_join_col     | Attempt to remove join_column      | Remove a different column
     warn_unknown_column       | Criterion column not in any DB     | Check column name spelling
     warn_empty_result         | Join yields zero rows              | Relax criteria or check data
     error_query_unsupported   | query() called                     | Use selectall_arrayref instead

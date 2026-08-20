@@ -25,6 +25,7 @@ Readonly::Hash my %MESSAGES => (
 	error_join_col_missing	=> 'join_column "%s" is absent from databases[%d] (%s)',
 	error_col_conflict	=> 'Column "%s" exists in multiple databases; '
 	                         . 'use the owning database directly or rename the column',
+	error_remove_join_col	=> 'Cannot remove join_column "%s"; it is required for the join',
 	warn_unknown_column	=> 'Column "%s" is not present in any configured database; criterion ignored',
 	warn_empty_result	=> 'Cross-database join produced an empty result set',
 	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join; '
@@ -50,8 +51,9 @@ Version 0.01
     my $loyalty   = Database::Loyalty->new(directory  => '/data');
 
     my $join = Database::Join->new(
-        databases   => [ $customers, $loyalty ],
-        join_column => 'entry',    # shared key column (default: 'entry')
+        databases      => [ $customers, $loyalty ],
+        join_column    => 'entry',             # shared key column (default: 'entry')
+        remove_columns => [ 'email', 'notes' ], # columns to hide (optional)
     );
 
     # Same API as Database::Abstraction ---------------------------------
@@ -66,9 +68,12 @@ Version 0.01
     # AUTOLOAD column shortcut
     my $name = $join->name(entry => 'C001');
 
-    # Introspection
+    # Introspection (hidden columns are absent)
     my $all_cols = $join->columns();   # union of all databases' columns
     my $schema   = $join->schema();    # merged schema
+
+    # Remove a column after construction
+    $join->remove_column('internal_id');
 
 =head1 DESCRIPTION
 
@@ -148,11 +153,12 @@ from the caller is not propagated.
 =head3 SYNOPSIS
 
     my $join = Database::Join->new(
-        databases   => [ $db1, $db2 ],   # required
-        join_column => 'entry',           # optional, default 'entry'
-        join_type   => 'left',            # optional, default 'left'
-        logger      => $log,             # optional
-        i18n        => $locale,          # optional
+        databases      => [ $db1, $db2 ],          # required
+        join_column    => 'entry',                  # optional, default 'entry'
+        join_type      => 'left',                   # optional, default 'left'
+        remove_columns => [ 'email', 'internal_id' ], # optional
+        logger         => $log,                     # optional
+        i18n           => $locale,                  # optional
     );
 
 =head3 DESCRIPTION
@@ -161,16 +167,22 @@ Constructs and returns a new C<Database::Join> object.  Each element of
 C<databases> must be an instantiated subclass of C<Database::Abstraction>.
 The C<join_column> must be present in all component databases.
 
+Columns listed in C<remove_columns> are hidden from the merged view: they
+do not appear in C<columns()>, C<schema()>, or any returned row hashref,
+and criteria that reference them are silently dropped.  This is equivalent
+to calling C<remove_column> once per name after construction.
+
 =head3 API SPECIFICATION
 
 =head4 Input
 
-    databases   => { type => 'arrayref', required => 1 }
-    join_column => { type => 'string',   optional => 1, default => 'entry' }
-    join_type   => { type => 'string',   optional => 1, default => 'left',
-                     enum => ['inner','left','outer'] }
-    logger      => { type => 'object',   optional => 1 }
-    i18n        => { type => 'object',   optional => 1 }
+    databases      => { type => 'arrayref', required => 1 }
+    join_column    => { type => 'string',   optional => 1, default => 'entry' }
+    join_type      => { type => 'string',   optional => 1, default => 'left',
+                        enum => ['inner','left','outer'] }
+    remove_columns => { type => 'arrayref', optional => 1 }
+    logger         => { type => 'object',   optional => 1 }
+    i18n           => { type => 'object',   optional => 1 }
 
 =head4 Output
 
@@ -178,14 +190,16 @@ The C<join_column> must be present in all component databases.
 
 =head3 FORMAL SPECIFICATION
 
-    # new : seq DA_Object x String? x JoinType? -> Database_Join
+    # new : seq DA_Object x String? x JoinType? x seq String? -> Database_Join
     # pre:  len databases >= 1
     #       forall db : databases | db.isa('Database::Abstraction')
     #       forall db : databases | join_column in db.columns
-    # post: self._dbs       = databases
-    #       self._join_col  = join_column
-    #       self._join_type = join_type
-    #       self._col_db    = build_col_index(databases)
+    #       join_column not in remove_columns
+    # post: self._dbs          = databases
+    #       self._join_col     = join_column
+    #       self._join_type    = join_type
+    #       self._removed_cols = set(remove_columns)
+    #       self._col_db       = build_col_index(databases) \ remove_columns
 
 =cut
 
@@ -195,11 +209,12 @@ sub new {
 	my $p = validate_strict(
 		schema => {
 			databases	=> { type => 'arrayref' },
-			join_column	=> { type => 'string',  optional => 1, default => 'entry' },
-			join_type	=> { type => 'string',  optional => 1, default => 'left',
+			join_column	=> { type => 'string',   optional => 1, default => 'entry' },
+			join_type	=> { type => 'string',   optional => 1, default => 'left',
 			                  enum => ['inner', 'left', 'outer'] },
-			logger		=> { type => 'object',  optional => 1 },
-			i18n		=> { type => 'object',  optional => 1 },
+			remove_columns	=> { type => 'arrayref', optional => 1 },
+			logger		=> { type => 'object',   optional => 1 },
+			i18n		=> { type => 'object',   optional => 1 },
 		},
 		input => get_params(undef, \@args) // {},
 	);
@@ -214,18 +229,24 @@ sub new {
 	}
 
 	my $self = bless {
-		_dbs       => $p->{databases},
-		_join_col  => $p->{join_column},
-		_join_type => $p->{join_type},
-		_logger    => $p->{logger},
-		_i18n      => $p->{i18n},
-		_col_db    => {},	# column_name => db_index
-		_db_cols   => [],	# per-db arrayref of column names
-		_col_cache => undef,	# memoised columns() result
+		_dbs          => $p->{databases},
+		_join_col     => $p->{join_column},
+		_join_type    => $p->{join_type},
+		_logger       => $p->{logger},
+		_i18n         => $p->{i18n},
+		_col_db       => {},	# column_name => db_index
+		_db_cols      => [],	# per-db column-presence hashref
+		_removed_cols => {},	# column_name => 1 (hidden from the view)
+		_col_cache    => undef,	# memoised columns() result
 		_schema_cache => undef,	# memoised schema() result
 	}, $class;
 
 	$self->_build_col_index();
+
+	# Apply column removals requested in the constructor
+	if (my $rc = $p->{remove_columns}) {
+		$self->remove_column($_) for @{$rc};
+	}
 
 	return $self;
 }
@@ -432,6 +453,7 @@ sub columns {
 	for my $db (@{ $self->{_dbs} }) {
 		for my $col (@{ $db->columns() }) {
 			next if $seen{$col}++;
+			next if $self->{_removed_cols}{$col};
 			push @cols, $col;
 		}
 	}
@@ -478,6 +500,8 @@ sub schema {
 		my $s = $db->schema();
 		%merged = (%merged, %{$s});
 	}
+
+	delete $merged{$_} for keys %{ $self->{_removed_cols} };
 
 	$self->{_schema_cache} = \%merged;
 	return $self->{_schema_cache};
@@ -543,6 +567,76 @@ sub set_logger {
 
 	$self->{_logger} = $logger;
 	$_->set_logger($logger) for @{ $self->{_dbs} };
+
+	return $self;
+}
+
+=head2 remove_column
+
+=head3 SYNOPSIS
+
+    $join->remove_column('email');
+    $join->remove_column('internal_id')->remove_column('audit_ts');  # chainable
+
+=head3 DESCRIPTION
+
+Hides a column from the merged view.  After calling this method:
+
+=over 4
+
+=item *
+
+The column is absent from C<columns()> and C<schema()>.
+
+=item *
+
+Returned row hashrefs no longer contain the column key.
+
+=item *
+
+Criteria referencing the column are dropped with a C<carp> warning (the
+same behaviour as querying by a column that was never present).
+
+=back
+
+Removing the C<join_column> is not permitted and will C<croak>.
+Removing a column that does not exist in any database is silently ignored
+(idempotent).  The C<columns()> and C<schema()> memoisation caches are
+cleared automatically.
+
+=head3 API SPECIFICATION
+
+=head4 Input
+
+    $col    Positional string: the column name to remove (required)
+
+=head4 Output
+
+    Returns C<$self> to support method chaining.
+
+=head3 FORMAL SPECIFICATION
+
+    # remove_column : String -> Database_Join
+    # pre:  col != self._join_col
+    # post: self._removed_cols = self._removed_cols union {col}
+    #       self._col_db       = self._col_db \ {col}
+    #       self._col_cache    = undef
+    #       self._schema_cache = undef
+
+=cut
+
+sub remove_column {
+	my ($self, $col) = @_;
+
+	croak _msg($self->{_i18n}, 'error_remove_join_col', $col)
+		if defined $col && $col eq $self->{_join_col};
+
+	if (defined $col && length $col) {
+		$self->{_removed_cols}{$col} = 1;
+		delete $self->{_col_db}{$col};
+		$self->{_col_cache}    = undef;
+		$self->{_schema_cache} = undef;
+	}
 
 	return $self;
 }
@@ -737,8 +831,9 @@ sub _joined_query {
 		# left + no criteria: key_set unchanged (primary defines the set).
 	}
 
-	# Merge rows for each qualifying key.
+	# Merge rows for each qualifying key, then strip hidden columns.
 	my @result;
+	my @removed = keys %{ $self->{_removed_cols} };
 	for my $key (sort keys %key_set) {
 		my %merged;
 		for my $i (0 .. $n - 1) {
@@ -746,6 +841,7 @@ sub _joined_query {
 			next unless $row;
 			%merged = (%merged, %{$row});
 		}
+		delete @merged{@removed} if @removed;
 		push @result, \%merged;
 	}
 
@@ -784,6 +880,7 @@ All messages that the module can croak or carp, and how to resolve them.
     error_no_databases        | Empty databases arrayref           | Pass at least one D::A object
     error_invalid_db          | Element is not a D::A subclass     | Instantiate subclass first
     error_join_col_missing    | join_column absent from a database | Add the column or change join_column
+    error_remove_join_col     | Attempt to remove join_column      | Remove a different column
     warn_unknown_column       | Criterion column not in any DB     | Check column name spelling
     warn_empty_result         | Join yields zero rows              | Relax criteria or check data
     error_query_unsupported   | query() called                     | Use selectall_arrayref instead
