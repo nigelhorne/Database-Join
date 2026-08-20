@@ -16,7 +16,7 @@ Version 0.01
 
     my $join = Database::Join->new(
         databases      => [ $customers, $loyalty ],
-        join_column    => 'entry',             # shared key column (default: 'entry')
+        join_column    => 'entry',              # shared key column (default: 'entry')
         remove_columns => [ 'email', 'notes' ], # columns to hide (optional)
     );
 
@@ -35,6 +35,10 @@ Version 0.01
     # Introspection (hidden columns are absent)
     my $all_cols = $join->columns();   # union of all databases' columns
     my $schema   = $join->schema();    # merged schema
+
+    # Add another database to the view (chainable, same API as new)
+    $join->add_database($scores)
+         ->add_database($db4, remove_columns => ['audit_ts']);
 
     # Remove a column after construction
     $join->remove_column('internal_id');
@@ -355,6 +359,61 @@ locally for `Database::Join`'s own diagnostic output.
 #### Output
 
     Returns $self for chaining.
+
+## add\_database
+
+### SYNOPSIS
+
+    $join->add_database($db);
+    $join->add_database($db, remove_columns => ['email']);
+    $join->add_database(database => $db);
+
+    # Chainable
+    $join->add_database($db1)->add_database($db2, remove_columns => ['notes']);
+
+### DESCRIPTION
+
+Adds one more [Database::Abstraction](https://metacpan.org/pod/Database%3A%3AAbstraction) subclass object to the logical view
+and updates the column ownership index.
+
+The `join_column` must be present in the new database.  After the call,
+rows returned by any query method include columns from the newly added
+database, and criteria on those columns are routed to it.  When a column
+name already exists in an earlier database, the new database becomes the
+authoritative source (last-database-wins, the same rule applied at
+construction time).
+
+The method mirrors the parameter conventions of `new`:
+
+- Positional: `$join->add_database($db)`
+- Named: `$join->add_database(database => $db)`
+- Named with options: `$join->add_database($db, remove_columns => [...])`
+
+An optional `remove_columns` list hides specific columns from the newly
+added database in exactly the same way as calling `remove_column` for each.
+
+The logger is propagated to the new database if one was set on the join.
+
+### API SPECIFICATION
+
+#### Input
+
+    database       => { type => 'object',   required => 1 }
+    remove_columns => { type => 'arrayref', optional => 1 }
+
+#### Output
+
+    Returns C<$self> to support method chaining.
+
+### FORMAL SPECIFICATION
+
+    # add_database : DA_Object x seq String? -> Database_Join
+    # pre:  database.isa('Database::Abstraction')
+    #       self._join_col in database.columns
+    #       self._join_col not in remove_columns
+    # post: self._dbs          = self._dbs ^ [database]
+    #       self._col_db       = self._col_db ++ col_index(database) \ remove_columns
+    #       self._removed_cols = self._removed_cols union set(remove_columns)
 
 ## remove\_column
 
