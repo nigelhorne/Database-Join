@@ -18,14 +18,13 @@ WriteMakefile(
 		'Params::Validate::Strict' => 0,
 		'Readonly'                => '2.00',
 		'Scalar::Util'            => 0,
-	},
-	TEST_REQUIRES => {
+	}, TEST_REQUIRES => {
+		'IPC::System::Simple' => 0,
 		'Test::More'      => '1.302',
 		'Test::Exception' => '0.43',
 		'DBD::SQLite'     => '1.70',
 		'File::Temp'      => 0,
-	},
-	META_MERGE => {
+	}, META_MERGE => {
 		'meta-spec' => { version => 2 },
 		resources   => {
 			repository => {

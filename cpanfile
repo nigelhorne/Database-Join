@@ -14,6 +14,7 @@ requires 'autodie';
 on 'test' => sub {
 	requires 'DBD::SQLite', '1.70';
 	requires 'File::Temp';
+	requires 'IPC::System::Simple';
 	requires 'Test::Exception', '0.43';
 	requires 'Test::More', '1.302';
 };
