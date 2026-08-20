@@ -52,7 +52,7 @@ Version 0.01
 
     my $join = Database::Join->new(
         databases      => [ $customers, $loyalty ],
-        join_column    => 'entry',             # shared key column (default: 'entry')
+        join_column    => 'entry',              # shared key column (default: 'entry')
         remove_columns => [ 'email', 'notes' ], # columns to hide (optional)
     );
 
@@ -71,6 +71,10 @@ Version 0.01
     # Introspection (hidden columns are absent)
     my $all_cols = $join->columns();   # union of all databases' columns
     my $schema   = $join->schema();    # merged schema
+
+    # Add another database to the view (chainable, same API as new)
+    $join->add_database($scores)
+         ->add_database($db4, remove_columns => ['audit_ts']);
 
     # Remove a column after construction
     $join->remove_column('internal_id');
@@ -302,7 +306,9 @@ Accepts the same criteria syntax as C<Database::Abstraction::selectall_arrayref>
 sub selectall_arrayref {
 	my ($self, @args) = @_;
 
-	my $params = @args ? (get_params($self->{_join_col}, @args) // {}) : {};
+	my $params = !@args                          ? {}
+	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
+	           :                                   (get_params(undef, @args) // {});
 
 	return $self->_joined_query($params);
 }
@@ -337,7 +343,9 @@ In scalar context applies an implicit limit and returns only the first match.
 sub selectall_array {
 	my ($self, @args) = @_;
 
-	my $params = @args ? (get_params($self->{_join_col}, @args) // {}) : {};
+	my $params = !@args                          ? {}
+	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
+	           :                                   (get_params(undef, @args) // {});
 	my $rows   = $self->_joined_query($params);
 
 	return wantarray ? @{$rows} : $rows->[0];
@@ -378,7 +386,9 @@ Accepts the same criteria as C<selectall_arrayref>.
 sub fetchrow_hashref {
 	my ($self, @args) = @_;
 
-	my $params = @args ? (get_params($self->{_join_col}, @args) // {}) : {};
+	my $params = !@args                          ? {}
+	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
+	           :                                   (get_params(undef, @args) // {});
 	my $rows   = $self->_joined_query($params);
 
 	return $rows->[0];
@@ -412,7 +422,9 @@ on large datasets.
 sub count {
 	my ($self, @args) = @_;
 
-	my $params = @args ? (get_params($self->{_join_col}, @args) // {}) : {};
+	my $params = !@args                          ? {}
+	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
+	           :                                   (get_params(undef, @args) // {});
 	my $rows   = $self->_joined_query($params);
 
 	return scalar @{$rows};
@@ -567,6 +579,133 @@ sub set_logger {
 
 	$self->{_logger} = $logger;
 	$_->set_logger($logger) for @{ $self->{_dbs} };
+
+	return $self;
+}
+
+=head2 add_database
+
+=head3 SYNOPSIS
+
+    $join->add_database($db);
+    $join->add_database($db, remove_columns => ['email']);
+    $join->add_database(database => $db);
+
+    # Chainable
+    $join->add_database($db1)->add_database($db2, remove_columns => ['notes']);
+
+=head3 DESCRIPTION
+
+Adds one more L<Database::Abstraction> subclass object to the logical view
+and updates the column ownership index.
+
+The C<join_column> must be present in the new database.  After the call,
+rows returned by any query method include columns from the newly added
+database, and criteria on those columns are routed to it.  When a column
+name already exists in an earlier database, the new database becomes the
+authoritative source (last-database-wins, the same rule applied at
+construction time).
+
+The method mirrors the parameter conventions of C<new>:
+
+=over 4
+
+=item Positional: C<< $join->add_database($db) >>
+
+=item Named: C<< $join->add_database(database => $db) >>
+
+=item Named with options: C<< $join->add_database($db, remove_columns => [...]) >>
+
+=back
+
+An optional C<remove_columns> list hides specific columns from the newly
+added database in exactly the same way as calling C<remove_column> for each.
+
+The logger is propagated to the new database if one was set on the join.
+
+=head3 API SPECIFICATION
+
+=head4 Input
+
+    database       => { type => 'object',   required => 1 }
+    remove_columns => { type => 'arrayref', optional => 1 }
+
+=head4 Output
+
+    Returns C<$self> to support method chaining.
+
+=head3 FORMAL SPECIFICATION
+
+    # add_database : DA_Object x seq String? -> Database_Join
+    # pre:  database.isa('Database::Abstraction')
+    #       self._join_col in database.columns
+    #       self._join_col not in remove_columns
+    # post: self._dbs          = self._dbs ^ [database]
+    #       self._col_db       = self._col_db ++ col_index(database) \ remove_columns
+    #       self._removed_cols = self._removed_cols union set(remove_columns)
+
+=cut
+
+sub add_database {
+	my ($self, @args) = @_;
+
+	my $idx = scalar @{ $self->{_dbs} };
+	my $db;
+
+	if (@args && ref($args[0])) {
+		# Positional form: first arg is a reference — extract it now so that
+		# get_params does not choke on the mixed positional+named-pairs pattern.
+		$db = shift @args;
+	} elsif (@args && !ref($args[0])) {
+		# First arg is a plain string. Only 'database' and 'remove_columns'
+		# are valid named-pair keys here; anything else is a bad positional arg.
+		croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
+			unless $args[0] eq 'database' || $args[0] eq 'remove_columns';
+	}
+
+	my $p = validate_strict(
+		schema => {
+			database       => { type => 'object',   optional => 1 },
+			remove_columns => { type => 'arrayref', optional => 1 },
+		},
+		input => (@args ? get_params(undef, @args) : {}) // {},
+	);
+
+	$db //= $p->{database};
+
+	croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
+		unless blessed($db) && $db->isa('Database::Abstraction');
+
+	my $cols         = $db->columns();
+	my %col_presence = map { $_ => 1 } @{$cols};
+
+	croak _msg($self->{_i18n}, 'error_join_col_missing',
+	           $self->{_join_col}, $idx, ref($db))
+		unless $col_presence{ $self->{_join_col} };
+
+	# Register the new database
+	push @{ $self->{_dbs} },     $db;
+	push @{ $self->{_db_cols} }, \%col_presence;
+
+	# Update column routing: last-database-wins for duplicate column names
+	for my $col (@{$cols}) {
+		next if $self->{_removed_cols}{$col};
+		$self->{_col_db}{$col} = $idx;
+	}
+
+	# Invalidate memoisation caches
+	$self->{_col_cache}    = undef;
+	$self->{_schema_cache} = undef;
+
+	# Propagate logger if one is configured
+	if (my $log = $self->{_logger}) {
+		$db->set_logger($log);
+	}
+
+	# Apply any column removals requested for this database
+	if (my $rc = $p->{remove_columns}) {
+		$self->remove_column($_) for @{$rc};
+	}
 
 	return $self;
 }
@@ -766,7 +905,7 @@ sub _fetch_indexed {
 	my $db       = $self->{_dbs}[$db_idx];
 	my $join_col = $self->{_join_col};
 
-	my $rows = $db->selectall_arrayref(%{$criteria});
+	my $rows = $db->selectall_arrayref($criteria);
 	$rows //= [];
 
 	my %indexed;
