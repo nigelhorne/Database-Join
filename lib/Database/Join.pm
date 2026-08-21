@@ -13,6 +13,10 @@ use Scalar::Util qw(blessed);
 use Params::Get qw(get_params);
 use Params::Validate::Strict qw(validate_strict);
 
+# Named-pair keys accepted by add_database; kept here so the guard and the
+# validate_strict schema cannot silently diverge.
+Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_columns);
+
 our $VERSION = '0.01';
 
 # ---------------------------------------------------------------------------
@@ -412,12 +416,7 @@ Accepts the same criteria syntax as C<Database::Abstraction::selectall_arrayref>
 
 sub selectall_arrayref {
 	my ($self, @args) = @_;
-
-	my $params = !@args                          ? {}
-	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
-	           :                                   (get_params(undef, @args) // {});
-
-	return $self->_joined_query($params);
+	return $self->_joined_query($self->_parse_query_args(undef, @args));
 }
 
 =head2 selectall_array
@@ -449,12 +448,7 @@ In scalar context applies an implicit limit and returns only the first match.
 
 sub selectall_array {
 	my ($self, @args) = @_;
-
-	my $params = !@args                          ? {}
-	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
-	           :                                   (get_params(undef, @args) // {});
-	my $rows   = $self->_joined_query($params);
-
+	my $rows = $self->_joined_query($self->_parse_query_args(undef, @args));
 	return wantarray ? @{$rows} : $rows->[0];
 }
 
@@ -487,12 +481,7 @@ Accepts the same criteria as C<selectall_arrayref>.
 
 sub fetchrow_hashref {
 	my ($self, @args) = @_;
-
-	my $params = !@args                          ? {}
-	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
-	           :                                   (get_params(undef, @args) // {});
-	my $rows   = $self->_joined_query($params);
-
+	my $rows = $self->_joined_query($self->_parse_query_args(undef, @args));
 	return $rows->[0];
 }
 
@@ -523,12 +512,7 @@ on large datasets.
 
 sub count {
 	my ($self, @args) = @_;
-
-	my $params = !@args                          ? {}
-	           : (@args == 1 && !ref($args[0])) ? { $self->{_join_col} => $args[0] }
-	           :                                   (get_params(undef, @args) // {});
-	my $rows   = $self->_joined_query($params);
-
+	my $rows = $self->_joined_query($self->_parse_query_args(undef, @args));
 	return scalar @{$rows};
 }
 
@@ -774,10 +758,7 @@ sub add_database {
 		# First arg is a plain string. Only known named-pair keys are valid here;
 		# anything else is treated as an invalid positional database arg.
 		croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
-			unless $args[0] eq 'database'
-			    || $args[0] eq 'remove_columns'
-			    || $args[0] eq 'join_column'
-			    || $args[0] eq 'filter';
+			unless grep { $args[0] eq $_ } @_ADD_DB_KEYS;
 	}
 
 	my $p = validate_strict(
@@ -937,24 +918,24 @@ sub AUTOLOAD {
 
 	my ($col) = $AUTOLOAD =~ /::(\w+)$/;
 	return if $col eq 'DESTROY';
-	return if $col =~ /^_/;
+
+	# Private methods must not be reached via AUTOLOAD — croak immediately so
+	# typos like $join->_join_col are not silently swallowed.
+	croak ref($self), ": cannot call private method '$col' via AUTOLOAD"
+		if $col =~ /^_/;
 
 	my $db_idx = $self->{_col_db}{$col};
-	if (!defined $db_idx) {
-		croak ref($self), ": Unknown column $col";
-	}
+	croak ref($self), ": unknown column '$col'" unless defined $db_idx;
 
 	my $db = $self->{_dbs}[$db_idx];
 
-	# When join_map is in use the owning database's primary key may differ from
-	# the primary database's entry key, so delegating directly would look up
-	# the wrong key.  Do a full join query instead and extract the column.
-	if (%{ $self->{_join_map} }) {
+	# Use a full join query when join_map OR filters are active.  Direct
+	# delegation to the owning database would bypass the join key translation
+	# (join_map) and skip any permanent per-database row filters (filters).
+	if (%{ $self->{_join_map} } || %{ $self->{_filters} }) {
 		my $pk     = $self->{_dbs}[0]{id} // 'entry';
-		my $params = !@_                          ? {}
-		           : (@_ == 1 && !ref($_[0]))     ? { $pk => $_[0] }
-		           :                                 (get_params(undef, @_) // {});
-		my $rows = $self->_joined_query($params);
+		my $params = $self->_parse_query_args($pk, @_);
+		my $rows   = $self->_joined_query($params);
 		return map { $_->{$col} } @{$rows} if wantarray;
 		return @{$rows} ? $rows->[0]{$col} : undef;
 	}
@@ -967,6 +948,29 @@ sub DESTROY {}
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+# _parse_query_args( $self, $positional_key, @caller_args ) -> \%params
+# Purpose: Normalise the three calling conventions used by every public query
+#          method and AUTOLOAD into a single criteria hashref.
+# Entry:   $positional_key — the column name mapped to a bare scalar argument;
+#          pass undef to use the join_column (the default for public methods).
+# Exit:    Always returns a hashref; never undef.
+# Effects: None.
+sub _parse_query_args {
+	my ($self, $key, @args) = @_;
+	$key //= $self->{_join_col};
+	return {}                           unless @args;
+	return { $key => $args[0] }        if @args == 1 && !ref($args[0]);
+	return get_params(undef, @args) // {};
+}
+
+# _err( $self, $msg_key, @sprintf_args ) -> $string
+# Convenience wrapper around _msg for use after construction, so callers do
+# not have to extract $self->{_i18n} at every error site.
+sub _err {
+	my ($self, $key, @args) = @_;
+	return _msg($self->{_i18n}, $key, @args);
+}
 
 # _build_col_index()
 # Calls columns() on each database at construction time to populate
