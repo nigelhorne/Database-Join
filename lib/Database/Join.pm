@@ -36,7 +36,7 @@ Readonly::Hash my %MESSAGES => (
 
 =head1 NAME
 
-Database::Join - Combined view across two or more Database::Abstraction databases
+Database::Join - Combined view across two or more databases
 
 =head1 VERSION
 

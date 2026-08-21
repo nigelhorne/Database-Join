@@ -1,6 +1,6 @@
 # NAME
 
-Database::Join - Combined view across two or more Database::Abstraction databases
+Database::Join - Combined view across two or more databases
 
 # VERSION
 
