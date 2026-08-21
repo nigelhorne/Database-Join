@@ -147,6 +147,10 @@ to calling `remove_column` once per name after construction.
                       # Keys are zero-based indices into 'databases';
                       # values are the local column name for the join key
                       # in that database.  See the join_map section below.
+    filters        => { type => 'hashref',  optional => 1 }
+                      # Keys are zero-based indices into 'databases';
+                      # values are criteria hashrefs applied permanently to
+                      # that database.  See the filters section below.
     remove_columns => { type => 'arrayref', optional => 1 }
     logger         => { type => 'object',   optional => 1 }
     i18n           => { type => 'object',   optional => 1 }
@@ -197,6 +201,58 @@ column:
 
 This is exactly equivalent to using `join_map =` { 1 => 'entry' }> in the
 constructor.
+
+## filters - permanent per-database row filters
+
+Normally every row in a component database is a candidate for the merged view.
+`filters` lets you restrict a database to a subset of its rows permanently,
+without repeating the criterion on every query call.  The typical use case is
+to exclude stale, inactive, or out-of-range rows from the logical view
+altogether so callers never see them.
+
+`filters` is a hashref.  Each **key** is the **zero-based position** of a
+database in the `databases` array (same numbering as `join_map`).  Each
+**value** is a criteria hashref in the same format as `selectall_arrayref`
+accepts: plain scalars, operator hashrefs (`{ '>' => 60 }`), or any
+other form `Database::Abstraction` supports.
+
+**Key-set semantics**: a filtered database always acts as an inner-join
+partner for key-set resolution, regardless of `join_type`.  Any join-key
+value not present in the filtered result is excluded from the merged output
+entirely.  This ensures that the filter reduces the view rather than merely
+hiding secondary-database columns.
+
+**Criteria merging**: when a query call also supplies a criterion for a column
+that already has a base filter, the two are combined:
+
+- When both the base filter and the query criterion are operator hashrefs
+(e.g. `{ '>' => 60 }` and `{ '<' => 365 }`), their operators are
+merged so that _both_ constraints apply (AND semantics).
+- When either value is a plain scalar, or the operators conflict, the
+query-time criterion wins and the base filter for that column is ignored.
+
+**Example** - only show orders placed more than 60 days ago:
+
+    #                      index 0       index 1
+    my $join = Database::Join->new(
+        databases   => [ $customers,  $orders ],
+        join_column => 'entry',
+        filters     => { 1 => { age_days => { '>' => 60 } } },
+    );
+
+    # Every subsequent query sees only old orders - no criterion needed at call site
+    my $rows = $join->selectall_arrayref();
+
+    # Query criteria layer on top of the base filter automatically
+    my $vip  = $join->selectall_arrayref(tier => 'gold');
+
+    # Range intersection: age_days > 60 AND age_days < 365
+    my $recent_old = $join->selectall_arrayref(age_days => { '<' => 365 });
+
+When using `add_database`, pass `filter` (singular) to set the base
+criteria for the new database:
+
+    $join->add_database($orders, filter => { age_days => { '>' => 60 } });
 
 ## selectall\_arrayref
 
@@ -439,6 +495,9 @@ The logger is propagated to the new database if one was set on the join.
 
     database       => { type => 'object',   required => 1 }
     join_column    => { type => 'string',   optional => 1 }
+    filter         => { type => 'hashref',  optional => 1 }
+                      # Permanent criteria for this database.  Same format
+                      # as selectall_arrayref.  See the filters section below.
     remove_columns => { type => 'arrayref', optional => 1 }
 
 #### Output

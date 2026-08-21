@@ -202,6 +202,10 @@ to calling C<remove_column> once per name after construction.
                       # Keys are zero-based indices into 'databases';
                       # values are the local column name for the join key
                       # in that database.  See the join_map section below.
+    filters        => { type => 'hashref',  optional => 1 }
+                      # Keys are zero-based indices into 'databases';
+                      # values are criteria hashrefs applied permanently to
+                      # that database.  See the filters section below.
     remove_columns => { type => 'arrayref', optional => 1 }
     logger         => { type => 'object',   optional => 1 }
     i18n           => { type => 'object',   optional => 1 }
@@ -222,6 +226,7 @@ sub new {
 			join_type	=> { type => 'string',   optional => 1, default => 'left',
 			                  enum => ['inner', 'left', 'outer'] },
 			join_map	=> { type => 'hashref',  optional => 1 },
+			filters		=> { type => 'hashref',  optional => 1 },
 			remove_columns	=> { type => 'arrayref', optional => 1 },
 			logger		=> { type => 'object',   optional => 1 },
 			i18n		=> { type => 'object',   optional => 1 },
@@ -243,6 +248,7 @@ sub new {
 		_join_col     => $p->{join_column},
 		_join_type    => $p->{join_type},
 		_join_map     => $p->{join_map} // {},	# db_index => local join col name
+		_filters      => $p->{filters}  // {},	# db_index => criteria hashref
 		_logger       => $p->{logger},
 		_i18n         => $p->{i18n},
 		_col_db       => {},	# column_name => db_index
@@ -308,6 +314,67 @@ column:
 
 This is exactly equivalent to using C<join_map => { 1 => 'entry' }> in the
 constructor.
+
+=head2 filters - permanent per-database row filters
+
+Normally every row in a component database is a candidate for the merged view.
+C<filters> lets you restrict a database to a subset of its rows permanently,
+without repeating the criterion on every query call.  The typical use case is
+to exclude stale, inactive, or out-of-range rows from the logical view
+altogether so callers never see them.
+
+C<filters> is a hashref.  Each B<key> is the B<zero-based position> of a
+database in the C<databases> array (same numbering as C<join_map>).  Each
+B<value> is a criteria hashref in the same format as C<selectall_arrayref>
+accepts: plain scalars, operator hashrefs (C<< { '>' => 60 } >>), or any
+other form C<Database::Abstraction> supports.
+
+B<Key-set semantics>: a filtered database always acts as an inner-join
+partner for key-set resolution, regardless of C<join_type>.  Any join-key
+value not present in the filtered result is excluded from the merged output
+entirely.  This ensures that the filter reduces the view rather than merely
+hiding secondary-database columns.
+
+B<Criteria merging>: when a query call also supplies a criterion for a column
+that already has a base filter, the two are combined:
+
+=over 4
+
+=item *
+
+When both the base filter and the query criterion are operator hashrefs
+(e.g. C<< { '>' => 60 } >> and C<< { '<' => 365 } >>), their operators are
+merged so that I<both> constraints apply (AND semantics).
+
+=item *
+
+When either value is a plain scalar, or the operators conflict, the
+query-time criterion wins and the base filter for that column is ignored.
+
+=back
+
+B<Example> - only show orders placed more than 60 days ago:
+
+    #                      index 0       index 1
+    my $join = Database::Join->new(
+        databases   => [ $customers,  $orders ],
+        join_column => 'entry',
+        filters     => { 1 => { age_days => { '>' => 60 } } },
+    );
+
+    # Every subsequent query sees only old orders - no criterion needed at call site
+    my $rows = $join->selectall_arrayref();
+
+    # Query criteria layer on top of the base filter automatically
+    my $vip  = $join->selectall_arrayref(tier => 'gold');
+
+    # Range intersection: age_days > 60 AND age_days < 365
+    my $recent_old = $join->selectall_arrayref(age_days => { '<' => 365 });
+
+When using C<add_database>, pass C<filter> (singular) to set the base
+criteria for the new database:
+
+    $join->add_database($orders, filter => { age_days => { '>' => 60 } });
 
 =head2 selectall_arrayref
 
@@ -682,6 +749,9 @@ The logger is propagated to the new database if one was set on the join.
 
     database       => { type => 'object',   required => 1 }
     join_column    => { type => 'string',   optional => 1 }
+    filter         => { type => 'hashref',  optional => 1 }
+                      # Permanent criteria for this database.  Same format
+                      # as selectall_arrayref.  See the filters section below.
     remove_columns => { type => 'arrayref', optional => 1 }
 
 =head4 Output
@@ -706,13 +776,15 @@ sub add_database {
 		croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
 			unless $args[0] eq 'database'
 			    || $args[0] eq 'remove_columns'
-			    || $args[0] eq 'join_column';
+			    || $args[0] eq 'join_column'
+			    || $args[0] eq 'filter';
 	}
 
 	my $p = validate_strict(
 		schema => {
 			database       => { type => 'object',   optional => 1 },
 			join_column    => { type => 'string',   optional => 1 },
+			filter         => { type => 'hashref',  optional => 1 },
 			remove_columns => { type => 'arrayref', optional => 1 },
 		},
 		input => (@args ? get_params(undef, @args) : {}) // {},
@@ -726,6 +798,7 @@ sub add_database {
 	# Determine and register the local join column name for this database
 	my $local_jc = $p->{join_column} // $self->{_join_col};
 	$self->{_join_map}{$idx} = $local_jc if $p->{join_column};
+	$self->{_filters}{$idx}  = $p->{filter} if $p->{filter};
 
 	my $cols         = $db->columns();
 	my %col_presence = map { $_ => 1 } @{$cols};
@@ -1011,6 +1084,15 @@ sub _joined_query {
 
 	my $per_db = $self->_partition_criteria($params);
 
+	# Overlay any per-database base filters onto the partitioned criteria.
+	# A filtered database always has effective criteria, so $had_criteria will
+	# be true for it — giving inner-join key-set semantics regardless of join_type.
+	for my $i (0 .. $n - 1) {
+		my $base = $self->{_filters}{$i} // {};
+		next unless %{$base};
+		$per_db->[$i] = _merge_criteria($base, $per_db->[$i]);
+	}
+
 	# Fetch and index each database with its own criteria slice.
 	my @indexed;
 	my @had_criteria;
@@ -1071,6 +1153,26 @@ sub _joined_query {
 		unless @result;
 
 	return \@result;
+}
+
+# _merge_criteria( \%base, \%extra ) -> \%merged
+# Merges two criteria hashrefs.  When both specify the same column as operator
+# hashrefs ({ '>' => N }), the operators are combined so both constraints apply
+# (AND semantics, e.g. age > 60 AND age < 365).  Otherwise the extra
+# (query-time) value overwrites the base filter for that column.
+sub _merge_criteria {
+	my ($base, $extra) = @_;
+	my %merged = %{$base};
+	for my $col (keys %{$extra}) {
+		if (exists $merged{$col}
+		        && ref($merged{$col}) eq 'HASH'
+		        && ref($extra->{$col}) eq 'HASH') {
+			$merged{$col} = { %{ $merged{$col} }, %{ $extra->{$col} } };
+		} else {
+			$merged{$col} = $extra->{$col};
+		}
+	}
+	return \%merged;
 }
 
 # _msg( $i18n, $key, @sprintf_args ) -> $string

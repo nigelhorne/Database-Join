@@ -10,6 +10,7 @@ t/01-new.t
 t/10-select.t
 t/20-remove-column.t
 t/30-add-database.t
+t/40-filters.t
 t/data/test1.csv
 t/data/test2.csv
 t/lib/Database/djcust.pm
