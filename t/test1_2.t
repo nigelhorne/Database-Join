@@ -3,11 +3,20 @@
 use strict;
 use FindBin qw($Bin);
 
-use File::Spec;
-use Test::Most tests => 28;
+use Test::Most tests => 31;
 use Test::NoWarnings;
 
+BEGIN {
+	eval { require DBD::SQLite; require Database::Abstraction };
+	if ($@) {
+		require Test::More;
+		Test::More::plan(skip_all => 'DBD::SQLite and Database::Abstraction required');
+	}
+}
+
 use lib 't/lib';
+use DBI;
+use File::Temp qw(tempdir);
 use Database::test1;
 use Database::test2;
 use Database::Join;
@@ -15,28 +24,58 @@ use Database::Join;
 # ---------------------------------------------------------------------------
 # Fixtures
 #
-#   test1 (PSV): entry (city) | statecode
+#   test1 (SQLite): entry (city) | statecode
 #       Richmond      VA
 #       Silver Spring MD
 #       Laurel        MD
+#       Leesburg      VA   <- same city name as below ...
+#       Leesburg      FL   <- ... in a different state
 #
-#   test2 (PSV): entry (statecode) | state
+#   Note: no PRIMARY KEY on test1.entry so duplicate city names are allowed.
+#
+#   test2 (SQLite): entry (statecode) | state
 #       MD  Maryland
 #       VA  Virginia
+#       FL  Florida
 #
 #  The join key is test1.statecode = test2.entry.
 #  join_column => 'statecode', join_map => { 1 => 'entry' }.
 #
-#  Expected result (3 rows, sorted by statecode):
-#    { statecode=>'MD', entry=>'Silver Spring', state=>'Maryland' }
-#    { statecode=>'MD', entry=>'Laurel',        state=>'Maryland' }
-#    { statecode=>'VA', entry=>'Richmond',      state=>'Virginia' }
-#  (The two MD rows are in non-deterministic order.)
+#  Expected result (5 rows, sorted by statecode then by city name):
+#    { statecode=>'FL', entry=>'Leesburg',      state=>'Florida'  }
+#    { statecode=>'MD', entry=>'Laurel',         state=>'Maryland' }
+#    { statecode=>'MD', entry=>'Silver Spring',  state=>'Maryland' }
+#    { statecode=>'VA', entry=>'Leesburg',       state=>'Virginia' }
+#    { statecode=>'VA', entry=>'Richmond',       state=>'Virginia' }
 # ---------------------------------------------------------------------------
 
-my $directory = File::Spec->catfile($Bin, File::Spec->updir(), 't', 'data');
-my $test1 = new_ok('Database::test1' => [$directory]);
-my $test2 = new_ok('Database::test2' => [$directory]);
+my $dir = tempdir(CLEANUP => 1);
+
+{
+	my $dbh = DBI->connect("dbi:SQLite:dbname=$dir/test1.sql", '', '',
+		{ RaiseError => 1, PrintError => 0 });
+	# No PRIMARY KEY → allows two rows with entry='Leesburg' (VA and FL)
+	$dbh->do('CREATE TABLE test1 (entry TEXT, statecode TEXT)');
+	$dbh->do(q{INSERT INTO test1 VALUES ('Richmond',     'VA')});
+	$dbh->do(q{INSERT INTO test1 VALUES ('Silver Spring','MD')});
+	$dbh->do(q{INSERT INTO test1 VALUES ('Laurel',       'MD')});
+	$dbh->do(q{INSERT INTO test1 VALUES ('Leesburg',     'VA')});
+	$dbh->do(q{INSERT INTO test1 VALUES ('Leesburg',     'FL')});
+	$dbh->disconnect;
+}
+
+{
+	my $dbh = DBI->connect("dbi:SQLite:dbname=$dir/test2.sql", '', '',
+		{ RaiseError => 1, PrintError => 0 });
+	$dbh->do('CREATE TABLE test2 (entry TEXT PRIMARY KEY, state TEXT)');
+	$dbh->do(q{INSERT INTO test2 VALUES ('MD','Maryland')});
+	$dbh->do(q{INSERT INTO test2 VALUES ('VA','Virginia')});
+	$dbh->do(q{INSERT INTO test2 VALUES ('FL','Florida')});
+	$dbh->disconnect;
+}
+
+my $test1 = new_ok('Database::test1' => [$dir]);
+my $test2 = new_ok('Database::test2' => [$dir]);
 
 my $joined;
 lives_ok {
@@ -49,8 +88,8 @@ lives_ok {
 
 isa_ok($joined, 'Database::Join', 'result is a Database::Join');
 
-# columns(): test2's local 'entry' (join alias) must not appear as a
-# separate column; only the canonical 'statecode' is exposed.
+# columns(): test2's local 'entry' (join alias) must not appear as a separate
+# column; only the canonical 'statecode' is exposed.
 is_deeply(
 	$joined->columns(),
 	[qw(entry state statecode)],
@@ -59,52 +98,55 @@ is_deeply(
 
 my $rows = $joined->selectall_arrayref();
 
-# diag(Data::Dumper->new([$rows])->Dump());
-cmp_ok($joined->state('Laurel'), 'eq', 'Maryland');
+# 5 city rows total (Leesburg appears twice — once VA, once FL)
+is(scalar @{$rows}, 5, 'five merged rows — Leesburg counted twice');
 
-# Each city appears in its own merged row — no city is lost.
-is(scalar @{$rows}, 3, 'one merged row per city (primary-db row)');
+# Results are sorted by statecode (FL < MD < VA); within each statecode
+# the secondary sort is alphabetical by entry (city name).
+is($rows->[0]{statecode}, 'FL',        'row 0: statecode FL');
+is($rows->[0]{state},     'Florida',   'row 0: state Florida');
+is($rows->[0]{entry},     'Leesburg',  'row 0: city Leesburg (FL)');
 
-# Results are sorted by join_column (statecode): MD before VA.
-is($rows->[0]{statecode}, 'MD',       'row 0: statecode is MD');
-is($rows->[0]{state},     'Maryland', 'row 0: state is Maryland (from test2)');
-is($rows->[1]{statecode}, 'MD',       'row 1: statecode is MD');
-is($rows->[1]{state},     'Maryland', 'row 1: state is Maryland (from test2)');
+is($rows->[1]{statecode}, 'MD',        'row 1: statecode MD');
+is($rows->[1]{state},     'Maryland',  'row 1: state Maryland');
+is($rows->[1]{entry},     'Laurel',    'row 1: city Laurel');
 
-# Both MD cities must be present; order within the same statecode is unspecified.
-my %md_cities = map { $_->{entry} => 1 } grep { $_->{statecode} eq 'MD' } @{$rows};
-is_deeply(\%md_cities, { Laurel => 1, 'Silver Spring' => 1 },
-	'both MD cities present in the merged result');
+is($rows->[2]{statecode}, 'MD',        'row 2: statecode MD');
+is($rows->[2]{state},     'Maryland',  'row 2: state Maryland');
+is($rows->[2]{entry},     'Silver Spring', 'row 2: city Silver Spring');
 
-is($rows->[2]{statecode}, 'VA',       'row 2: statecode is VA');
-is($rows->[2]{state},     'Virginia', 'row 2: state is Virginia (from test2)');
-is($rows->[2]{entry},     'Richmond', 'row 2: only one VA city so entry is deterministic');
+is($rows->[3]{statecode}, 'VA',        'row 3: statecode VA');
+is($rows->[3]{state},     'Virginia',  'row 3: state Virginia');
+is($rows->[3]{entry},     'Leesburg',  'row 3: city Leesburg (VA)');
+
+is($rows->[4]{statecode}, 'VA',        'row 4: statecode VA');
+is($rows->[4]{state},     'Virginia',  'row 4: state Virginia');
+is($rows->[4]{entry},     'Richmond',  'row 4: city Richmond');
 
 # count()
-is($joined->count(),                  3, 'count() without criteria is 3');
-is($joined->count(state => 'Virginia'), 1, 'count() on secondary column works');
+is($joined->count(),                    5, 'count() without criteria is 5');
+is($joined->count(state => 'Virginia'), 2, 'count() on secondary column: 2 VA cities');
 
 # Criteria on the canonical join column
-my $va_rows = $joined->selectall_arrayref(statecode => 'VA');
-is(scalar @{$va_rows},     1,          'selectall_arrayref on join column narrows to 1');
-is($va_rows->[0]{state},   'Virginia', 'join-column criteria returns correct state');
-is($va_rows->[0]{entry},   'Richmond', 'join-column criteria returns correct city');
+my $fl_rows = $joined->selectall_arrayref(statecode => 'FL');
+is(scalar @{$fl_rows},     1,         'selectall on statecode=FL narrows to 1 row');
+is($fl_rows->[0]{state},   'Florida', 'FL row has correct state');
 
 # Criteria on a column owned by test2
 my $md_rows = $joined->selectall_arrayref(state => 'Maryland');
-is(scalar @{$md_rows},     2,          'selectall_arrayref on test2 column returns both MD cities');
+is(scalar @{$md_rows},     2,         'selectall on state=Maryland returns both MD cities');
 
-# fetchrow_hashref
-my $row = $joined->fetchrow_hashref(statecode => 'VA');
-is($row->{state},  'Virginia', 'fetchrow_hashref: correct state for VA');
-is($row->{entry},  'Richmond', 'fetchrow_hashref: correct city for VA');
+# AUTOLOAD with join_map — scalar context: single result
+is($joined->state('Richmond'), 'Virginia', 'AUTOLOAD scalar: state for Richmond is Virginia');
 
-# AUTOLOAD with join_map: positional arg is treated as test1's 'entry' (city name)
-is($joined->state('Laurel'),   'Maryland', 'AUTOLOAD state for Laurel is Maryland');
-is($joined->state('Richmond'), 'Virginia', 'AUTOLOAD state for Richmond is Virginia');
+# AUTOLOAD with join_map — list context: all matching rows
+# Leesburg exists in both VA and FL so state() returns two values in list context.
+my @leesburg_states = sort $joined->state('Leesburg');
+is_deeply(\@leesburg_states, ['Florida', 'Virginia'],
+	'AUTOLOAD list: state() for Leesburg returns Florida and Virginia');
 
 # ---------------------------------------------------------------------------
-# add_database with join_column — equivalent to using join_map in the constructor
+# add_database with join_column — equivalent to join_map in the constructor
 # ---------------------------------------------------------------------------
 
 my $joined2 = Database::Join->new(
@@ -115,5 +157,5 @@ lives_ok {
 	$joined2->add_database($test2, join_column => 'entry');
 } 'add_database with join_column lives';
 
-is(scalar @{ $joined2->selectall_arrayref() }, 3,
-	'add_database(join_column) also returns 3 rows');
+is(scalar @{ $joined2->selectall_arrayref() }, 5,
+	'add_database(join_column) also returns 5 rows');

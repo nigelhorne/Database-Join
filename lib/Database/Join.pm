@@ -905,8 +905,9 @@ sub AUTOLOAD {
 		my $params = !@_                          ? {}
 		           : (@_ == 1 && !ref($_[0]))     ? { $pk => $_[0] }
 		           :                                 (get_params(undef, @_) // {});
-		my $row = $self->_joined_query($params)->[0];
-		return $row ? $row->{$col} : undef;
+		my $rows = $self->_joined_query($params);
+		return map { $_->{$col} } @{$rows} if wantarray;
+		return @{$rows} ? $rows->[0]{$col} : undef;
 	}
 
 	return $db->$col(@_);
@@ -1131,6 +1132,14 @@ All messages that the module can croak or carp, and how to resolve them.
     error_query_unsupported   | query() called                     | Use selectall_arrayref instead
     error_execute_unsupported | execute() called                   | Use Perl-level query methods
 
+=head1 REPOSITORY
+
+L<https://github.com/nigelhorne/Database-Join>
+
+=head1 SUPPORT
+
+This module is provided as-is without any warranty.
+
 =head1 AUTHOR
 
 Nigel Horne, C<< <njh@nigelhorne.com> >>
@@ -1139,7 +1148,8 @@ Nigel Horne, C<< <njh@nigelhorne.com> >>
 
 Copyright (C) 2026 Nigel Horne.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+Usage is subject to the GPL2 licence terms.
+If you use it,
+please let me know.
 
 =cut

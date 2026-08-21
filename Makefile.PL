@@ -16,7 +16,7 @@ WriteMakefile(
 	AUTHOR           => 'Nigel Horne <njh@nigelhorne.com>',
 	VERSION_FROM     => 'lib/Database/Join.pm',
 	ABSTRACT_FROM    => 'lib/Database/Join.pm',
-	LICENSE          => 'perl',
+	LICENSE          => 'gpl_2',
 	MIN_PERL_VERSION => '5.010',
 	PREREQ_PM        => {
 		'autodie'                 => 0,
@@ -40,10 +40,13 @@ WriteMakefile(
 				type => 'git',
 				url  => 'https://github.com/nigelhorne/Database-Join.git',
 				web  => 'https://github.com/nigelhorne/Database-Join',
-			},
-			bugtracker => {
-				web => 'https://github.com/nigelhorne/Database-Join/issues',
-			},
+			}, bugtracker => {
+				web => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Database-Join',
+				url => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Database-Join',
+				# web => 'https://github.com/nigelhorne/Database-Join/issues',
+				# url => 'https://github.com/nigelhorne/Database-Join/issues',
+				mailto => 'bug-Database-Join@rt.cpan.org'
+			}
 		},
 	}, dist => $dist,
 	clean => { FILES    => 'Database-Join-*' },
