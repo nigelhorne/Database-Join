@@ -30,7 +30,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 93;
+	plan tests => 119;
 	use_ok('Database::Join');
 }
 
@@ -95,8 +95,9 @@ Readonly::Scalar my $TS_B     => 2_000_000;
 	sub expose_parse_query_args { my $self = shift; return $self->_parse_query_args(@_) }
 	sub expose_partition        { my $self = shift; return $self->_partition_criteria(@_) }
 	sub expose_fetch_indexed    { my $self = shift; return $self->_fetch_indexed(@_) }
-	sub expose_joined_query     { my $self = shift; return $self->_joined_query(@_) }
-	sub expose_err              { my $self = shift; return $self->_err(@_) }
+	sub expose_joined_query      { my $self = shift; return $self->_joined_query(@_) }
+	sub expose_err               { my $self = shift; return $self->_err(@_) }
+	sub expose_build_col_index   { my $self = shift; return $self->_build_col_index(@_) }
 }
 
 # Convenience builder for a bare WhiteBox skeleton (no databases needed for
@@ -1117,6 +1118,420 @@ subtest 'no circular references in Database::Join object' => sub {
 	plan tests => 1;
 	my $j = _make_join();
 	memory_cycle_ok($j, 'Database::Join has no circular references that would prevent GC');
+};
+
+# ===========================================================================
+# SECTION 18 -- _err helper (3 tests)
+# _err is a thin convenience wrapper around _msg that reads _i18n from self
+# so callers do not have to extract it at every error site.  Testing it
+# separately proves the coupling to $self->{_i18n} is correct.
+# ===========================================================================
+subtest '_err: produces the same string as _msg when _i18n is undef' => sub {
+	plan tests => 1;
+	my $wb       = _bare_whitebox();  # _i18n is undef
+	my $from_err = $wb->expose_err('error_no_databases');
+	my $from_msg = $wb->expose_msg(undef, 'error_no_databases');
+	is($from_err, $from_msg,
+		'_err() produces the same result as _msg() when _i18n is undef');
+};
+
+subtest '_err: reads _i18n from self automatically (no explicit arg needed)' => sub {
+	plan tests => 1;
+	# Build an i18n stub that prefixes every message key with "i18n:".
+	# _err should pick up self->{_i18n} without the caller supplying it.
+	my $i18n = bless {}, 'AutoI18N';
+	{
+		no strict 'refs';
+		*AutoI18N::can = sub { $_[1] eq 'translate' ? sub {} : undef };
+		*AutoI18N::translate = sub { "i18n:$_[1]" };
+	}
+	my $wb  = _bare_whitebox(_i18n => $i18n);
+	my $got = $wb->expose_err('error_no_databases');
+	is($got, 'i18n:error_no_databases',
+		'_err() reads _i18n from $self->{_i18n} without the caller passing it');
+};
+
+subtest '_err: passes sprintf args through to the message formatter' => sub {
+	plan tests => 1;
+	my $wb  = _bare_whitebox();
+	my $got = $wb->expose_err('error_invalid_db', 7);
+	like($got, qr/databases\[7\]/,
+		'_err() passes sprintf args through to the underlying message string');
+};
+
+# ===========================================================================
+# SECTION 19 -- _build_col_index (6 tests)
+# _build_col_index is the most complex constructor step: it populates _col_db
+# (column-to-db-index routing) and _db_cols (per-db column presence) from
+# the columns() of each component database, validates the join key is present,
+# and applies join_map aliases.  Testing it directly (via expose_build_col_index)
+# isolates construction-time logic from the rest of new().
+# ===========================================================================
+subtest '_build_col_index: populates _col_db with correct database indices' => sub {
+	plan tests => 2;
+	# db_a owns COL_A; db_b owns COL_B.  After indexing, _col_db must reflect
+	# last-DB-wins for the shared join_col and correct indices for unique cols.
+	my $wb = _bare_whitebox(
+		_join_col => $JC,
+		_join_map => {},
+		_dbs      => [
+			MinimalDA->new(cols => [$JC, $COL_A], rows => []),
+			MinimalDA->new(cols => [$JC, $COL_B], rows => []),
+		],
+		_col_db   => {},
+		_db_cols  => [],
+	);
+	$wb->expose_build_col_index();
+	is($wb->{_col_db}{$COL_A}, 0,
+		'_build_col_index routes COL_A to DB 0 (first database)');
+	is($wb->{_col_db}{$COL_B}, 1,
+		'_build_col_index routes COL_B to DB 1 (second database)');
+};
+
+subtest '_build_col_index: populates _db_cols with per-db column presence hashes' => sub {
+	plan tests => 2;
+	my $wb = _bare_whitebox(
+		_join_col => $JC,
+		_join_map => {},
+		_dbs      => [
+			MinimalDA->new(cols => [$JC, $COL_A], rows => []),
+			MinimalDA->new(cols => [$JC, $COL_B], rows => []),
+		],
+		_col_db   => {},
+		_db_cols  => [],
+	);
+	$wb->expose_build_col_index();
+	ok($wb->{_db_cols}[0]{$COL_A},
+		'_db_cols[0] shows COL_A is present in DB 0');
+	ok($wb->{_db_cols}[1]{$COL_B},
+		'_db_cols[1] shows COL_B is present in DB 1');
+};
+
+subtest '_build_col_index: last-DB-wins for duplicate non-join columns' => sub {
+	plan tests => 1;
+	# Both databases have COL_A.  After indexing, _col_db should point to DB 1.
+	my $wb = _bare_whitebox(
+		_join_col => $JC,
+		_join_map => {},
+		_dbs      => [
+			MinimalDA->new(cols => [$JC, $COL_A], rows => []),
+			MinimalDA->new(cols => [$JC, $COL_A], rows => []),
+		],
+		_col_db   => {},
+		_db_cols  => [],
+	);
+	$wb->expose_build_col_index();
+	is($wb->{_col_db}{$COL_A}, 1,
+		'_build_col_index last-DB-wins: duplicate column is owned by the later database');
+};
+
+subtest '_build_col_index: join_map local alias excluded from _col_db' => sub {
+	plan tests => 2;
+	# DB 1 uses $JC_ALIAS as its join key.  That alias is NOT a data column
+	# and must not appear in _col_db; the canonical join_col name must appear.
+	my $wb = _bare_whitebox(
+		_join_col => $JC,
+		_join_map => { 1 => $JC_ALIAS },
+		_dbs      => [
+			MinimalDA->new(cols => [$JC,       $COL_A], rows => []),
+			MinimalDA->new(cols => [$JC_ALIAS, $COL_B], rows => []),
+		],
+		_col_db   => {},
+		_db_cols  => [],
+	);
+	$wb->expose_build_col_index();
+	ok(!exists $wb->{_col_db}{$JC_ALIAS},
+		'_build_col_index excludes the join_map local alias from _col_db');
+	is($wb->{_col_db}{$COL_B}, 1,
+		'_build_col_index still routes data columns from the join_map DB correctly');
+};
+
+subtest '_build_col_index: croaks when join_column is absent from a database' => sub {
+	plan tests => 1;
+	my $wb = _bare_whitebox(
+		_join_col => $JC,
+		_join_map => {},
+		_dbs      => [
+			MinimalDA->new(cols => ['other_col'], rows => []),
+		],
+		_col_db   => {},
+		_db_cols  => [],
+	);
+	throws_ok { $wb->expose_build_col_index() }
+		qr/absent from databases\[0\]/,
+		'_build_col_index croaks when join_column is missing from a component database';
+};
+
+subtest '_build_col_index: croaks when join_map value is a reference (heap-address guard)' => sub {
+	plan tests => 1;
+	# A reference as the local join-key name would stringify to "HASH(0x...)",
+	# leaking a heap address into the error message.  The guard must croak first.
+	my $wb = _bare_whitebox(
+		_join_col => $JC,
+		_join_map => { 1 => { ref_val => 1 } },   # value is a hashref, not a string
+		_dbs      => [
+			MinimalDA->new(cols => [$JC, $COL_A], rows => []),
+			MinimalDA->new(cols => [$JC, $COL_B], rows => []),
+		],
+		_col_db   => {},
+		_db_cols  => [],
+	);
+	throws_ok { $wb->expose_build_col_index() }
+		qr/absent from databases\[1\]/,
+		'_build_col_index croaks cleanly when a join_map value is a reference';
+};
+
+# ===========================================================================
+# SECTION 20 -- Additional %MESSAGES key coverage (4 tests)
+# The %MESSAGES dictionary defines all user-facing strings.  Sections 1-16
+# tested error_no_databases, error_invalid_db, and error_join_col_missing.
+# These tests cover the remaining documented message keys.
+# ===========================================================================
+subtest '_msg: warn_unknown_column contains the column name' => sub {
+	plan tests => 1;
+	my $wb  = _bare_whitebox();
+	my $got = $wb->expose_msg(undef, 'warn_unknown_column', 'mystery_col');
+	like($got, qr/mystery_col/,
+		'warn_unknown_column message embeds the unrecognised column name');
+};
+
+subtest '_msg: error_query_unsupported mentions query()' => sub {
+	plan tests => 1;
+	my $wb  = _bare_whitebox();
+	my $got = $wb->expose_msg(undef, 'error_query_unsupported');
+	like($got, qr/query\(\)/,
+		'error_query_unsupported message identifies the unsupported method');
+};
+
+subtest '_msg: error_execute_unsupported mentions execute()' => sub {
+	plan tests => 1;
+	my $wb  = _bare_whitebox();
+	my $got = $wb->expose_msg(undef, 'error_execute_unsupported');
+	like($got, qr/execute\(\)/,
+		'error_execute_unsupported message identifies the unsupported method');
+};
+
+subtest '_msg: error_remove_join_col embeds the column name' => sub {
+	plan tests => 1;
+	my $wb  = _bare_whitebox();
+	my $got = $wb->expose_msg(undef, 'error_remove_join_col', 'my_join_key');
+	like($got, qr/my_join_key/,
+		'error_remove_join_col message embeds the column name that was passed');
+};
+
+# ===========================================================================
+# SECTION 21 -- Global variable isolation (3 tests)
+# Public query methods and internal helpers use map/for/grep internally.
+# Setting $_ to a sentinel before the call and checking it after guarantees
+# that the implementation does not accidentally clobber caller-owned globals.
+# ===========================================================================
+subtest 'selectall_arrayref: does not clobber $_' => sub {
+	plan tests => 1;
+	my $j = _make_join();
+	local $_ = 'caller_sentinel';
+	$j->selectall_arrayref(entry => 'K1');
+	is($_, 'caller_sentinel',
+		'selectall_arrayref() does not modify $_ in the calling scope');
+};
+
+subtest '_partition_criteria: does not clobber $_' => sub {
+	plan tests => 1;
+	my $wb = _bare_whitebox(
+		_dbs    => [
+			MinimalDA->new(cols => [$JC, $COL_A], rows => []),
+			MinimalDA->new(cols => [$JC, $COL_B], rows => []),
+		],
+		_col_db => { $JC => 0, $COL_A => 0, $COL_B => 1 },
+	);
+	local $_ = 'caller_sentinel';
+	$wb->expose_partition({ $COL_A => 'Alice' });
+	is($_, 'caller_sentinel',
+		'_partition_criteria() does not modify $_ in the calling scope');
+};
+
+subtest '_joined_query: does not clobber $_ (exercised via selectall_arrayref)' => sub {
+	plan tests => 1;
+	my $j = _make_join();
+	local $_ = 'caller_sentinel';
+	$j->selectall_arrayref();
+	is($_, 'caller_sentinel',
+		'_joined_query() does not modify $_ in the calling scope');
+};
+
+# ===========================================================================
+# SECTION 22 -- _fetch_indexed additional coverage (3 tests)
+# These tests address gaps in Section 12: the return type, multiple rows
+# stored under the same join-key bucket, and the critical requirement that
+# criteria are passed to the DA as a hashref (not a flat hash expansion).
+# ===========================================================================
+subtest '_fetch_indexed: return type is a hashref' => sub {
+	plan tests => 1;
+	my $db  = MinimalDA->new(cols => [$JC, $COL_A], rows => []);
+	my $wb  = _bare_whitebox(_dbs => [$db], _join_map => {});
+	my $idx = $wb->expose_fetch_indexed(0, {});
+	returns_ok($idx, { type => 'hashref' },
+		'_fetch_indexed returns a hashref keyed on join_col values');
+};
+
+subtest '_fetch_indexed: multiple rows with the same join_col value are all stored' => sub {
+	plan tests => 2;
+	# When a DA returns two rows with identical join keys (e.g. a city appearing
+	# in two states), both must be preserved in the indexed bucket.
+	my $db = MinimalDA->new(
+		cols => [$JC, $COL_A],
+		rows => [
+			{ entry => 'K1', name => 'Alice' },
+			{ entry => 'K1', name => 'AlsoAlice' },
+		],
+	);
+	my $wb  = _bare_whitebox(_dbs => [$db], _join_map => {});
+	my $idx = $wb->expose_fetch_indexed(0, {});
+	is(scalar @{ $idx->{K1} }, 2,
+		'both rows stored under the K1 bucket (not deduplicated)');
+	is($idx->{K1}[1]{name}, 'AlsoAlice',
+		'second row is accessible at index 1 in the bucket');
+};
+
+subtest '_fetch_indexed: passes criteria as a hashref to DA->selectall_arrayref' => sub {
+	plan tests => 1;
+	# CLAUDE.md: "Always pass criteria to Database::Abstraction methods as a
+	# hashref, never as a flat hash expansion" -- verify via Mockingbird.
+	my $received;
+	my $db = MinimalDA->new(cols => [$JC, $COL_A], rows => []);
+	mock 'MinimalDA::selectall_arrayref' => sub { $received = $_[1]; return [] };
+	my $wb       = _bare_whitebox(_dbs => [$db], _join_map => {});
+	my $criteria = { $COL_A => 'Alice' };
+	$wb->expose_fetch_indexed(0, $criteria);
+	is_deeply($received, $criteria,
+		'_fetch_indexed passes the criteria hashref verbatim to DA->selectall_arrayref');
+	restore_all();
+};
+
+# ===========================================================================
+# SECTION 23 -- updated() with Mockingbird (2 tests)
+# These tests use Mockingbird to intercept Database::Join::max (the imported
+# copy of List::Util::max) and verify that updated() delegates aggregation to
+# max() rather than implementing its own comparison loop.
+# ===========================================================================
+subtest 'updated: delegates to max() for aggregation (confirmed via Mockingbird)' => sub {
+	plan tests => 2;
+	my @received;
+	# Mock the copy of max() that Database::Join imported into its namespace.
+	mock 'Database::Join::max' => sub { @received = @_; return 42 };
+	my $j  = _make_join();
+	my $ts = $j->updated();
+	is($ts, 42,
+		'updated() returns whatever max() returns (Mockingbird intercept confirmed)');
+	is(scalar @received, 2,
+		'max() received exactly one argument per component database (2 DBs in _make_join)');
+	restore_all();
+};
+
+subtest 'updated: passes all component timestamps to max()' => sub {
+	plan tests => 1;
+	# Build a 3-DB join to confirm the timestamp of every database reaches max().
+	my @received;
+	my $db_a = MinimalDA->new(cols => [$JC],        rows => [], updated => 100);
+	my $db_b = MinimalDA->new(cols => [$JC, 'x'],   rows => [], updated => 200);
+	my $db_c = MinimalDA->new(cols => [$JC, 'y'],   rows => [], updated => 300);
+	my $j    = Database::Join->new(databases => [$db_a, $db_b, $db_c], join_column => $JC);
+	mock 'Database::Join::max' => sub { @received = @_; return 300 };
+	$j->updated();
+	is_deeply([ sort { $a <=> $b } @received ], [100, 200, 300],
+		'updated() passes the updated() value of every component database to max()');
+	restore_all();
+};
+
+# ===========================================================================
+# SECTION 24 -- remove_column edge cases (2 tests)
+# The POD says "Removing a column that does not exist in any database is
+# silently ignored".  The code path `if (defined $col && length $col)` also
+# makes undef and empty-string no-ops.  Verify both to ensure robustness.
+# ===========================================================================
+subtest 'remove_column: undef argument is a silent no-op returning self' => sub {
+	plan tests => 2;
+	my $j = _make_join();
+	lives_ok { $j->remove_column(undef) }
+		'remove_column(undef) does not croak';
+	is(refaddr($j->remove_column(undef)), refaddr($j),
+		'remove_column(undef) returns $self (no-op, chainable)');
+};
+
+subtest 'remove_column: empty string argument is a silent no-op returning self' => sub {
+	plan tests => 2;
+	my $j = _make_join();
+	lives_ok { $j->remove_column('') }
+		'remove_column("") does not croak';
+	is(refaddr($j->remove_column('')), refaddr($j),
+		'remove_column("") returns $self (no-op, chainable)');
+};
+
+# ===========================================================================
+# SECTION 25 -- AUTOLOAD returns undef / empty list when no rows match (2 tests)
+# When join_map or filters is active, AUTOLOAD routes through _joined_query.
+# Testing the no-match case ensures the code handles an empty result set
+# correctly without warnings and returns the correct typed empty value.
+# ===========================================================================
+subtest 'AUTOLOAD: returns undef in scalar context when join_map active and no rows match' => sub {
+	plan tests => 1;
+	my $db_a = MinimalDA->new(
+		cols => [$JC, $COL_A],
+		rows => [ { entry => 'K1', name => 'Alice' } ],
+	);
+	my $db_b = MinimalDA->new(
+		cols => [$JC_ALIAS, $COL_B],
+		rows => [ { $JC_ALIAS => 'K1', score => 88 } ],
+	);
+	my $j = Database::Join->new(
+		databases   => [$db_a, $db_b],
+		join_column => $JC,
+		join_map    => { 1 => $JC_ALIAS },
+	);
+	my $val = $j->score('NOMATCH');
+	ok(!defined $val,
+		'AUTOLOAD returns undef in scalar context when join_map active and no row matches');
+};
+
+subtest 'AUTOLOAD: returns empty list in list context when join_map active and no rows match' => sub {
+	plan tests => 1;
+	my $db_a = MinimalDA->new(
+		cols => [$JC, $COL_A],
+		rows => [ { entry => 'K1', name => 'Alice' } ],
+	);
+	my $db_b = MinimalDA->new(
+		cols => [$JC_ALIAS, $COL_B],
+		rows => [ { $JC_ALIAS => 'K1', score => 88 } ],
+	);
+	my $j = Database::Join->new(
+		databases   => [$db_a, $db_b],
+		join_column => $JC,
+		join_map    => { 1 => $JC_ALIAS },
+	);
+	my @vals = $j->score('NOMATCH');
+	is(scalar @vals, 0,
+		'AUTOLOAD returns an empty list in list context when join_map active and no row matches');
+};
+
+# ===========================================================================
+# SECTION 26 -- _partition_criteria return type (1 test)
+# Verifies the structural contract: an arrayref with one slot per DB.
+# Test::Returns enforces the type so any refactoring that changes the return
+# form will be caught immediately.
+# ===========================================================================
+subtest '_partition_criteria: return type is an arrayref' => sub {
+	plan tests => 2;
+	my $wb = _bare_whitebox(
+		_dbs    => [
+			MinimalDA->new(cols => [$JC, $COL_A], rows => []),
+			MinimalDA->new(cols => [$JC, $COL_B], rows => []),
+		],
+		_col_db => { $JC => 0, $COL_A => 0, $COL_B => 1 },
+	);
+	my $result = $wb->expose_partition({ $COL_A => 'Alice' });
+	returns_ok($result, { type => 'arrayref' },
+		'_partition_criteria returns an arrayref');
+	is(scalar @{$result}, 2,
+		'_partition_criteria arrayref has exactly one slot per component database');
 };
 
 diag('All white-box function tests complete') if $ENV{TEST_VERBOSE};
