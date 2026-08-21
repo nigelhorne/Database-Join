@@ -28,6 +28,7 @@ WriteMakefile(
 		'Readonly'                => '2.00',
 		'Scalar::Util'            => 0,
 	}, TEST_REQUIRES => {
+		'DBD::CSV' => 0,
 		'IPC::System::Simple' => 0,
 		'Test::Exception' => '0.43',
 		'Test::Most'      => 0,

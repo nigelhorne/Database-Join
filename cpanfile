@@ -12,6 +12,7 @@ requires 'Scalar::Util';
 requires 'autodie';
 
 on 'test' => sub {
+	requires 'DBD::CSV';
 	requires 'DBD::SQLite', '1.70';
 	requires 'File::Temp';
 	requires 'IPC::System::Simple';
