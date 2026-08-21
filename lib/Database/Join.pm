@@ -340,6 +340,15 @@ responsibility of the underlying C<Database::Abstraction> objects (which use
 parameterised queries).  Preventing XSS or header injection is the
 responsibility of the CGI or web layer that renders the output.
 
+=item Taint-mode compatible
+
+C<Database::Join> contains no C<system()>, C<exec()>, backtick, C<open(PIPE)>,
+or C<eval STRING> calls.  It neither opens files nor constructs shell commands.
+The AUTOLOAD regex C</::(\w+)$/>  produces an I<untainted> capture, so the
+column name used for dispatch is clean under C<-T>.  Criteria values are
+passed verbatim to component C<Database::Abstraction> objects; those objects
+are responsible for handling tainted values at the SQL parameterisation layer.
+
 =item Operator hashref aliasing
 
 When the same join-key criterion (an operator hashref such as
@@ -524,6 +533,15 @@ sub new {
 			    && $p->{databases}[$i]->isa('Database::Abstraction');
 	}
 
+	# Cache the primary database's internal primary-key column name once at
+	# construction.  AUTOLOAD uses this to map a bare positional argument to the
+	# correct column when join_map is active and the primary DB's primary key
+	# differs from join_column (e.g. join_col='statecode' but primary key='entry').
+	# Accessing {id} here — at construction time, before the object is shared —
+	# is the single permitted point of coupling to DA's internal field; caching
+	# avoids repeating the hash intrusion on every AUTOLOAD call.
+	my $primary_pk = $p->{databases}[0]{id} // $p->{join_column};
+
 	my $self = bless {
 		_dbs          => $p->{databases},
 		_join_col     => $p->{join_column},
@@ -537,6 +555,7 @@ sub new {
 		_removed_cols => {},	# column_name => 1 (hidden from the view)
 		_col_cache    => undef,	# memoised columns() result
 		_schema_cache => undef,	# memoised schema() result
+		_autoload_pk  => $primary_pk,	# primary DB's key col; positional arg for AUTOLOAD
 	}, $class;
 
 	$self->_build_col_index();
@@ -1481,8 +1500,10 @@ sub AUTOLOAD {
 	# delegation to the owning database would bypass the join key translation
 	# (join_map) and skip any permanent per-database row filters (filters).
 	if (%{ $self->{_join_map} } || %{ $self->{_filters} }) {
-		my $pk     = $self->{_dbs}[0]{id} // 'entry';
-		my $params = $self->_parse_query_args($pk, @_);
+		# _autoload_pk was captured once at construction from the primary DA's
+		# {id} field; using the cached value avoids re-introspecting the blessed
+		# hash on every call and isolates the coupling to a single known site.
+		my $params = $self->_parse_query_args($self->{_autoload_pk}, @_);
 		my $rows   = $self->_joined_query($params);
 		return map { $_->{$col} } @{$rows} if wantarray;
 		return @{$rows} ? $rows->[0]{$col} : undef;
@@ -1539,6 +1560,12 @@ sub _build_col_index :Protected {
 		my $cols      = $db->columns();
 		$db_cols[$i]  = { map { $_ => 1 } @{$cols} };
 
+		# Guard: a join_map value that is a reference (e.g. a hashref) would
+		# stringify to "HASH(0x...)" when interpolated into an error message,
+		# leaking a heap address to callers.  Reject early with a clear message.
+		croak $self->_err('error_join_col_missing', "(join_map[$i] must be a string)", $i, ref($db))
+			if ref $local_jc;
+
 		croak $self->_err('error_join_col_missing', $local_jc, $i, ref($db))
 			unless $db_cols[$i]{$local_jc};
 
@@ -1573,10 +1600,13 @@ sub _partition_criteria :Protected {
 
 	for my $col (keys %{$params}) {
 		if ($col eq $join_col) {
-			# Broadcast to every database using each one's local key column name
+			# Broadcast to every database using each one's local key column name.
+			# Shallow-copy operator hashrefs so a malicious component DA that
+			# mutates its criteria hashref contents cannot corrupt siblings.
+			my $val = $params->{$col};
 			for my $i (0 .. $n - 1) {
 				my $local = $self->{_join_map}{$i} // $join_col;
-				$per_db[$i]{$local} = $params->{$col};
+				$per_db[$i]{$local} = ref($val) eq 'HASH' ? { %{$val} } : $val;
 			}
 		} elsif (defined(my $idx = $self->{_col_db}{$col})) {
 			$per_db[$idx]{$col} = $params->{$col};

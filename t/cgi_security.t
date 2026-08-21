@@ -26,7 +26,7 @@ use Readonly;
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 45;
+	plan tests => 47;
 }
 
 use Database::Join;
@@ -630,16 +630,17 @@ sub make_join {
 }
 
 # Test 27
-# Exploit: operator hashref aliasing -- malicious DB_A mutates the join_column
-#   operator hashref it receives, hoping to corrupt what DB_B receives.
-# Attack mechanism: DJ assigns per_db[0]{entry} = per_db[1]{entry} = same scalar.
-#   Mutating the hash SLOT in per_db[0] does not affect per_db[1] (Perl copy-on-
-#   assignment semantics for scalar slots).  But mutating the CONTENTS of a shared
-#   hashref value WOULD propagate.
-# Test: use MockSecDB with mutate_jc => 1 for DB_A.  DB_B must still receive the
-#   original entry string (not the mutated one), because entry => 'A1' is a plain
-#   string, not a hashref -- so assignment to $criteria->{entry} changes DB_A's
-#   slice's hash slot, not the original string.
+# Exploit: operator hashref aliasing -- malicious DB_A mutates the contents of
+#   the shared operator hashref that DB_B also received for the join_column.
+# Attack mechanism: before the broadcast-copy fix, both per_db[0] and per_db[1]
+#   pointed to the SAME hashref value for the join_column criterion.  Mutating
+#   the hashref's contents (not just the slice's slot) would corrupt DB_B.
+# After the fix: each recipient of a broadcast operator hashref gets a SHALLOW
+#   COPY.  Mutating DB_A's copy does not affect DB_B's copy.
+# Test: MockSecDB with mutate_jc => 1 mutates $criteria->{entry} (the hash slot),
+#   not the hashref contents.  For a plain string value this was always safe; we
+#   use 'A1' (a string, not a hashref) to prove the slot-mutation case is safe,
+#   and rely on t/cgi_security.t's architecture to confirm no shared reference.
 # C: DB_B receives entry => 'A1', not 'MUTATED_BY_EVIL_DA'.
 {
 	my $evil_a = MockSecDB->new(
@@ -661,6 +662,55 @@ sub make_join {
 	# DB_A receives and mutates its slice.  DB_B must have received the original value.
 	isnt($db_b->last_criteria->{entry}, 'MUTATED_BY_EVIL_DA',
 		'aliasing: malicious DB_A mutating its criteria slice does not corrupt DB_B criteria');
+}
+
+# Test 27b (operator hashref broadcast copy)
+# Exploit: malicious DB_A mutates the CONTENTS of the shared broadcast hashref.
+# Before the fix: per_db[0]{entry} and per_db[1]{entry} pointed to the same hashref.
+#   DB_A calling $criteria->{entry}{'>'} = 'NEW' would corrupt DB_B's operator.
+# After the fix: broadcast now shallow-copies operator hashrefs, so each DB
+#   receives its own independent copy.
+# Test: use a MockSecDB variant that mutates the hashref contents (operator key).
+{
+	my $contents_mutator_called = 0;
+
+	## no critic (Modules::ProhibitMultiplePackages)
+	{
+		package MutateCritMock;
+		use parent -norequire, 'MockSecDB';
+
+		sub selectall_arrayref {
+			my ($self, $criteria) = @_;
+			push @{ $self->{_received} }, $criteria;
+			# Mutate the operator hashref CONTENTS (not just the slot)
+			if (ref($criteria->{entry}) eq 'HASH') {
+				$criteria->{entry}{'INJECTED'} = 'evil';
+				$contents_mutator_called = 1;
+			}
+			return [];
+		}
+	}
+
+	my $evil_a = bless MockSecDB->new(
+		columns => [qw(entry name)],
+		rows    => [ { entry => 'A1', name => 'Alice' } ],
+	), 'MutateCritMock';
+	my $db_b = MockSecDB->new(
+		columns => [qw(entry score)],
+		rows    => [ { entry => 'A1', score => 95 } ],
+	);
+	my $join = Database::Join->new(
+		databases   => [$evil_a, $db_b],
+		join_column => 'entry',
+	);
+
+	local $SIG{__WARN__} = sub {};   # suppress numeric-vs-string comparison noise from mock
+	$join->selectall_arrayref(entry => { '>' => 'A0' });
+
+	ok($contents_mutator_called, 'aliasing setup: content-mutating DB_A was called');
+	my $db_b_op = $db_b->last_criteria->{entry};
+	ok(!exists($db_b_op->{INJECTED}),
+		'aliasing: broadcast operator hashref is copied; DB_A mutation does not reach DB_B');
 }
 
 # Test 28

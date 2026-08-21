@@ -286,6 +286,15 @@ architectural guarantees, not run-time checks.
     parameterised queries).  Preventing XSS or header injection is the
     responsibility of the CGI or web layer that renders the output.
 
+- Taint-mode compatible
+
+    `Database::Join` contains no `system()`, `exec()`, backtick, `open(PIPE)`,
+    or `eval STRING` calls.  It neither opens files nor constructs shell commands.
+    The AUTOLOAD regex `/::(\w+)$/`  produces an _untainted_ capture, so the
+    column name used for dispatch is clean under `-T`.  Criteria values are
+    passed verbatim to component `Database::Abstraction` objects; those objects
+    are responsible for handling tainted values at the SQL parameterisation layer.
+
 - Operator hashref aliasing
 
     When the same join-key criterion (an operator hashref such as
