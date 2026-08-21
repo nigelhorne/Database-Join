@@ -426,6 +426,13 @@ sub new {
 	croak _msg($p->{i18n}, 'error_no_databases')
 		unless @{ $p->{databases} };
 
+	# Capture caller-supplied logger and i18n object BEFORE Object::Configure::configure
+	# overwrites them with class-level defaults.  configure() reads default values
+	# from Database::Abstraction's class config and silently replaces any caller-
+	# supplied value if a class default exists for that key.
+	my $caller_logger = $p->{logger};
+	my $caller_i18n   = $p->{i18n};
+
 	$p = Object::Configure::configure($class, $p);
 
 	for my $i (0 .. $#{ $p->{databases} }) {
@@ -448,9 +455,13 @@ sub new {
 		_join_col     => $p->{join_column},
 		_join_type    => $p->{join_type},
 		_join_map     => $p->{join_map} // {},	# db_index => local join col name
+		# TODO: Data Flow Anomaly (filter reference aliasing) - _filters stores
+		# the caller's hashref directly.  External mutation of the caller's hash
+		# after construction will silently change query behaviour.  A deep copy
+		# (e.g. Storable::dclone) would bound the lifetime but adds a dependency.
 		_filters      => $p->{filters}  // {},	# db_index => criteria hashref
-		_logger       => $p->{logger},
-		_i18n         => $p->{i18n},
+		_logger       => $caller_logger,
+		_i18n         => $caller_i18n,
 		_col_db       => {},	# column_name => db_index
 		_db_cols      => [],	# per-db column-presence hashref
 		_removed_cols => {},	# column_name => 1 (hidden from the view)
@@ -460,6 +471,13 @@ sub new {
 	}, $class;
 
 	$self->_build_col_index();
+
+	# Propagate the logger to every component database if one was supplied.
+	# set_logger() is used here (rather than a direct hash write) to honour each
+	# DA's own logging setup hook and remain decoupled from DA internals.
+	if (my $log = $self->{_logger}) {
+		$_->set_logger($log) for @{ $self->{_dbs} };
+	}
 
 	# Apply column removals requested in the constructor
 	if (my $rc = $p->{remove_columns}) {
@@ -1395,8 +1413,6 @@ sub AUTOLOAD {
 	my $db_idx = $self->{_col_db}{$col};
 	croak ref($self), ": unknown column '$col'" unless defined $db_idx;
 
-	my $db = $self->{_dbs}[$db_idx];
-
 	# Use a full join query when join_map OR filters are active.  Direct
 	# delegation to the owning database would bypass the join key translation
 	# (join_map) and skip any permanent per-database row filters (filters).
@@ -1410,6 +1426,8 @@ sub AUTOLOAD {
 		return @{$rows} ? $rows->[0]{$col} : undef;
 	}
 
+	# $db is resolved here (not earlier) to avoid a dead store on the join path above.
+	my $db = $self->{_dbs}[$db_idx];
 	return $db->$col(@_);
 }
 
@@ -1590,6 +1608,10 @@ sub _joined_query :Protected {
 	my @had_criteria;
 	for my $i (0 .. $n - 1) {
 		$indexed[$i]      = $self->_fetch_indexed($i, $per_db->[$i]);
+		# TODO: Data Flow Anomaly (D~) - $had_criteria[0] written here but never read;
+		# the key-set resolution loop below starts at i=1.  When n==1 this is always
+		# a dead store.  Harmless but could be removed if n>1 is enforced, or the
+		# loop could start at i=0 if primary-criteria semantics are ever needed.
 		$had_criteria[$i] = !!%{ $per_db->[$i] };
 	}
 
