@@ -1194,15 +1194,17 @@ sub add_database {
 	my $idx = scalar @{ $self->{_dbs} };
 	my $db;
 
-	if (@args && ref($args[0])) {
-		# Positional form: first arg is a reference — extract it now so that
-		# get_params does not choke on the mixed positional+named-pairs pattern.
-		$db = shift @args;
-	} elsif (@args && !ref($args[0])) {
-		# First arg is a plain string. Only known named-pair keys are valid here;
-		# anything else is treated as an invalid positional database arg.
+	# Fail-fast guard: a non-reference first arg must be a recognised named-pair key.
+	# Modus Ponens: !ref(x) ∧ x ∉ @_ADD_DB_KEYS → cannot be a database object → croak.
+	# De Morgan reduction: the elsif below is logically equivalent to (@args && ref(args[0]))
+	# because the !ref branch was already handled; exhaustion makes the ref() check redundant.
+	if (@args && !ref($args[0])) {
 		croak $self->_err('error_invalid_db', $idx)
 			unless grep { $args[0] eq $_ } @_ADD_DB_KEYS;
+	} elsif (@args) {
+		# Positional form: first arg is a reference — extract it before get_params
+		# to avoid the mixed positional+named-pairs confusion.
+		$db = shift @args;
 	}
 
 	my $p = validate_strict(
@@ -1659,26 +1661,30 @@ sub _joined_query {
 	}
 
 	# Fetch and index each database with its own criteria slice.
+	# !!%hash collapses to 1 (non-empty) or '' (empty) without allocating a count.
 	my @indexed;
 	my @had_criteria;
 	for my $i (0 .. $n - 1) {
-		$indexed[$i]     = $self->_fetch_indexed($i, $per_db->[$i]);
-		$had_criteria[$i] = scalar keys %{ $per_db->[$i] } ? 1 : 0;
+		$indexed[$i]      = $self->_fetch_indexed($i, $per_db->[$i]);
+		$had_criteria[$i] = !!%{ $per_db->[$i] };
 	}
 
 	# Seed the key set from the primary database.
 	my %key_set = map { $_ => 1 } keys %{ $indexed[0] };
 
 	# Merge in each secondary database.
+	# Premise 1: indexed[$i] is a valid hashref (returned by _fetch_indexed).
+	# Premise 2: join_type ∈ {left, inner, outer} (enforced by validate_strict).
+	# Conclusion: the three branches below are exhaustive and mutually exclusive.
 	for my $i (1 .. $n - 1) {
-		my %sec_keys = map { $_ => 1 } keys %{ $indexed[$i] };
-
 		if ($had_criteria[$i] || $join_type eq 'inner') {
-			# Intersect: retain only keys present in this database's result.
-			%key_set = map { $_ => 1 } grep { $sec_keys{$_} } keys %key_set;
+			# Intersect: delete keys absent from secondary in-place.
+			# In-place delete avoids allocating an intermediate result hash
+			# (O(1) extra memory vs O(n) for a map-based rebuild).
+			delete $key_set{$_} for grep { !exists $indexed[$i]{$_} } keys %key_set;
 		} elsif ($join_type eq 'outer') {
-			# Union: add any keys from this database not yet in the set.
-			$key_set{$_} = 1 for keys %sec_keys;
+			# Union: add every key from secondary not yet in the set.
+			$key_set{$_} = 1 for keys %{ $indexed[$i] };
 		}
 		# left + no criteria: key_set unchanged (primary defines the set).
 	}
