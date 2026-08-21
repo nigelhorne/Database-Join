@@ -23,6 +23,7 @@ on 'test' => sub {
 	requires 'Test::Most';
 	requires 'Test::NoWarnings';
 	requires 'Test::Returns', '0.04';
+	requires 'Test::Without::Module';
 	requires 'Text::xSV::Slurp';
 };
 
