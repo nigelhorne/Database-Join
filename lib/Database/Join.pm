@@ -910,7 +910,7 @@ sub schema {
 	# totalling O(N²×M) over all databases for the same result.
 	my %merged;
 	for my $i (0 .. $#{ $self->{_dbs} }) {
-		my $s        = $self->{_dbs}[$i]->schema();
+		my $s        = $self->{_dbs}[$i]->schema() // {};
 		my $local_jc = $self->{_join_map}{$i};
 		if ($local_jc && $local_jc ne $self->{_join_col}) {
 			for my $col (keys %{$s}) {

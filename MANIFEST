@@ -16,6 +16,7 @@ t/cgi_security.t
 t/cities.t
 t/data/cities.csv
 t/data/states.csv
+t/edge_cases.t
 t/function.t
 t/integration.t
 t/lib/Database/cities.pm
