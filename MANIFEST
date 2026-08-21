@@ -17,6 +17,7 @@ t/cities.t
 t/data-flow.t
 t/data/cities.csv
 t/data/states.csv
+t/domain.t
 t/edge_cases.t
 t/function.t
 t/integration.t
