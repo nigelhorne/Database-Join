@@ -19,6 +19,7 @@ on 'test' => sub {
 	requires 'Test::Exception', '0.43';
 	requires 'Test::Most';
 	requires 'Test::NoWarnings';
+	requires 'Text::xSV::Slurp';
 };
 
 on 'develop' => sub {

@@ -29,12 +29,13 @@ WriteMakefile(
 		'Scalar::Util'            => 0,
 	}, TEST_REQUIRES => {
 		'DBD::CSV' => 0,
+		'DBD::SQLite'     => '1.70',
+		'File::Temp'      => 0,
 		'IPC::System::Simple' => 0,
 		'Test::Exception' => '0.43',
 		'Test::Most'      => 0,
 		'Test::NoWarnings' => 0,
-		'DBD::SQLite'     => '1.70',
-		'File::Temp'      => 0,
+		'Text::xSV::Slurp' => 0,
 	}, META_MERGE => {
 		'meta-spec' => { version => 2 },
 		resources   => {

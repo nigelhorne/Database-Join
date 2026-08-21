@@ -14,8 +14,6 @@ t/40-filters.t
 t/cities.t
 t/data/cities.csv
 t/data/states.csv
-t/data/test1.csv
-t/data/test2.csv
 t/lib/Database/cities.pm
 t/lib/Database/djcust.pm
 t/lib/Database/djloyalty.pm
