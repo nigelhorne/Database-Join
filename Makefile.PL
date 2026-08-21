@@ -23,6 +23,7 @@ WriteMakefile(
 		'Carp'                    => 0,
 		'Database::Abstraction'   => '0.37',
 		'List::Util'              => '1.33',
+		'Object::Configure' => 0,
 		'Params::Get'             => '0.13',
 		'Params::Validate::Strict' => 0,
 		'Readonly'                => '2.00',

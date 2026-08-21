@@ -5,6 +5,7 @@ requires 'perl', '5.010';
 requires 'Carp';
 requires 'Database::Abstraction', '0.37';
 requires 'List::Util', '1.33';
+requires 'Object::Configure';
 requires 'Params::Get', '0.13';
 requires 'Params::Validate::Strict';
 requires 'Readonly', '2.00';

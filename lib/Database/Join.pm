@@ -10,6 +10,7 @@ use Carp qw(croak carp);
 use List::Util qw(max);
 use Readonly;
 use Scalar::Util qw(blessed);
+use Object::Configure;
 use Params::Get qw(get_params);
 use Params::Validate::Strict qw(validate_strict);
 use Sub::Protected;
@@ -526,6 +527,8 @@ sub new {
 
 	croak _msg($p->{i18n}, 'error_no_databases')
 		unless @{ $p->{databases} };
+
+	$p = Object::Configure::configure($class, $p);
 
 	for my $i (0 .. $#{ $p->{databases} }) {
 		croak _msg($p->{i18n}, 'error_invalid_db', $i)
