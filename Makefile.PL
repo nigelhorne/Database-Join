@@ -25,7 +25,7 @@ WriteMakefile(
 		'List::Util'              => '1.33',
 		'Object::Configure' => 0,
 		'Params::Get'             => '0.13',
-		'Params::Validate::Strict' => 0,
+		'Params::Validate::Strict' => '0.38',
 		'Readonly'                => '2.00',
 		'Scalar::Util'            => 0,
 		'Sub::Protected' => 0
@@ -34,6 +34,7 @@ WriteMakefile(
 		'DBD::SQLite'     => '1.70',
 		'File::Temp'      => 0,
 		'IPC::System::Simple' => 0,
+		'Test::Memory::Cycle' => 0,
 		'Test::Mockingbird' => '0.13',
 		'Test::Most'      => 0,
 		'Test::NoWarnings' => 0,

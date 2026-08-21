@@ -7,7 +7,7 @@ requires 'Database::Abstraction', '0.37';
 requires 'List::Util', '1.33';
 requires 'Object::Configure';
 requires 'Params::Get', '0.13';
-requires 'Params::Validate::Strict';
+requires 'Params::Validate::Strict', '0.38';
 requires 'Readonly', '2.00';
 requires 'Scalar::Util';
 requires 'Sub::Protected';
@@ -18,6 +18,7 @@ on 'test' => sub {
 	requires 'DBD::SQLite', '1.70';
 	requires 'File::Temp';
 	requires 'IPC::System::Simple';
+	requires 'Test::Memory::Cycle';
 	requires 'Test::Mockingbird', '0.13';
 	requires 'Test::Most';
 	requires 'Test::NoWarnings';
