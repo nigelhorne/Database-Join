@@ -1251,7 +1251,7 @@ Approximate LCSAJ segments: 67<br>
 </span><span class="">  910: 	# totalling O(N&Acirc;&sup2;&Atilde;&#151;M) over all databases for the same result.
 </span><span class="">  911: 	my %merged;
 </span><span class="">  912: 	for my $i (0 .. $#{ $self-&gt;{_dbs} }) {
-</span><span class="">  913: 		my $s        = $self-&gt;{_dbs}[$i]-&gt;schema();
+</span><span class="">  913: 		my $s        = $self-&gt;{_dbs}[$i]-&gt;schema() // {};
 </span><span class="">  914: 		my $local_jc = $self-&gt;{_join_map}{$i};
 </span><span class="">  915: 		if ($local_jc &amp;&amp; $local_jc ne $self-&gt;{_join_col}) {
 </span><span class="">  916: 			for my $col (keys %{$s}) {
@@ -1435,7 +1435,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 1067: 
 </span><span class=""> 1068:     remove_columns =&gt; { type =&gt; &#39;arrayref&#39;, optional =&gt; 1 }
 </span><span class=""> 1069:                       # Column names from this database to hide.
-</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1070: 
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 1070: 
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -1499,7 +1499,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 1110:     invalidate _col_cache and _schema_cache
 </span><span class=""> 1111:     propagate logger if set
 </span><span class=""> 1112:     apply remove_columns if provided
-</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1113:     return $self
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 1113:     return $self
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -2231,7 +2231,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 1794: =head2 What Database::Join guarantees
 </span><span class=""> 1795: 
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1796: =over 4
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 1797: 
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1797: 
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
