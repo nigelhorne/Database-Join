@@ -21,13 +21,15 @@ Version 0.01
     );
 
     # When the join key has different names in each database, use join_map.
-    # Here 'statecode' in the primary database corresponds to 'entry' in the second.
+    # $cities  (index 0) has a column called 'statecode'  — matches join_column, no entry needed.
+    # $stnames (index 1) has a column called 'entry'      — different name, so declare it.
     my $join2 = Database::Join->new(
-        databases   => [ $states, $capitals ],
+        databases   => [ $cities,  $stnames ],
+        #                index 0   index 1
         join_column => 'statecode',
-        join_map    => { 1 => 'entry' },
+        join_map    => { 1 => 'entry' },   # index 1's local name for the join key
     );
-    my $rows = $join2->selectall_arrayref();  # rows use 'statecode' throughout
+    my $rows = $join2->selectall_arrayref();  # every row uses 'statecode'; 'entry' never appears
 
     # Same API as Database::Abstraction ---------------------------------
 
@@ -116,7 +118,7 @@ from the caller is not propagated.
         databases      => [ $db1, $db2 ],          # required
         join_column    => 'entry',                  # optional, default 'entry'
         join_type      => 'left',                   # optional, default 'left'
-        join_map       => { 1 => 'local_col' },    # optional, per-db key aliases
+        join_map       => { 1 => 'local_col' },    # optional — see join_map section below
         remove_columns => [ 'email', 'internal_id' ], # optional
         logger         => $log,                     # optional
         i18n           => $locale,                  # optional
@@ -142,6 +144,9 @@ to calling `remove_column` once per name after construction.
     join_type      => { type => 'string',   optional => 1, default => 'left',
                         enum => ['inner','left','outer'] }
     join_map       => { type => 'hashref',  optional => 1 }
+                      # Keys are zero-based indices into 'databases';
+                      # values are the local column name for the join key
+                      # in that database.  See the join_map section below.
     remove_columns => { type => 'arrayref', optional => 1 }
     logger         => { type => 'object',   optional => 1 }
     i18n           => { type => 'object',   optional => 1 }
@@ -150,43 +155,48 @@ to calling `remove_column` once per name after construction.
 
     Database::Join blessed object reference.
 
-### FORMAL SPECIFICATION
-
-    # new : seq DA_Object x String? x JoinType? x seq String? -> Database_Join
-    # pre:  len databases >= 1
-    #       forall db : databases | db.isa('Database::Abstraction')
-    #       forall db : databases | join_column in db.columns
-    #       join_column not in remove_columns
-    # post: self._dbs          = databases
-    #       self._join_col     = join_column
-    #       self._join_type    = join_type
-    #       self._removed_cols = set(remove_columns)
-    #       self._col_db       = build_col_index(databases) \ remove_columns
-
 ## join\_map — joining on differently-named columns
 
-When the join key column has a different name in each database, pass a
-`join_map` hashref to `new` (or a `join_column` argument to
-`add_database`).  Keys are zero-based database indices; values are the
-local column name for that database.  The canonical name used throughout
-the merged view is always `join_column`.
+By default every component database must have a column whose name matches
+`join_column`.  If a database calls that column something different, declare
+the mapping with `join_map`.
 
-    # 'statecode' in $states corresponds to 'entry' in $capitals
+`join_map` is a hashref.  Each **key** is the **zero-based position** of a
+database in the `databases` array (0 = first, 1 = second, and so on).  Each
+**value** is the name that **that database** uses for the join key.  Databases
+not listed in `join_map` are assumed to already have a column named
+`join_column`.
+
+Throughout the merged view the join key is always referred to by
+`join_column`; the local alias is never exposed in returned rows, in
+`columns()`, or in `schema()`.
+
+**Example** — cities table uses `statecode`; state-names table uses `entry`:
+
+    #                       index 0     index 1
+    my @databases = (      $cities,    $stnames  );
+    #  column name:       'statecode'  'entry'
+    #  join_column:       'statecode'  — already matches, no map needed
+    #                                  — different name, declare it:
+
     my $join = Database::Join->new(
-        databases   => [ $states, $capitals ],
+        databases   => \@databases,
         join_column => 'statecode',
-        join_map    => { 1 => 'entry' },
+        join_map    => { 1 => 'entry' },   # $stnames (index 1) calls it 'entry'
     );
 
-    # All rows use 'statecode' — 'entry' is never exposed
-    my $rows  = $join->selectall_arrayref();
-    my $row   = $join->fetchrow_hashref(statecode => 'CA');
+    my $rows = $join->selectall_arrayref();           # rows use 'statecode'
+    my $row  = $join->fetchrow_hashref(statecode => 'CA');
 
-    # add_database equivalent: pass join_column for the incoming database
-    my $join2 = Database::Join->new(databases => [$states], join_column => 'statecode');
-    $join2->add_database($capitals, join_column => 'entry');
+If you are adding a database with `add_database` instead of listing it in
+the constructor, pass `join_column` to name the incoming database's local
+column:
 
-Databases not mentioned in `join_map` use `join_column` directly.
+    my $join2 = Database::Join->new(databases => [$cities], join_column => 'statecode');
+    $join2->add_database($stnames, join_column => 'entry');
+
+This is exactly equivalent to using `join_map =` { 1 => 'entry' }> in the
+constructor.
 
 ## selectall\_arrayref
 
@@ -219,16 +229,6 @@ Accepts the same criteria syntax as `Database::Abstraction::selectall_arrayref`.
 
     Arrayref of hashrefs, one per unique join_column value, sorted
     ascending by join_column.
-
-### FORMAL SPECIFICATION
-
-    # selectall_arrayref : CriteriaMap -> seq MergedRow
-    # pre:  all criterion column names in dom self._col_db
-    #       union { join_column }
-    # post: result = join(
-    #           forall i: query(self._dbs[i], criteria_for[i]),
-    #           key    = self._join_col,
-    #           type   = self._join_type )
 
 ## selectall\_array
 
@@ -279,11 +279,6 @@ Accepts the same criteria as `selectall_arrayref`.
 #### Output
 
     Hashref, or undef.
-
-### FORMAL SPECIFICATION
-
-    # fetchrow_hashref : CriteriaMap -> MergedRow?
-    # post: result = selectall_arrayref(criteria)[0]
 
 ## count
 
@@ -450,16 +445,6 @@ The logger is propagated to the new database if one was set on the join.
 
     Returns C<$self> to support method chaining.
 
-### FORMAL SPECIFICATION
-
-    # add_database : DA_Object x seq String? -> Database_Join
-    # pre:  database.isa('Database::Abstraction')
-    #       self._join_col in database.columns
-    #       self._join_col not in remove_columns
-    # post: self._dbs          = self._dbs ^ [database]
-    #       self._col_db       = self._col_db ++ col_index(database) \ remove_columns
-    #       self._removed_cols = self._removed_cols union set(remove_columns)
-
 ## remove\_column
 
 ### SYNOPSIS
@@ -490,15 +475,6 @@ cleared automatically.
 #### Output
 
     Returns C<$self> to support method chaining.
-
-### FORMAL SPECIFICATION
-
-    # remove_column : String -> Database_Join
-    # pre:  col != self._join_col
-    # post: self._removed_cols = self._removed_cols union {col}
-    #       self._col_db       = self._col_db \ {col}
-    #       self._col_cache    = undef
-    #       self._schema_cache = undef
 
 ## query
 
@@ -547,6 +523,55 @@ This module is provided as-is without any warranty.
 
 Nigel Horne, `<njh@nigelhorne.com>`
 
+# FORMAL SPECIFICATION
+
+## new
+
+    # new : seq DA_Object x String? x JoinType? x seq String? -> Database_Join
+    # pre:  len databases >= 1
+    #       forall db : databases | db.isa('Database::Abstraction')
+    #       forall db : databases | join_column in db.columns
+    #       join_column not in remove_columns
+    # post: self._dbs          = databases
+    #       self._join_col     = join_column
+    #       self._join_type    = join_type
+    #       self._removed_cols = set(remove_columns)
+    #       self._col_db       = build_col_index(databases) \ remove_columns
+
+## selectall\_arrayref
+
+    # selectall_arrayref : CriteriaMap -> seq MergedRow
+    # pre:  all criterion column names in dom self._col_db
+    #       union { join_column }
+    # post: result = join(
+    #           forall i: query(self._dbs[i], criteria_for[i]),
+    #           key    = self._join_col,
+    #           type   = self._join_type )
+
+## fetchrow\_hashref
+
+    # fetchrow_hashref : CriteriaMap -> MergedRow?
+    # post: result = selectall_arrayref(criteria)[0]
+
+## add\_database
+
+    # add_database : DA_Object x seq String? -> Database_Join
+    # pre:  database.isa('Database::Abstraction')
+    #       self._join_col in database.columns
+    #       self._join_col not in remove_columns
+    # post: self._dbs          = self._dbs ^ [database]
+    #       self._col_db       = self._col_db ++ col_index(database) \ remove_columns
+    #       self._removed_cols = self._removed_cols union set(remove_columns)
+
+## remove\_column
+
+    # remove_column : String -> Database_Join
+    # pre:  col != self._join_col
+    # post: self._removed_cols = self._removed_cols union {col}
+    #       self._col_db       = self._col_db \ {col}
+    #       self._col_cache    = undef
+    #       self._schema_cache = undef
+
 # LICENSE AND COPYRIGHT
 
 Copyright (C) 2026 Nigel Horne.
@@ -559,6 +584,6 @@ please let me know.
 
 Hey! **The above document had some coding errors, which are explained below:**
 
-- Around line 277:
+- Around line 60:
 
     Non-ASCII character seen before =encoding in '—'. Assuming UTF-8
