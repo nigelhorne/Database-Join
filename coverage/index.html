@@ -139,7 +139,7 @@
 	<a href="https://github.com/nigelhorne/Database-Join">
 		<img src="https://img.shields.io/github/stars/nigelhorne/Database-Join?style=social" alt="GitHub stars">
 	</a>
-	<img src="https://img.shields.io/badge/coverage-82%25-yellow" alt="Coverage badge">
+	<img src="https://img.shields.io/badge/coverage-86%25-yellow" alt="Coverage badge">
 </div>
 <h1>Database::Join</h1><h2>Coverage Report</h2>
 <table data-sort-col="0" data-sort-order="asc" data-table-id="coverage">
@@ -158,9 +158,9 @@
 
 <tbody>
 
-<tr class="med"><td><a href="blib-lib-Database-Join-pm.html" title="View coverage line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/e3858992f2178b5399cb479fd199ed3e7872e2fd/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a><canvas class="sparkline" width="80" height="20" data-points="77.4,82.4"></canvas></td><td>90.5</td><td>79.2</td><td>64.6</td><td>81.2</td><td><span class="coverage-badge badge-warn" title="Moderate coverage">82.9%</span></td><td class="positive" title="Previous: 82.4%">&#9650; 0.5%</td></tr>
-<tr class="summary-row nosort"><td colspan="2"><strong>Summary</strong></td><td colspan="2">1 files</td><td colspan="3">Avg: 82%, Low: 0</td></tr>
-<tr class="high nosort"><td><strong>Total</strong></td><td>90.5</td><td>79.2</td><td>64.6</td><td>81.2</td><td colspan="2"><strong>82.9</strong></td></tr>
+<tr class="med"><td><a href="blib-lib-Database-Join-pm.html" title="View coverage line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/ff9df4e8e2a1b016c815a2df5490034b18a7e147/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a><canvas class="sparkline" width="80" height="20" data-points="77.4,82.4,82.9"></canvas></td><td>93.6</td><td>84.0</td><td>66.7</td><td>90.6</td><td><span class="coverage-badge badge-warn" title="Moderate coverage">86.6%</span></td><td class="positive" title="Previous: 82.9%">&#9650; 3.7%</td></tr>
+<tr class="summary-row nosort"><td colspan="2"><strong>Summary</strong></td><td colspan="2">1 files</td><td colspan="3">Avg: 86%, Low: 0</td></tr>
+<tr class="high nosort"><td><strong>Total</strong></td><td>93.6</td><td>84.0</td><td>66.7</td><td>90.6</td><td colspan="2"><strong>86.6</strong></td></tr>
 </tbody></table>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em;">
 	<div>
@@ -208,8 +208,9 @@ function linearRegression(data) {
 
 
 const dataPoints = [ { x: "2026-08-21T09:38:33-04:00", y: 77.3897058823529, delta: 0, url: "https://github.com/nigelhorne/Database-Join/commit/4247ab4b7ae0acefc9ffc14c9e30d81c37fbff27", label: "2026-08-21T09:38:33-04:00", pointBackgroundColor: "gray", comment: "Text::xSV::Slurp" },
-{ x: "2026-08-21T09:52:33-04:00", y: 41.1937377690803, delta: -36.2, url: "https://github.com/nigelhorne/Database-Join/commit/51b6f589a61d609684435703298ddc9b7af9232d", label: "2026-08-21T09:52:33-04:00", pointBackgroundColor: "red", comment: "critique" },
-{ x: "2026-08-21T14:43:14+00:00", y: 82.8740157480315, delta: 41.7, url: "https://github.com/nigelhorne/Database-Join/commit/e3858992f2178b5399cb479fd199ed3e7872e2fd", label: "2026-08-21T14:43:14+00:00", pointBackgroundColor: "green", comment: "documentation" } ];
+{ x: "2026-08-21T09:52:33-04:00", y: 82.3874755381605, delta: 5.0, url: "https://github.com/nigelhorne/Database-Join/commit/51b6f589a61d609684435703298ddc9b7af9232d", label: "2026-08-21T09:52:33-04:00", pointBackgroundColor: "green", comment: "critique" },
+{ x: "2026-08-21T10:39:14-04:00", y: 41.4370078740157, delta: -41.0, url: "https://github.com/nigelhorne/Database-Join/commit/e3858992f2178b5399cb479fd199ed3e7872e2fd", label: "2026-08-21T10:39:14-04:00", pointBackgroundColor: "red", comment: "documentation" },
+{ x: "2026-08-21T14:59:35+00:00", y: 86.6, delta: 45.2, url: "https://github.com/nigelhorne/Database-Join/commit/ff9df4e8e2a1b016c815a2df5490034b18a7e147", label: "2026-08-21T14:59:35+00:00", pointBackgroundColor: "green", comment: "logic reduction" } ];
 const regressionPoints = linearRegression(dataPoints);
 // Try to register the zoom plugin (handles different UMD builds)
 (function registerZoomPlugin(){
@@ -685,13 +686,13 @@ function refresh(){
 <h2>Mutation Report</h2>
 <h3>Mutation Summary</h3>
 <ul>
-<li><b>Score</b>: 78.69%</li>
+<li><b>Score</b>: 81.97%</li>
 <li><b>Total</b>: 61</li>
 <li><b>Killed</b>: 
-48
+50
 </li>
 <li><b>Survived</b>: 
-13
+11
 </li>
 <li><b>Duplication</b>: no duplicate code blocks detected</li>
 </ul>
@@ -714,22 +715,22 @@ function refresh(){
 </thead>
 <tbody>
 
-<tr class="med"><td><a href="mutation_html/lib/Database/Join.pm.html" title="View mutation line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/e3858992f2178b5399cb479fd199ed3e7872e2fd/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a></td><td>61</td><td>48</td><td>13</td><td>0</td><td><span class="coverage-badge badge-warn" title="Moderate">78.7%</span></td><td><span class="coverage-badge badge-bad" title="Needs improvement">90</span></td><td><span class="coverage-badge badge-good" title="Excellent">90.5%</span> / <span class="coverage-badge badge-warn" title="Moderate">79.2%</span> / <span class="coverage-badge badge-good" title="Excellent">100.0%</span></td><td><span class="coverage-badge badge-good" title="Low duplication">0.0%</span></td></tr>
+<tr class="med"><td><a href="mutation_html/lib/Database/Join.pm.html" title="View mutation line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/ff9df4e8e2a1b016c815a2df5490034b18a7e147/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a></td><td>61</td><td>50</td><td>11</td><td>0</td><td><span class="coverage-badge badge-warn" title="Moderate">82.0%</span></td><td><span class="coverage-badge badge-warn" title="Moderate">89</span></td><td><span class="coverage-badge badge-good" title="Excellent">93.6%</span> / <span class="coverage-badge badge-warn" title="Moderate">84.0%</span> / <span class="coverage-badge badge-good" title="Excellent">100.0%</span></td><td><span class="coverage-badge badge-good" title="Low duplication">0.0%</span></td></tr>
 </tbody></table>
 
 <h2>Structural Coverage (Approximate)</h2>
 <div class='summary'>
-Statement Coverage: 90.49% (257 / 284)<br>
-Branch Coverage: 79.17% (76 / 96)<br>
+Statement Coverage: 93.59% (263 / 281)<br>
+Branch Coverage: 84.04% (79 / 94)<br>
 <em>Approximate LCSAJ derived from branch and statement coverage.</em>
 </div>
 <h2>Executive Summary</h2>
 <div class='summary'>
-Tests execute 90.49% of the code but detect only 78.69% of injected faults.
+Tests execute 93.59% of the code but detect only 81.97% of injected faults.
 </div>
 <footer>
 	<p>Project: <a href="https://github.com/nigelhorne/Database-Join">Database-Join</a></p>
-	<p><em>Last updated: 2026-08-21 14:42:04 - <a href="https://github.com/nigelhorne/Database-Join/commit/e3858992f2178b5399cb479fd199ed3e7872e2fd">commit <code>e385899</code></a></em></p>
+	<p><em>Last updated: 2026-08-21 14:58:20 - <a href="https://github.com/nigelhorne/Database-Join/commit/ff9df4e8e2a1b016c815a2df5490034b18a7e147">commit <code>ff9df4e</code></a></em></p>
 	<p style="float: right; font-size: 0.85em; color: #999;">Powered by <a href="https://metacpan.org/dist/App-Test-Generator">App::Test::Generator 0.46</a></p>
 </footer>
 </body>

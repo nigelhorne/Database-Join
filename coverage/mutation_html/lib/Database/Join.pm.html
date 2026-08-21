@@ -293,10 +293,10 @@ a.intra-dot:hover { color: #7700bb; }
 <div class="nav"><a href="../../../index.html">Index</a>
 </div><div class='summary'>
 <strong>Structural Coverage (Approximate)</strong><p>
-TER1 (Statement): 90.49%<br>
-TER2 (Branch): 79.17%<br>
+TER1 (Statement): 93.59%<br>
+TER2 (Branch): 84.04%<br>
 TER3 (LCSAJ): 100.0% (19/19)<br>
-Approximate LCSAJ segments: 97<br>
+Approximate LCSAJ segments: 95<br>
 </div>
 
     <div class="legend">
@@ -1092,29 +1092,8 @@ Approximate LCSAJ segments: 97<br>
 </span><span class="">  751: sub selectall_array {
 </span><span class="">  752: 	my ($self, @args) = @_;
 </span><span class="">  753: 	my $rows = $self-&gt;_joined_query($self-&gt;_parse_query_args(undef, @args));
-</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths.">  754: 	return wantarray ? @{$rows} : $rows-&gt;[0];
-</span>
-					<details class="mutant-details">
-					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
-					<ul>
-				<li><b>BOOL_NEGATE_754_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Boolean branch test suggestion
-ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
-</pre>
-								</div>
-							</li><li><b>RETURN_UNDEF_754_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Return value assertion
-is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
-</pre>
-								</div>
-							</li></ul></details>
-<span class="">  755: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  754: 	return wantarray ? @{$rows} : $rows-&gt;[0];
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  755: }
 </span><span class="">  756: 
 </span><span class="">  757: =head2 fetchrow_hashref
 </span><span class="">  758: 
@@ -1423,7 +1402,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 1034: 	my ($self) = @_;
 </span><span class=""> 1035: 
 </span><span class=""> 1036: 	my @times = map { $_-&gt;updated() } @{ $self-&gt;{_dbs} };
-</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 1037: 	return max(@times);
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1037: 	return max(@times);
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -1487,7 +1466,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 1077: 	$self-&gt;{_logger} = $logger;
 </span><span class=""> 1078: 	$_-&gt;set_logger($logger) for @{ $self-&gt;{_dbs} };
 </span><span class=""> 1079: 
-</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 1080: 	return $self;
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1080: 	return $self;
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -1620,315 +1599,317 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 1189: =cut
 </span><span class=""> 1190: 
 </span><span class=""> 1191: sub add_database {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1192 → 1197 → 1208</span></span> 1192: 	my ($self, @args) = @_;
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1192 → 1201 → 1210</span></span> 1192: 	my ($self, @args) = @_;
 </span><span class=""> 1193: 
 </span><span class=""> 1194: 	my $idx = scalar @{ $self-&gt;{_dbs} };
 </span><span class=""> 1195: 	my $db;
 </span><span class=""> 1196: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1197: 	if (@args &amp;&amp; ref($args[0])) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1198: 		# Positional form: first arg is a reference &acirc;&#128;&#148; extract it now so that
-</span><span class=""> 1199: 		# get_params does not choke on the mixed positional+named-pairs pattern.
-</span><span class=""> 1200: 		$db = shift @args;
-</span><span class=""> 1201: 	} elsif (@args &amp;&amp; !ref($args[0])) {
-</span><span class=""> 1202: 		# First arg is a plain string. Only known named-pair keys are valid here;
-</span><span class=""> 1203: 		# anything else is treated as an invalid positional database arg.
-</span><span class=""> 1204: 		croak $self-&gt;_err(&#39;error_invalid_db&#39;, $idx)
-</span><span class=""> 1205: 			unless grep { $args[0] eq $_ } @_ADD_DB_KEYS;
-</span><span class=""> 1206: 	}
-</span><span class=""> 1207: 
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1208 → 1240 → 1247</span></span> 1208: 	my $p = validate_strict(
-</span><span class=""> 1209: 		schema =&gt; {
-</span><span class=""> 1210: 			database       =&gt; { type =&gt; &#39;object&#39;,   optional =&gt; 1 },
-</span><span class=""> 1211: 			join_column    =&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1 },
-</span><span class=""> 1212: 			filter         =&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 },
-</span><span class=""> 1213: 			remove_columns =&gt; { type =&gt; &#39;arrayref&#39;, optional =&gt; 1 },
-</span><span class=""> 1214: 		},
-</span><span class=""> 1215: 		input =&gt; (@args ? get_params(undef, @args) : {}) // {},
-</span><span class=""> 1216: 	);
-</span><span class=""> 1217: 
-</span><span class=""> 1218: 	$db //= $p-&gt;{database};
+</span><span class=""> 1197: 	# Fail-fast guard: a non-reference first arg must be a recognised named-pair key.
+</span><span class=""> 1198: 	# Modus Ponens: !ref(x) &acirc;&#136;&sect; x &acirc;&#136;&#137; @_ADD_DB_KEYS &acirc;&#134;&#146; cannot be a database object &acirc;&#134;&#146; croak.
+</span><span class=""> 1199: 	# De Morgan reduction: the elsif below is logically equivalent to (@args &amp;&amp; ref(args[0]))
+</span><span class=""> 1200: 	# because the !ref branch was already handled; exhaustion makes the ref() check redundant.
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1201: 	if (@args &amp;&amp; !ref($args[0])) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1202: 		croak $self-&gt;_err(&#39;error_invalid_db&#39;, $idx)
+</span><span class=""> 1203: 			unless grep { $args[0] eq $_ } @_ADD_DB_KEYS;
+</span><span class=""> 1204: 	} elsif (@args) {
+</span><span class=""> 1205: 		# Positional form: first arg is a reference &acirc;&#128;&#148; extract it before get_params
+</span><span class=""> 1206: 		# to avoid the mixed positional+named-pairs confusion.
+</span><span class=""> 1207: 		$db = shift @args;
+</span><span class=""> 1208: 	}
+</span><span class=""> 1209: 
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1210 → 1242 → 1249</span></span> 1210: 	my $p = validate_strict(
+</span><span class=""> 1211: 		schema =&gt; {
+</span><span class=""> 1212: 			database       =&gt; { type =&gt; &#39;object&#39;,   optional =&gt; 1 },
+</span><span class=""> 1213: 			join_column    =&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1 },
+</span><span class=""> 1214: 			filter         =&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 },
+</span><span class=""> 1215: 			remove_columns =&gt; { type =&gt; &#39;arrayref&#39;, optional =&gt; 1 },
+</span><span class=""> 1216: 		},
+</span><span class=""> 1217: 		input =&gt; (@args ? get_params(undef, @args) : {}) // {},
+</span><span class=""> 1218: 	);
 </span><span class=""> 1219: 
-</span><span class=""> 1220: 	croak $self-&gt;_err(&#39;error_invalid_db&#39;, $idx)
-</span><span class=""> 1221: 		unless blessed($db) &amp;&amp; $db-&gt;isa(&#39;Database::Abstraction&#39;);
-</span><span class=""> 1222: 
-</span><span class=""> 1223: 	# Determine and register the local join column name for this database
-</span><span class=""> 1224: 	my $local_jc = $p-&gt;{join_column} // $self-&gt;{_join_col};
-</span><span class=""> 1225: 	$self-&gt;{_join_map}{$idx} = $local_jc if $p-&gt;{join_column};
-</span><span class=""> 1226: 	$self-&gt;{_filters}{$idx}  = $p-&gt;{filter} if $p-&gt;{filter};
-</span><span class=""> 1227: 
-</span><span class=""> 1228: 	my $cols         = $db-&gt;columns();
-</span><span class=""> 1229: 	my %col_presence = map { $_ =&gt; 1 } @{$cols};
-</span><span class=""> 1230: 
-</span><span class=""> 1231: 	croak $self-&gt;_err(&#39;error_join_col_missing&#39;, $local_jc, $idx, ref($db))
-</span><span class=""> 1232: 		unless $col_presence{$local_jc};
-</span><span class=""> 1233: 
-</span><span class=""> 1234: 	# Register the new database
-</span><span class=""> 1235: 	push @{ $self-&gt;{_dbs} },     $db;
-</span><span class=""> 1236: 	push @{ $self-&gt;{_db_cols} }, \%col_presence;
-</span><span class=""> 1237: 
-</span><span class=""> 1238: 	# Update column routing: last-database-wins for duplicate column names;
-</span><span class=""> 1239: 	# skip the local join-key alias (it is not a data column).
-</span><span class=""> 1240: 	for my $col (@{$cols}) {
-</span><span class=""> 1241: 		next if $self-&gt;{_removed_cols}{$col};
-</span><span class=""> 1242: 		next if $local_jc ne $self-&gt;{_join_col} &amp;&amp; $col eq $local_jc;
-</span><span class=""> 1243: 		$self-&gt;{_col_db}{$col} = $idx;
-</span><span class=""> 1244: 	}
-</span><span class=""> 1245: 
-</span><span class=""> 1246: 	# Invalidate memoisation caches
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1247 → 1251 → 1256</span></span> 1247: 	$self-&gt;{_col_cache}    = undef;
-</span><span class=""> 1248: 	$self-&gt;{_schema_cache} = undef;
-</span><span class=""> 1249: 
-</span><span class=""> 1250: 	# Propagate logger if one is configured
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1251: 	if (my $log = $self-&gt;{_logger}) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1252: 		$db-&gt;set_logger($log);
-</span><span class=""> 1253: 	}
-</span><span class=""> 1254: 
-</span><span class=""> 1255: 	# Apply any column removals requested for this database
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1256 → 1256 → 1260</span></span> 1256: 	if (my $rc = $p-&gt;{remove_columns}) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1257: 		$self-&gt;remove_column($_) for @{$rc};
-</span><span class=""> 1258: 	}
-</span><span class=""> 1259: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1260: 	return $self;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1261: }
-</span><span class=""> 1262: 
-</span><span class=""> 1263: =head2 remove_column
+</span><span class=""> 1220: 	$db //= $p-&gt;{database};
+</span><span class=""> 1221: 
+</span><span class=""> 1222: 	croak $self-&gt;_err(&#39;error_invalid_db&#39;, $idx)
+</span><span class=""> 1223: 		unless blessed($db) &amp;&amp; $db-&gt;isa(&#39;Database::Abstraction&#39;);
+</span><span class=""> 1224: 
+</span><span class=""> 1225: 	# Determine and register the local join column name for this database
+</span><span class=""> 1226: 	my $local_jc = $p-&gt;{join_column} // $self-&gt;{_join_col};
+</span><span class=""> 1227: 	$self-&gt;{_join_map}{$idx} = $local_jc if $p-&gt;{join_column};
+</span><span class=""> 1228: 	$self-&gt;{_filters}{$idx}  = $p-&gt;{filter} if $p-&gt;{filter};
+</span><span class=""> 1229: 
+</span><span class=""> 1230: 	my $cols         = $db-&gt;columns();
+</span><span class=""> 1231: 	my %col_presence = map { $_ =&gt; 1 } @{$cols};
+</span><span class=""> 1232: 
+</span><span class=""> 1233: 	croak $self-&gt;_err(&#39;error_join_col_missing&#39;, $local_jc, $idx, ref($db))
+</span><span class=""> 1234: 		unless $col_presence{$local_jc};
+</span><span class=""> 1235: 
+</span><span class=""> 1236: 	# Register the new database
+</span><span class=""> 1237: 	push @{ $self-&gt;{_dbs} },     $db;
+</span><span class=""> 1238: 	push @{ $self-&gt;{_db_cols} }, \%col_presence;
+</span><span class=""> 1239: 
+</span><span class=""> 1240: 	# Update column routing: last-database-wins for duplicate column names;
+</span><span class=""> 1241: 	# skip the local join-key alias (it is not a data column).
+</span><span class=""> 1242: 	for my $col (@{$cols}) {
+</span><span class=""> 1243: 		next if $self-&gt;{_removed_cols}{$col};
+</span><span class=""> 1244: 		next if $local_jc ne $self-&gt;{_join_col} &amp;&amp; $col eq $local_jc;
+</span><span class=""> 1245: 		$self-&gt;{_col_db}{$col} = $idx;
+</span><span class=""> 1246: 	}
+</span><span class=""> 1247: 
+</span><span class=""> 1248: 	# Invalidate memoisation caches
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1249 → 1253 → 1258</span></span> 1249: 	$self-&gt;{_col_cache}    = undef;
+</span><span class=""> 1250: 	$self-&gt;{_schema_cache} = undef;
+</span><span class=""> 1251: 
+</span><span class=""> 1252: 	# Propagate logger if one is configured
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1253: 	if (my $log = $self-&gt;{_logger}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1254: 		$db-&gt;set_logger($log);
+</span><span class=""> 1255: 	}
+</span><span class=""> 1256: 
+</span><span class=""> 1257: 	# Apply any column removals requested for this database
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1258 → 1258 → 1262</span></span> 1258: 	if (my $rc = $p-&gt;{remove_columns}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1259: 		$self-&gt;remove_column($_) for @{$rc};
+</span><span class=""> 1260: 	}
+</span><span class=""> 1261: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1262: 	return $self;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1263: }
 </span><span class=""> 1264: 
-</span><span class=""> 1265: =head3 SYNOPSIS
+</span><span class=""> 1265: =head2 remove_column
 </span><span class=""> 1266: 
-</span><span class=""> 1267:     $join-&gt;remove_column(&#39;email&#39;);
+</span><span class=""> 1267: =head3 SYNOPSIS
 </span><span class=""> 1268: 
-</span><span class=""> 1269:     # Chainable
-</span><span class=""> 1270:     $join-&gt;remove_column(&#39;internal_id&#39;)-&gt;remove_column(&#39;audit_ts&#39;);
-</span><span class=""> 1271: 
-</span><span class=""> 1272: =head3 DESCRIPTION
+</span><span class=""> 1269:     $join-&gt;remove_column(&#39;email&#39;);
+</span><span class=""> 1270: 
+</span><span class=""> 1271:     # Chainable
+</span><span class=""> 1272:     $join-&gt;remove_column(&#39;internal_id&#39;)-&gt;remove_column(&#39;audit_ts&#39;);
 </span><span class=""> 1273: 
-</span><span class=""> 1274: Permanently hides a column from the merged view.  After this call:
+</span><span class=""> 1274: =head3 DESCRIPTION
 </span><span class=""> 1275: 
-</span><span class=""> 1276: =over 4
+</span><span class=""> 1276: Permanently hides a column from the merged view.  After this call:
 </span><span class=""> 1277: 
-</span><span class=""> 1278: =item *
+</span><span class=""> 1278: =over 4
 </span><span class=""> 1279: 
-</span><span class=""> 1280: The column does not appear in C&lt;columns()&gt; or C&lt;schema()&gt;.
+</span><span class=""> 1280: =item *
 </span><span class=""> 1281: 
-</span><span class=""> 1282: =item *
+</span><span class=""> 1282: The column does not appear in C&lt;columns()&gt; or C&lt;schema()&gt;.
 </span><span class=""> 1283: 
-</span><span class=""> 1284: Returned row hashrefs do not contain the column key.
+</span><span class=""> 1284: =item *
 </span><span class=""> 1285: 
-</span><span class=""> 1286: =item *
+</span><span class=""> 1286: Returned row hashrefs do not contain the column key.
 </span><span class=""> 1287: 
-</span><span class=""> 1288: Any query criterion that references the removed column is silently dropped
-</span><span class=""> 1289: (with a C&lt;carp&gt; warning).
-</span><span class=""> 1290: 
-</span><span class=""> 1291: =back
+</span><span class=""> 1288: =item *
+</span><span class=""> 1289: 
+</span><span class=""> 1290: Any query criterion that references the removed column is silently dropped
+</span><span class=""> 1291: (with a C&lt;carp&gt; warning).
 </span><span class=""> 1292: 
-</span><span class=""> 1293: The C&lt;join_column&gt; cannot be removed; attempting to do so will C&lt;croak&gt;.
-</span><span class=""> 1294: Removing a column that does not exist in any database is silently ignored
-</span><span class=""> 1295: (the call is idempotent and safe).  The C&lt;columns()&gt; and C&lt;schema()&gt;
-</span><span class=""> 1296: memoisation caches are cleared automatically.
-</span><span class=""> 1297: 
-</span><span class=""> 1298: =head3 API SPECIFICATION
+</span><span class=""> 1293: =back
+</span><span class=""> 1294: 
+</span><span class=""> 1295: The C&lt;join_column&gt; cannot be removed; attempting to do so will C&lt;croak&gt;.
+</span><span class=""> 1296: Removing a column that does not exist in any database is silently ignored
+</span><span class=""> 1297: (the call is idempotent and safe).  The C&lt;columns()&gt; and C&lt;schema()&gt;
+</span><span class=""> 1298: memoisation caches are cleared automatically.
 </span><span class=""> 1299: 
-</span><span class=""> 1300: =head4 Input
+</span><span class=""> 1300: =head3 API SPECIFICATION
 </span><span class=""> 1301: 
-</span><span class=""> 1302:     $col    Positional string: the column name to remove (required).
+</span><span class=""> 1302: =head4 Input
 </span><span class=""> 1303: 
-</span><span class=""> 1304: =head4 Output
+</span><span class=""> 1304:     $col    Positional string: the column name to remove (required).
 </span><span class=""> 1305: 
-</span><span class=""> 1306:     Returns C&lt;$self&gt; to support method chaining.
+</span><span class=""> 1306: =head4 Output
 </span><span class=""> 1307: 
-</span><span class=""> 1308: =head3 EXAMPLE
+</span><span class=""> 1308:     Returns C&lt;$self&gt; to support method chaining.
 </span><span class=""> 1309: 
-</span><span class=""> 1310:     # Hide private fields immediately after construction
-</span><span class=""> 1311:     my $join = Database::Join-&gt;new(
-</span><span class=""> 1312:         databases   =&gt; [ $customers, $loyalty ],
-</span><span class=""> 1313:         join_column =&gt; &#39;entry&#39;,
-</span><span class=""> 1314:     )-&gt;remove_column(&#39;email&#39;)
-</span><span class=""> 1315:      -&gt;remove_column(&#39;internal_notes&#39;);
-</span><span class=""> 1316: 
-</span><span class=""> 1317:     # Verify they are gone
-</span><span class=""> 1318:     my $cols = $join-&gt;columns();
-</span><span class=""> 1319:     # &#39;email&#39; and &#39;internal_notes&#39; are absent
-</span><span class=""> 1320: 
-</span><span class=""> 1321: =head3 MESSAGES
+</span><span class=""> 1310: =head3 EXAMPLE
+</span><span class=""> 1311: 
+</span><span class=""> 1312:     # Hide private fields immediately after construction
+</span><span class=""> 1313:     my $join = Database::Join-&gt;new(
+</span><span class=""> 1314:         databases   =&gt; [ $customers, $loyalty ],
+</span><span class=""> 1315:         join_column =&gt; &#39;entry&#39;,
+</span><span class=""> 1316:     )-&gt;remove_column(&#39;email&#39;)
+</span><span class=""> 1317:      -&gt;remove_column(&#39;internal_notes&#39;);
+</span><span class=""> 1318: 
+</span><span class=""> 1319:     # Verify they are gone
+</span><span class=""> 1320:     my $cols = $join-&gt;columns();
+</span><span class=""> 1321:     # &#39;email&#39; and &#39;internal_notes&#39; are absent
 </span><span class=""> 1322: 
-</span><span class=""> 1323:     error_remove_join_col -- attempt to remove the join_column itself
+</span><span class=""> 1323: =head3 MESSAGES
 </span><span class=""> 1324: 
-</span><span class=""> 1325: =head3 FORMAL SPECIFICATION
+</span><span class=""> 1325:     error_remove_join_col -- attempt to remove the join_column itself
 </span><span class=""> 1326: 
-</span><span class=""> 1327:     remove_column : NAME &acirc;&#134;&#146; Database_Join
-</span><span class=""> 1328:     pre:  col &acirc;&#137;&nbsp; self._join_col
-</span><span class=""> 1329:     post: self&#39;._removed_cols = self._removed_cols &acirc;&#136;&ordf; {col}
-</span><span class=""> 1330:           self&#39;._col_db       = self._col_db \ {col}
-</span><span class=""> 1331:           self&#39;._col_cache    = undef
-</span><span class=""> 1332:           self&#39;._schema_cache = undef
-</span><span class=""> 1333: 
-</span><span class=""> 1334: =cut
+</span><span class=""> 1327: =head3 FORMAL SPECIFICATION
+</span><span class=""> 1328: 
+</span><span class=""> 1329:     remove_column : NAME &acirc;&#134;&#146; Database_Join
+</span><span class=""> 1330:     pre:  col &acirc;&#137;&nbsp; self._join_col
+</span><span class=""> 1331:     post: self&#39;._removed_cols = self._removed_cols &acirc;&#136;&ordf; {col}
+</span><span class=""> 1332:           self&#39;._col_db       = self._col_db \ {col}
+</span><span class=""> 1333:           self&#39;._col_cache    = undef
+</span><span class=""> 1334:           self&#39;._schema_cache = undef
 </span><span class=""> 1335: 
-</span><span class=""> 1336: sub remove_column {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1337 → 1342 → 1349</span></span> 1337: 	my ($self, $col) = @_;
-</span><span class=""> 1338: 
-</span><span class=""> 1339: 	croak $self-&gt;_err(&#39;error_remove_join_col&#39;, $col)
-</span><span class=""> 1340: 		if defined $col &amp;&amp; $col eq $self-&gt;{_join_col};
-</span><span class=""> 1341: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1342: 	if (defined $col &amp;&amp; length $col) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1343: 		$self-&gt;{_removed_cols}{$col} = 1;
-</span><span class=""> 1344: 		delete $self-&gt;{_col_db}{$col};
-</span><span class=""> 1345: 		$self-&gt;{_col_cache}    = undef;
-</span><span class=""> 1346: 		$self-&gt;{_schema_cache} = undef;
-</span><span class=""> 1347: 	}
-</span><span class=""> 1348: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1349: 	return $self;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1350: }
-</span><span class=""> 1351: 
-</span><span class=""> 1352: =head2 query
+</span><span class=""> 1336: =cut
+</span><span class=""> 1337: 
+</span><span class=""> 1338: sub remove_column {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1339 → 1344 → 1351</span></span> 1339: 	my ($self, $col) = @_;
+</span><span class=""> 1340: 
+</span><span class=""> 1341: 	croak $self-&gt;_err(&#39;error_remove_join_col&#39;, $col)
+</span><span class=""> 1342: 		if defined $col &amp;&amp; $col eq $self-&gt;{_join_col};
+</span><span class=""> 1343: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1344: 	if (defined $col &amp;&amp; length $col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1345: 		$self-&gt;{_removed_cols}{$col} = 1;
+</span><span class=""> 1346: 		delete $self-&gt;{_col_db}{$col};
+</span><span class=""> 1347: 		$self-&gt;{_col_cache}    = undef;
+</span><span class=""> 1348: 		$self-&gt;{_schema_cache} = undef;
+</span><span class=""> 1349: 	}
+</span><span class=""> 1350: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1351: 	return $self;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1352: }
 </span><span class=""> 1353: 
-</span><span class=""> 1354: Not supported.  C&lt;Database::Join&gt; does not implement the chained query
-</span><span class=""> 1355: builder.  Calling this method will always C&lt;croak&gt; with an explanatory message.
-</span><span class=""> 1356: 
-</span><span class=""> 1357: Use C&lt;selectall_arrayref&gt;, C&lt;selectall_array&gt;, C&lt;fetchrow_hashref&gt;, or
-</span><span class=""> 1358: C&lt;count&gt; instead.
-</span><span class=""> 1359: 
-</span><span class=""> 1360: =cut
+</span><span class=""> 1354: =head2 query
+</span><span class=""> 1355: 
+</span><span class=""> 1356: Not supported.  C&lt;Database::Join&gt; does not implement the chained query
+</span><span class=""> 1357: builder.  Calling this method will always C&lt;croak&gt; with an explanatory message.
+</span><span class=""> 1358: 
+</span><span class=""> 1359: Use C&lt;selectall_arrayref&gt;, C&lt;selectall_array&gt;, C&lt;fetchrow_hashref&gt;, or
+</span><span class=""> 1360: C&lt;count&gt; instead.
 </span><span class=""> 1361: 
-</span><span class=""> 1362: sub query {
-</span><span class=""> 1363: 	my ($self) = @_;
-</span><span class=""> 1364: 	croak $self-&gt;_err(&#39;error_query_unsupported&#39;);
-</span><span class=""> 1365: }
-</span><span class=""> 1366: 
-</span><span class=""> 1367: =head2 execute
+</span><span class=""> 1362: =cut
+</span><span class=""> 1363: 
+</span><span class=""> 1364: sub query {
+</span><span class=""> 1365: 	my ($self) = @_;
+</span><span class=""> 1366: 	croak $self-&gt;_err(&#39;error_query_unsupported&#39;);
+</span><span class=""> 1367: }
 </span><span class=""> 1368: 
-</span><span class=""> 1369: Not supported.  Raw SQL cannot span heterogeneous backends that may use
-</span><span class=""> 1370: different database engines.  Calling this method will always C&lt;croak&gt;.
-</span><span class=""> 1371: 
-</span><span class=""> 1372: Use C&lt;selectall_arrayref&gt; or C&lt;fetchrow_hashref&gt; to query the joined view.
+</span><span class=""> 1369: =head2 execute
+</span><span class=""> 1370: 
+</span><span class=""> 1371: Not supported.  Raw SQL cannot span heterogeneous backends that may use
+</span><span class=""> 1372: different database engines.  Calling this method will always C&lt;croak&gt;.
 </span><span class=""> 1373: 
-</span><span class=""> 1374: =cut
+</span><span class=""> 1374: Use C&lt;selectall_arrayref&gt; or C&lt;fetchrow_hashref&gt; to query the joined view.
 </span><span class=""> 1375: 
-</span><span class=""> 1376: sub execute {
-</span><span class=""> 1377: 	my ($self) = @_;
-</span><span class=""> 1378: 	croak $self-&gt;_err(&#39;error_execute_unsupported&#39;);
-</span><span class=""> 1379: }
-</span><span class=""> 1380: 
-</span><span class=""> 1381: =head2 AUTOLOAD - column shortcut
+</span><span class=""> 1376: =cut
+</span><span class=""> 1377: 
+</span><span class=""> 1378: sub execute {
+</span><span class=""> 1379: 	my ($self) = @_;
+</span><span class=""> 1380: 	croak $self-&gt;_err(&#39;error_execute_unsupported&#39;);
+</span><span class=""> 1381: }
 </span><span class=""> 1382: 
-</span><span class=""> 1383: Calling an unknown method whose name matches a visible column name performs
-</span><span class=""> 1384: a column lookup across the merged view.
-</span><span class=""> 1385: 
-</span><span class=""> 1386: =head3 SYNOPSIS
+</span><span class=""> 1383: =head2 AUTOLOAD - column shortcut
+</span><span class=""> 1384: 
+</span><span class=""> 1385: Calling an unknown method whose name matches a visible column name performs
+</span><span class=""> 1386: a column lookup across the merged view.
 </span><span class=""> 1387: 
-</span><span class=""> 1388:     # Scalar context: value from the first matching row
-</span><span class=""> 1389:     my $name  = $join-&gt;name(entry =&gt; &#39;C001&#39;);
-</span><span class=""> 1390: 
-</span><span class=""> 1391:     # List context: values from every matching row
-</span><span class=""> 1392:     my @tiers = $join-&gt;tier();
-</span><span class=""> 1393: 
-</span><span class=""> 1394:     # With a positional join-key argument (when join_column is &#39;entry&#39;)
-</span><span class=""> 1395:     my $score = $join-&gt;score(&#39;C001&#39;);
-</span><span class=""> 1396: 
-</span><span class=""> 1397: =head3 DESCRIPTION
+</span><span class=""> 1388: =head3 SYNOPSIS
+</span><span class=""> 1389: 
+</span><span class=""> 1390:     # Scalar context: value from the first matching row
+</span><span class=""> 1391:     my $name  = $join-&gt;name(entry =&gt; &#39;C001&#39;);
+</span><span class=""> 1392: 
+</span><span class=""> 1393:     # List context: values from every matching row
+</span><span class=""> 1394:     my @tiers = $join-&gt;tier();
+</span><span class=""> 1395: 
+</span><span class=""> 1396:     # With a positional join-key argument (when join_column is &#39;entry&#39;)
+</span><span class=""> 1397:     my $score = $join-&gt;score(&#39;C001&#39;);
 </span><span class=""> 1398: 
-</span><span class=""> 1399: AUTOLOAD routes the call to the appropriate component database by looking up
-</span><span class=""> 1400: the column name in the internal column-ownership index.
-</span><span class=""> 1401: 
-</span><span class=""> 1402: When either C&lt;join_map&gt; or C&lt;filters&gt; is active, AUTOLOAD performs a full
-</span><span class=""> 1403: join query instead of delegating directly to the owning database.  This is
-</span><span class=""> 1404: necessary because:
-</span><span class=""> 1405: 
-</span><span class=""> 1406: =over 4
+</span><span class=""> 1399: =head3 DESCRIPTION
+</span><span class=""> 1400: 
+</span><span class=""> 1401: AUTOLOAD routes the call to the appropriate component database by looking up
+</span><span class=""> 1402: the column name in the internal column-ownership index.
+</span><span class=""> 1403: 
+</span><span class=""> 1404: When either C&lt;join_map&gt; or C&lt;filters&gt; is active, AUTOLOAD performs a full
+</span><span class=""> 1405: join query instead of delegating directly to the owning database.  This is
+</span><span class=""> 1406: necessary because:
 </span><span class=""> 1407: 
-</span><span class=""> 1408: =item *
+</span><span class=""> 1408: =over 4
 </span><span class=""> 1409: 
-</span><span class=""> 1410: With C&lt;join_map&gt;, the owning database&#39;s primary key may differ from the
-</span><span class=""> 1411: canonical join key used in the call arguments.
-</span><span class=""> 1412: 
-</span><span class=""> 1413: =item *
+</span><span class=""> 1410: =item *
+</span><span class=""> 1411: 
+</span><span class=""> 1412: With C&lt;join_map&gt;, the owning database&#39;s primary key may differ from the
+</span><span class=""> 1413: canonical join key used in the call arguments.
 </span><span class=""> 1414: 
-</span><span class=""> 1415: With C&lt;filters&gt;, bypassing the join would return rows that the filter is
-</span><span class=""> 1416: meant to exclude.
-</span><span class=""> 1417: 
-</span><span class=""> 1418: =back
+</span><span class=""> 1415: =item *
+</span><span class=""> 1416: 
+</span><span class=""> 1417: With C&lt;filters&gt;, bypassing the join would return rows that the filter is
+</span><span class=""> 1418: meant to exclude.
 </span><span class=""> 1419: 
-</span><span class=""> 1420: In list context, every matching merged row contributes one value to the
-</span><span class=""> 1421: returned list.  In scalar context, only the first row&#39;s value is returned.
-</span><span class=""> 1422: 
-</span><span class=""> 1423: Calling a method whose name begins with C&lt;_&gt; (a private method) via AUTOLOAD
-</span><span class=""> 1424: will C&lt;croak&gt; with a clear error message rather than being silently ignored.
-</span><span class=""> 1425: 
-</span><span class=""> 1426: =head3 EXAMPLE
+</span><span class=""> 1420: =back
+</span><span class=""> 1421: 
+</span><span class=""> 1422: In list context, every matching merged row contributes one value to the
+</span><span class=""> 1423: returned list.  In scalar context, only the first row&#39;s value is returned.
+</span><span class=""> 1424: 
+</span><span class=""> 1425: Calling a method whose name begins with C&lt;_&gt; (a private method) via AUTOLOAD
+</span><span class=""> 1426: will C&lt;croak&gt; with a clear error message rather than being silently ignored.
 </span><span class=""> 1427: 
-</span><span class=""> 1428:     # Lookup a single customer&#39;s name (scalar context)
-</span><span class=""> 1429:     my $name = $join-&gt;name(&#39;C001&#39;);   # &#39;C001&#39; maps to entry =&gt; &#39;C001&#39;
-</span><span class=""> 1430:     print &quot;Name: $name\n&quot;;
-</span><span class=""> 1431: 
-</span><span class=""> 1432:     # Get every tier value in the view (list context)
-</span><span class=""> 1433:     my @all_tiers = $join-&gt;tier();
-</span><span class=""> 1434:     my %freq;
-</span><span class=""> 1435:     $freq{$_}++ for @all_tiers;
-</span><span class=""> 1436: 
-</span><span class=""> 1437:     # join_map active: AUTOLOAD runs a full join so the criteria are
-</span><span class=""> 1438:     # translated correctly between the canonical and local key names.
-</span><span class=""> 1439:     my @leesburg_states = sort $join-&gt;state(&#39;Leesburg&#39;);
-</span><span class=""> 1440:     # [&#39;Florida&#39;, &#39;Virginia&#39;] if Leesburg appears in two states
-</span><span class=""> 1441: 
-</span><span class=""> 1442: =head3 PSEUDOCODE
+</span><span class=""> 1428: =head3 EXAMPLE
+</span><span class=""> 1429: 
+</span><span class=""> 1430:     # Lookup a single customer&#39;s name (scalar context)
+</span><span class=""> 1431:     my $name = $join-&gt;name(&#39;C001&#39;);   # &#39;C001&#39; maps to entry =&gt; &#39;C001&#39;
+</span><span class=""> 1432:     print &quot;Name: $name\n&quot;;
+</span><span class=""> 1433: 
+</span><span class=""> 1434:     # Get every tier value in the view (list context)
+</span><span class=""> 1435:     my @all_tiers = $join-&gt;tier();
+</span><span class=""> 1436:     my %freq;
+</span><span class=""> 1437:     $freq{$_}++ for @all_tiers;
+</span><span class=""> 1438: 
+</span><span class=""> 1439:     # join_map active: AUTOLOAD runs a full join so the criteria are
+</span><span class=""> 1440:     # translated correctly between the canonical and local key names.
+</span><span class=""> 1441:     my @leesburg_states = sort $join-&gt;state(&#39;Leesburg&#39;);
+</span><span class=""> 1442:     # [&#39;Florida&#39;, &#39;Virginia&#39;] if Leesburg appears in two states
 </span><span class=""> 1443: 
-</span><span class=""> 1444:     extract column name from $AUTOLOAD
-</span><span class=""> 1445:     return if DESTROY
-</span><span class=""> 1446:     croak if column name starts with &#39;_&#39; (private method guard)
-</span><span class=""> 1447:     croak if column name is not in _col_db (unknown column)
-</span><span class=""> 1448:     if join_map or filters are active:
-</span><span class=""> 1449:         parse calling arguments using _parse_query_args
-</span><span class=""> 1450:         call _joined_query to get all merged rows
-</span><span class=""> 1451:         return map { $_-&gt;{col} } @rows  in list context
-</span><span class=""> 1452:         return $rows[0]{col}            in scalar context
-</span><span class=""> 1453:     else:
-</span><span class=""> 1454:         delegate directly to the owning database
-</span><span class=""> 1455: 
-</span><span class=""> 1456: =head3 FORMAL SPECIFICATION
+</span><span class=""> 1444: =head3 PSEUDOCODE
+</span><span class=""> 1445: 
+</span><span class=""> 1446:     extract column name from $AUTOLOAD
+</span><span class=""> 1447:     return if DESTROY
+</span><span class=""> 1448:     croak if column name starts with &#39;_&#39; (private method guard)
+</span><span class=""> 1449:     croak if column name is not in _col_db (unknown column)
+</span><span class=""> 1450:     if join_map or filters are active:
+</span><span class=""> 1451:         parse calling arguments using _parse_query_args
+</span><span class=""> 1452:         call _joined_query to get all merged rows
+</span><span class=""> 1453:         return map { $_-&gt;{col} } @rows  in list context
+</span><span class=""> 1454:         return $rows[0]{col}            in scalar context
+</span><span class=""> 1455:     else:
+</span><span class=""> 1456:         delegate directly to the owning database
 </span><span class=""> 1457: 
-</span><span class=""> 1458:     AUTOLOAD : NAME &Atilde;&#151; CRITERIA &acirc;&#134;&#146; VALUE | seq VALUE
-</span><span class=""> 1459:     pre:  col &acirc;&#136;&#136; dom self._col_db
-</span><span class=""> 1460:           col does not begin with &#39;_&#39;
-</span><span class=""> 1461:     post: let rows = _joined_query(criteria)
-</span><span class=""> 1462:           wantarray  =&gt; result = { r : rows &acirc;&#128;&cent; r(col) }
-</span><span class=""> 1463:           !wantarray =&gt; result = rows(0)(col)  (or undef if rows is empty)
-</span><span class=""> 1464: 
-</span><span class=""> 1465: =cut
+</span><span class=""> 1458: =head3 FORMAL SPECIFICATION
+</span><span class=""> 1459: 
+</span><span class=""> 1460:     AUTOLOAD : NAME &Atilde;&#151; CRITERIA &acirc;&#134;&#146; VALUE | seq VALUE
+</span><span class=""> 1461:     pre:  col &acirc;&#136;&#136; dom self._col_db
+</span><span class=""> 1462:           col does not begin with &#39;_&#39;
+</span><span class=""> 1463:     post: let rows = _joined_query(criteria)
+</span><span class=""> 1464:           wantarray  =&gt; result = { r : rows &acirc;&#128;&cent; r(col) }
+</span><span class=""> 1465:           !wantarray =&gt; result = rows(0)(col)  (or undef if rows is empty)
 </span><span class=""> 1466: 
-</span><span class=""> 1467: our $AUTOLOAD;
-</span><span class=""> 1468: sub AUTOLOAD {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1469 → 1487 → 1495</span></span> 1469: 	my $self = shift;
-</span><span class=""> 1470: 
-</span><span class=""> 1471: 	my ($col) = $AUTOLOAD =~ /::(\w+)$/;
-</span><span class=""> 1472: 	return if $col eq &#39;DESTROY&#39;;
-</span><span class=""> 1473: 
-</span><span class=""> 1474: 	# Private methods must not be reached via AUTOLOAD &acirc;&#128;&#148; croak immediately so
-</span><span class=""> 1475: 	# typos like $join-&gt;_join_col are not silently swallowed.
-</span><span class=""> 1476: 	croak ref($self), &quot;: cannot call private method &#39;$col&#39; via AUTOLOAD&quot;
-</span><span class=""> 1477: 		if $col =~ /^_/;
-</span><span class=""> 1478: 
-</span><span class=""> 1479: 	my $db_idx = $self-&gt;{_col_db}{$col};
-</span><span class=""> 1480: 	croak ref($self), &quot;: unknown column &#39;$col&#39;&quot; unless defined $db_idx;
-</span><span class=""> 1481: 
-</span><span class=""> 1482: 	my $db = $self-&gt;{_dbs}[$db_idx];
+</span><span class=""> 1467: =cut
+</span><span class=""> 1468: 
+</span><span class=""> 1469: our $AUTOLOAD;
+</span><span class=""> 1470: sub AUTOLOAD {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1471 → 1489 → 1497</span></span> 1471: 	my $self = shift;
+</span><span class=""> 1472: 
+</span><span class=""> 1473: 	my ($col) = $AUTOLOAD =~ /::(\w+)$/;
+</span><span class=""> 1474: 	return if $col eq &#39;DESTROY&#39;;
+</span><span class=""> 1475: 
+</span><span class=""> 1476: 	# Private methods must not be reached via AUTOLOAD &acirc;&#128;&#148; croak immediately so
+</span><span class=""> 1477: 	# typos like $join-&gt;_join_col are not silently swallowed.
+</span><span class=""> 1478: 	croak ref($self), &quot;: cannot call private method &#39;$col&#39; via AUTOLOAD&quot;
+</span><span class=""> 1479: 		if $col =~ /^_/;
+</span><span class=""> 1480: 
+</span><span class=""> 1481: 	my $db_idx = $self-&gt;{_col_db}{$col};
+</span><span class=""> 1482: 	croak ref($self), &quot;: unknown column &#39;$col&#39;&quot; unless defined $db_idx;
 </span><span class=""> 1483: 
-</span><span class=""> 1484: 	# Use a full join query when join_map OR filters are active.  Direct
-</span><span class=""> 1485: 	# delegation to the owning database would bypass the join key translation
-</span><span class=""> 1486: 	# (join_map) and skip any permanent per-database row filters (filters).
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1487: 	if (%{ $self-&gt;{_join_map} } || %{ $self-&gt;{_filters} }) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1488: 		my $pk     = $self-&gt;{_dbs}[0]{id} // &#39;entry&#39;;
-</span><span class=""> 1489: 		my $params = $self-&gt;_parse_query_args($pk, @_);
-</span><span class=""> 1490: 		my $rows   = $self-&gt;_joined_query($params);
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1491: 		return map { $_-&gt;{$col} } @{$rows} if wantarray;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1492: 		return @{$rows} ? $rows-&gt;[0]{$col} : undef;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1493: 	}
-</span><span class=""> 1494: 
-</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 1495: 	return $db-&gt;$col(@_);
+</span><span class=""> 1484: 	my $db = $self-&gt;{_dbs}[$db_idx];
+</span><span class=""> 1485: 
+</span><span class=""> 1486: 	# Use a full join query when join_map OR filters are active.  Direct
+</span><span class=""> 1487: 	# delegation to the owning database would bypass the join key translation
+</span><span class=""> 1488: 	# (join_map) and skip any permanent per-database row filters (filters).
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1489: 	if (%{ $self-&gt;{_join_map} } || %{ $self-&gt;{_filters} }) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1490: 		my $pk     = $self-&gt;{_dbs}[0]{id} // &#39;entry&#39;;
+</span><span class=""> 1491: 		my $params = $self-&gt;_parse_query_args($pk, @_);
+</span><span class=""> 1492: 		my $rows   = $self-&gt;_joined_query($params);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1493: 		return map { $_-&gt;{$col} } @{$rows} if wantarray;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1494: 		return @{$rows} ? $rows-&gt;[0]{$col} : undef;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1495: 	}
+</span><span class=""> 1496: 
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 1497: 	return $db-&gt;$col(@_);
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
 					<ul>
-				<li><b>BOOL_NEGATE_1495_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>BOOL_NEGATE_1497_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -1936,7 +1917,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>RETURN_UNDEF_1495_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+							</li><li><b>RETURN_UNDEF_1497_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -1945,268 +1926,272 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 1496: }
-</span><span class=""> 1497: 
-</span><span class=""> 1498: sub DESTROY {}
+<span class=""> 1498: }
 </span><span class=""> 1499: 
-</span><span class=""> 1500: # ---------------------------------------------------------------------------
-</span><span class=""> 1501: # Private helpers
+</span><span class=""> 1500: sub DESTROY {}
+</span><span class=""> 1501: 
 </span><span class=""> 1502: # ---------------------------------------------------------------------------
-</span><span class=""> 1503: 
-</span><span class=""> 1504: # _parse_query_args( $self, $positional_key, @caller_args ) -&gt; \%params
-</span><span class=""> 1505: # Purpose: Normalise the three calling conventions used by every public query
-</span><span class=""> 1506: #          method and AUTOLOAD into a single criteria hashref.
-</span><span class=""> 1507: # Entry:   $positional_key -- the column name mapped to a bare scalar argument;
-</span><span class=""> 1508: #          pass undef to use the join_column (the default for public methods).
-</span><span class=""> 1509: # Exit:    Always returns a hashref; never undef.
-</span><span class=""> 1510: # Effects: None.
-</span><span class=""> 1511: sub _parse_query_args {
-</span><span class=""> 1512: 	my ($self, $key, @args) = @_;
-</span><span class=""> 1513: 	$key //= $self-&gt;{_join_col};
-</span><span class=""> 1514: 	return {}                           unless @args;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1515: 	return { $key =&gt; $args[0] }        if @args == 1 &amp;&amp; !ref($args[0]);
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1516: 	return get_params(undef, @args) // {};
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1517: }
-</span><span class=""> 1518: 
-</span><span class=""> 1519: # _err( $self, $msg_key, @sprintf_args ) -&gt; $string
-</span><span class=""> 1520: # Convenience wrapper around _msg for use after construction, so callers do
-</span><span class=""> 1521: # not have to extract $self-&gt;{_i18n} at every error site.
-</span><span class=""> 1522: sub _err {
-</span><span class=""> 1523: 	my ($self, $key, @args) = @_;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1524: 	return _msg($self-&gt;{_i18n}, $key, @args);
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1525: }
-</span><span class=""> 1526: 
-</span><span class=""> 1527: # _build_col_index()
-</span><span class=""> 1528: # Purpose: Populate _col_db (column_name =&gt; db_index) and _db_cols
-</span><span class=""> 1529: #          (per-db column-presence hashrefs) by calling columns() on each
-</span><span class=""> 1530: #          component database at construction time.
-</span><span class=""> 1531: # Entry:   _dbs, _join_col, _join_map must already be set.
-</span><span class=""> 1532: # Exit:    _col_db and _db_cols are set; join_column verified in every db.
-</span><span class=""> 1533: # Effects: Croaks if any database is missing its join key column.
-</span><span class=""> 1534: sub _build_col_index {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1535 → 1541 → 1558</span></span> 1535: 	my ($self) = @_;
-</span><span class=""> 1536: 
-</span><span class=""> 1537: 	my $join_col = $self-&gt;{_join_col};
-</span><span class=""> 1538: 	my %col_db;
-</span><span class=""> 1539: 	my @db_cols;
-</span><span class=""> 1540: 
-</span><span class=""> 1541: 	for my $i (0 .. $#{ $self-&gt;{_dbs} }) {
-</span><span class=""> 1542: 		my $db        = $self-&gt;{_dbs}[$i];
-</span><span class=""> 1543: 		my $local_jc  = $self-&gt;{_join_map}{$i} // $join_col;
-</span><span class=""> 1544: 		my $cols      = $db-&gt;columns();
-</span><span class=""> 1545: 		$db_cols[$i]  = { map { $_ =&gt; 1 } @{$cols} };
-</span><span class=""> 1546: 
-</span><span class=""> 1547: 		croak $self-&gt;_err(&#39;error_join_col_missing&#39;, $local_jc, $i, ref($db))
-</span><span class=""> 1548: 			unless $db_cols[$i]{$local_jc};
-</span><span class=""> 1549: 
-</span><span class=""> 1550: 		for my $col (@{$cols}) {
-</span><span class=""> 1551: 			# Skip the local alias for the join key &acirc;&#128;&#148; it is not a data column
-</span><span class=""> 1552: 			next if $local_jc ne $join_col &amp;&amp; $col eq $local_jc;
-</span><span class=""> 1553: 			# Last database wins for duplicate non-join columns
-</span><span class=""> 1554: 			$col_db{$col} = $i;
-</span><span class=""> 1555: 		}
-</span><span class=""> 1556: 	}
-</span><span class=""> 1557: 
-</span><span class=""> 1558: 	$self-&gt;{_col_db}  = \%col_db;
-</span><span class=""> 1559: 	$self-&gt;{_db_cols} = \@db_cols;
-</span><span class=""> 1560: 
-</span><span class=""> 1561: 	return;
-</span><span class=""> 1562: }
-</span><span class=""> 1563: 
-</span><span class=""> 1564: # _partition_criteria( \%params ) -&gt; \@per_db
-</span><span class=""> 1565: # Purpose: Split a flat criteria hashref into one slice per component database.
-</span><span class=""> 1566: # Entry:   $params is a criteria hashref; all keys must be column names or
-</span><span class=""> 1567: #          join_column.
-</span><span class=""> 1568: # Exit:    Returns an arrayref of per-database criteria hashrefs.  The
-</span><span class=""> 1569: #          join_column criterion is broadcast to every database using each
-</span><span class=""> 1570: #          database&#39;s local join-key name.  Unknown columns trigger a carp.
-</span><span class=""> 1571: # Effects: Carps for each unrecognised column name.
-</span><span class=""> 1572: sub _partition_criteria {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1573 → 1579 → 1593</span></span> 1573: 	my ($self, $params) = @_;
-</span><span class=""> 1574: 
-</span><span class=""> 1575: 	my $join_col = $self-&gt;{_join_col};
-</span><span class=""> 1576: 	my $n        = scalar @{ $self-&gt;{_dbs} };
-</span><span class=""> 1577: 	my @per_db   = map { {} } 1 .. $n;
-</span><span class=""> 1578: 
-</span><span class=""> 1579: 	for my $col (keys %{$params}) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1580: 		if ($col eq $join_col) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1581: 			# Broadcast to every database using each one&#39;s local key column name
-</span><span class=""> 1582: 			for my $i (0 .. $n - 1) {
-</span><span class=""> 1583: 				my $local = $self-&gt;{_join_map}{$i} // $join_col;
-</span><span class=""> 1584: 				$per_db[$i]{$local} = $params-&gt;{$col};
-</span><span class=""> 1585: 			}
-</span><span class=""> 1586: 		} elsif (defined(my $idx = $self-&gt;{_col_db}{$col})) {
-</span><span class=""> 1587: 			$per_db[$idx]{$col} = $params-&gt;{$col};
-</span><span class=""> 1588: 		} else {
-</span><span class=""> 1589: 			carp $self-&gt;_err(&#39;warn_unknown_column&#39;, $col);
-</span><span class=""> 1590: 		}
-</span><span class=""> 1591: 	}
-</span><span class=""> 1592: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1593: 	return \@per_db;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1594: }
-</span><span class=""> 1595: 
-</span><span class=""> 1596: # _fetch_indexed( $db_idx, \%criteria ) -&gt; \%join_val_to_\@rows
-</span><span class=""> 1597: # Purpose: Query one component database and index its rows by join-key value.
-</span><span class=""> 1598: # Entry:   $db_idx is the zero-based database index; $criteria is the
-</span><span class=""> 1599: #          pre-partitioned criteria hashref for this database.
-</span><span class=""> 1600: # Exit:    Returns a hashref: join-key value =&gt; arrayref of row hashrefs.
-</span><span class=""> 1601: #          Multiple rows sharing the same join-key value are all preserved
-</span><span class=""> 1602: #          (important for the primary database when one key maps to many rows).
-</span><span class=""> 1603: # Effects: Calls selectall_arrayref on the component database.
-</span><span class=""> 1604: sub _fetch_indexed {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1605 → 1614 → 1620</span></span> 1605: 	my ($self, $db_idx, $criteria) = @_;
-</span><span class=""> 1606: 
-</span><span class=""> 1607: 	my $db        = $self-&gt;{_dbs}[$db_idx];
-</span><span class=""> 1608: 	my $local_jc  = $self-&gt;{_join_map}{$db_idx} // $self-&gt;{_join_col};
-</span><span class=""> 1609: 
-</span><span class=""> 1610: 	my $rows = $db-&gt;selectall_arrayref($criteria);
-</span><span class=""> 1611: 	$rows //= [];
-</span><span class=""> 1612: 
-</span><span class=""> 1613: 	my %indexed;
-</span><span class=""> 1614: 	for my $row (@{$rows}) {
-</span><span class=""> 1615: 		my $key = $row-&gt;{$local_jc};
-</span><span class=""> 1616: 		next unless defined $key;
-</span><span class=""> 1617: 		push @{ $indexed{$key} }, $row;
-</span><span class=""> 1618: 	}
-</span><span class=""> 1619: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1620: 	return \%indexed;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1621: }
-</span><span class=""> 1622: 
-</span><span class=""> 1623: # _joined_query( \%params ) -&gt; \@merged_rows
-</span><span class=""> 1624: #
-</span><span class=""> 1625: # Purpose: Core join algorithm.  Partitions criteria, fetches per-database
-</span><span class=""> 1626: #          results, resolves the key set, and merges rows.
-</span><span class=""> 1627: #
-</span><span class=""> 1628: # Key-set resolution (applied for each secondary database after the primary):
+</span><span class=""> 1503: # Private helpers
+</span><span class=""> 1504: # ---------------------------------------------------------------------------
+</span><span class=""> 1505: 
+</span><span class=""> 1506: # _parse_query_args( $self, $positional_key, @caller_args ) -&gt; \%params
+</span><span class=""> 1507: # Purpose: Normalise the three calling conventions used by every public query
+</span><span class=""> 1508: #          method and AUTOLOAD into a single criteria hashref.
+</span><span class=""> 1509: # Entry:   $positional_key -- the column name mapped to a bare scalar argument;
+</span><span class=""> 1510: #          pass undef to use the join_column (the default for public methods).
+</span><span class=""> 1511: # Exit:    Always returns a hashref; never undef.
+</span><span class=""> 1512: # Effects: None.
+</span><span class=""> 1513: sub _parse_query_args {
+</span><span class=""> 1514: 	my ($self, $key, @args) = @_;
+</span><span class=""> 1515: 	$key //= $self-&gt;{_join_col};
+</span><span class=""> 1516: 	return {}                           unless @args;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1517: 	return { $key =&gt; $args[0] }        if @args == 1 &amp;&amp; !ref($args[0]);
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1518: 	return get_params(undef, @args) // {};
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1519: }
+</span><span class=""> 1520: 
+</span><span class=""> 1521: # _err( $self, $msg_key, @sprintf_args ) -&gt; $string
+</span><span class=""> 1522: # Convenience wrapper around _msg for use after construction, so callers do
+</span><span class=""> 1523: # not have to extract $self-&gt;{_i18n} at every error site.
+</span><span class=""> 1524: sub _err {
+</span><span class=""> 1525: 	my ($self, $key, @args) = @_;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1526: 	return _msg($self-&gt;{_i18n}, $key, @args);
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1527: }
+</span><span class=""> 1528: 
+</span><span class=""> 1529: # _build_col_index()
+</span><span class=""> 1530: # Purpose: Populate _col_db (column_name =&gt; db_index) and _db_cols
+</span><span class=""> 1531: #          (per-db column-presence hashrefs) by calling columns() on each
+</span><span class=""> 1532: #          component database at construction time.
+</span><span class=""> 1533: # Entry:   _dbs, _join_col, _join_map must already be set.
+</span><span class=""> 1534: # Exit:    _col_db and _db_cols are set; join_column verified in every db.
+</span><span class=""> 1535: # Effects: Croaks if any database is missing its join key column.
+</span><span class=""> 1536: sub _build_col_index {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1537 → 1543 → 1560</span></span> 1537: 	my ($self) = @_;
+</span><span class=""> 1538: 
+</span><span class=""> 1539: 	my $join_col = $self-&gt;{_join_col};
+</span><span class=""> 1540: 	my %col_db;
+</span><span class=""> 1541: 	my @db_cols;
+</span><span class=""> 1542: 
+</span><span class=""> 1543: 	for my $i (0 .. $#{ $self-&gt;{_dbs} }) {
+</span><span class=""> 1544: 		my $db        = $self-&gt;{_dbs}[$i];
+</span><span class=""> 1545: 		my $local_jc  = $self-&gt;{_join_map}{$i} // $join_col;
+</span><span class=""> 1546: 		my $cols      = $db-&gt;columns();
+</span><span class=""> 1547: 		$db_cols[$i]  = { map { $_ =&gt; 1 } @{$cols} };
+</span><span class=""> 1548: 
+</span><span class=""> 1549: 		croak $self-&gt;_err(&#39;error_join_col_missing&#39;, $local_jc, $i, ref($db))
+</span><span class=""> 1550: 			unless $db_cols[$i]{$local_jc};
+</span><span class=""> 1551: 
+</span><span class=""> 1552: 		for my $col (@{$cols}) {
+</span><span class=""> 1553: 			# Skip the local alias for the join key &acirc;&#128;&#148; it is not a data column
+</span><span class=""> 1554: 			next if $local_jc ne $join_col &amp;&amp; $col eq $local_jc;
+</span><span class=""> 1555: 			# Last database wins for duplicate non-join columns
+</span><span class=""> 1556: 			$col_db{$col} = $i;
+</span><span class=""> 1557: 		}
+</span><span class=""> 1558: 	}
+</span><span class=""> 1559: 
+</span><span class=""> 1560: 	$self-&gt;{_col_db}  = \%col_db;
+</span><span class=""> 1561: 	$self-&gt;{_db_cols} = \@db_cols;
+</span><span class=""> 1562: 
+</span><span class=""> 1563: 	return;
+</span><span class=""> 1564: }
+</span><span class=""> 1565: 
+</span><span class=""> 1566: # _partition_criteria( \%params ) -&gt; \@per_db
+</span><span class=""> 1567: # Purpose: Split a flat criteria hashref into one slice per component database.
+</span><span class=""> 1568: # Entry:   $params is a criteria hashref; all keys must be column names or
+</span><span class=""> 1569: #          join_column.
+</span><span class=""> 1570: # Exit:    Returns an arrayref of per-database criteria hashrefs.  The
+</span><span class=""> 1571: #          join_column criterion is broadcast to every database using each
+</span><span class=""> 1572: #          database&#39;s local join-key name.  Unknown columns trigger a carp.
+</span><span class=""> 1573: # Effects: Carps for each unrecognised column name.
+</span><span class=""> 1574: sub _partition_criteria {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1575 → 1581 → 1595</span></span> 1575: 	my ($self, $params) = @_;
+</span><span class=""> 1576: 
+</span><span class=""> 1577: 	my $join_col = $self-&gt;{_join_col};
+</span><span class=""> 1578: 	my $n        = scalar @{ $self-&gt;{_dbs} };
+</span><span class=""> 1579: 	my @per_db   = map { {} } 1 .. $n;
+</span><span class=""> 1580: 
+</span><span class=""> 1581: 	for my $col (keys %{$params}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1582: 		if ($col eq $join_col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1583: 			# Broadcast to every database using each one&#39;s local key column name
+</span><span class=""> 1584: 			for my $i (0 .. $n - 1) {
+</span><span class=""> 1585: 				my $local = $self-&gt;{_join_map}{$i} // $join_col;
+</span><span class=""> 1586: 				$per_db[$i]{$local} = $params-&gt;{$col};
+</span><span class=""> 1587: 			}
+</span><span class=""> 1588: 		} elsif (defined(my $idx = $self-&gt;{_col_db}{$col})) {
+</span><span class=""> 1589: 			$per_db[$idx]{$col} = $params-&gt;{$col};
+</span><span class=""> 1590: 		} else {
+</span><span class=""> 1591: 			carp $self-&gt;_err(&#39;warn_unknown_column&#39;, $col);
+</span><span class=""> 1592: 		}
+</span><span class=""> 1593: 	}
+</span><span class=""> 1594: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1595: 	return \@per_db;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1596: }
+</span><span class=""> 1597: 
+</span><span class=""> 1598: # _fetch_indexed( $db_idx, \%criteria ) -&gt; \%join_val_to_\@rows
+</span><span class=""> 1599: # Purpose: Query one component database and index its rows by join-key value.
+</span><span class=""> 1600: # Entry:   $db_idx is the zero-based database index; $criteria is the
+</span><span class=""> 1601: #          pre-partitioned criteria hashref for this database.
+</span><span class=""> 1602: # Exit:    Returns a hashref: join-key value =&gt; arrayref of row hashrefs.
+</span><span class=""> 1603: #          Multiple rows sharing the same join-key value are all preserved
+</span><span class=""> 1604: #          (important for the primary database when one key maps to many rows).
+</span><span class=""> 1605: # Effects: Calls selectall_arrayref on the component database.
+</span><span class=""> 1606: sub _fetch_indexed {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1607 → 1616 → 1622</span></span> 1607: 	my ($self, $db_idx, $criteria) = @_;
+</span><span class=""> 1608: 
+</span><span class=""> 1609: 	my $db        = $self-&gt;{_dbs}[$db_idx];
+</span><span class=""> 1610: 	my $local_jc  = $self-&gt;{_join_map}{$db_idx} // $self-&gt;{_join_col};
+</span><span class=""> 1611: 
+</span><span class=""> 1612: 	my $rows = $db-&gt;selectall_arrayref($criteria);
+</span><span class=""> 1613: 	$rows //= [];
+</span><span class=""> 1614: 
+</span><span class=""> 1615: 	my %indexed;
+</span><span class=""> 1616: 	for my $row (@{$rows}) {
+</span><span class=""> 1617: 		my $key = $row-&gt;{$local_jc};
+</span><span class=""> 1618: 		next unless defined $key;
+</span><span class=""> 1619: 		push @{ $indexed{$key} }, $row;
+</span><span class=""> 1620: 	}
+</span><span class=""> 1621: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1622: 	return \%indexed;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1623: }
+</span><span class=""> 1624: 
+</span><span class=""> 1625: # _joined_query( \%params ) -&gt; \@merged_rows
+</span><span class=""> 1626: #
+</span><span class=""> 1627: # Purpose: Core join algorithm.  Partitions criteria, fetches per-database
+</span><span class=""> 1628: #          results, resolves the key set, and merges rows.
 </span><span class=""> 1629: #
-</span><span class=""> 1630: #   If the database had criteria in this query call (after base filter overlay),
-</span><span class=""> 1631: #   it acts as an INNER-JOIN partner: only keys present in its filtered result
-</span><span class=""> 1632: #   survive.  This gives WHERE-clause semantics even under a LEFT join.
-</span><span class=""> 1633: #
-</span><span class=""> 1634: #   If the database had NO effective criteria:
-</span><span class=""> 1635: #     inner  -&gt; intersect  (standard inner join)
-</span><span class=""> 1636: #     left   -&gt; no change  (primary defines the key set)
-</span><span class=""> 1637: #     outer  -&gt; union      (all keys from any database)
-</span><span class=""> 1638: #
-</span><span class=""> 1639: # Row merge: for each qualifying primary row, secondary rows are overlaid in
-</span><span class=""> 1640: # index order.  For duplicate columns, later databases win.  Local join-key
-</span><span class=""> 1641: # aliases are renamed to the canonical join_column before merging.
-</span><span class=""> 1642: # Removed columns are deleted from every merged row.
-</span><span class=""> 1643: sub _joined_query {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1644 → 1655 → 1662</span></span> 1644: 	my ($self, $params) = @_;
-</span><span class=""> 1645: 
-</span><span class=""> 1646: 	my $join_col  = $self-&gt;{_join_col};
-</span><span class=""> 1647: 	my $join_type = $self-&gt;{_join_type};
-</span><span class=""> 1648: 	my $n         = scalar @{ $self-&gt;{_dbs} };
-</span><span class=""> 1649: 
-</span><span class=""> 1650: 	my $per_db = $self-&gt;_partition_criteria($params);
+</span><span class=""> 1630: # Key-set resolution (applied for each secondary database after the primary):
+</span><span class=""> 1631: #
+</span><span class=""> 1632: #   If the database had criteria in this query call (after base filter overlay),
+</span><span class=""> 1633: #   it acts as an INNER-JOIN partner: only keys present in its filtered result
+</span><span class=""> 1634: #   survive.  This gives WHERE-clause semantics even under a LEFT join.
+</span><span class=""> 1635: #
+</span><span class=""> 1636: #   If the database had NO effective criteria:
+</span><span class=""> 1637: #     inner  -&gt; intersect  (standard inner join)
+</span><span class=""> 1638: #     left   -&gt; no change  (primary defines the key set)
+</span><span class=""> 1639: #     outer  -&gt; union      (all keys from any database)
+</span><span class=""> 1640: #
+</span><span class=""> 1641: # Row merge: for each qualifying primary row, secondary rows are overlaid in
+</span><span class=""> 1642: # index order.  For duplicate columns, later databases win.  Local join-key
+</span><span class=""> 1643: # aliases are renamed to the canonical join_column before merging.
+</span><span class=""> 1644: # Removed columns are deleted from every merged row.
+</span><span class=""> 1645: sub _joined_query {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1646 → 1657 → 1665</span></span> 1646: 	my ($self, $params) = @_;
+</span><span class=""> 1647: 
+</span><span class=""> 1648: 	my $join_col  = $self-&gt;{_join_col};
+</span><span class=""> 1649: 	my $join_type = $self-&gt;{_join_type};
+</span><span class=""> 1650: 	my $n         = scalar @{ $self-&gt;{_dbs} };
 </span><span class=""> 1651: 
-</span><span class=""> 1652: 	# Overlay any per-database base filters onto the partitioned criteria.
-</span><span class=""> 1653: 	# A filtered database always has effective criteria, so $had_criteria will
-</span><span class=""> 1654: 	# be true for it &acirc;&#128;&#148; giving inner-join key-set semantics regardless of join_type.
-</span><span class=""> 1655: 	for my $i (0 .. $n - 1) {
-</span><span class=""> 1656: 		my $base = $self-&gt;{_filters}{$i} // {};
-</span><span class=""> 1657: 		next unless %{$base};
-</span><span class=""> 1658: 		$per_db-&gt;[$i] = _merge_criteria($base, $per_db-&gt;[$i]);
-</span><span class=""> 1659: 	}
-</span><span class=""> 1660: 
-</span><span class=""> 1661: 	# Fetch and index each database with its own criteria slice.
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1662 → 1664 → 1670</span></span> 1662: 	my @indexed;
-</span><span class=""> 1663: 	my @had_criteria;
-</span><span class=""> 1664: 	for my $i (0 .. $n - 1) {
-</span><span class=""> 1665: 		$indexed[$i]     = $self-&gt;_fetch_indexed($i, $per_db-&gt;[$i]);
-</span><span class=""> 1666: 		$had_criteria[$i] = scalar keys %{ $per_db-&gt;[$i] } ? 1 : 0;
-</span><span class=""> 1667: 	}
-</span><span class=""> 1668: 
-</span><span class=""> 1669: 	# Seed the key set from the primary database.
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1670 → 1673 → 1690</span></span> 1670: 	my %key_set = map { $_ =&gt; 1 } keys %{ $indexed[0] };
+</span><span class=""> 1652: 	my $per_db = $self-&gt;_partition_criteria($params);
+</span><span class=""> 1653: 
+</span><span class=""> 1654: 	# Overlay any per-database base filters onto the partitioned criteria.
+</span><span class=""> 1655: 	# A filtered database always has effective criteria, so $had_criteria will
+</span><span class=""> 1656: 	# be true for it &acirc;&#128;&#148; giving inner-join key-set semantics regardless of join_type.
+</span><span class=""> 1657: 	for my $i (0 .. $n - 1) {
+</span><span class=""> 1658: 		my $base = $self-&gt;{_filters}{$i} // {};
+</span><span class=""> 1659: 		next unless %{$base};
+</span><span class=""> 1660: 		$per_db-&gt;[$i] = _merge_criteria($base, $per_db-&gt;[$i]);
+</span><span class=""> 1661: 	}
+</span><span class=""> 1662: 
+</span><span class=""> 1663: 	# Fetch and index each database with its own criteria slice.
+</span><span class=""> 1664: 	# !!%hash collapses to 1 (non-empty) or &#39;&#39; (empty) without allocating a count.
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1665 → 1667 → 1673</span></span> 1665: 	my @indexed;
+</span><span class=""> 1666: 	my @had_criteria;
+</span><span class=""> 1667: 	for my $i (0 .. $n - 1) {
+</span><span class=""> 1668: 		$indexed[$i]      = $self-&gt;_fetch_indexed($i, $per_db-&gt;[$i]);
+</span><span class=""> 1669: 		$had_criteria[$i] = !!%{ $per_db-&gt;[$i] };
+</span><span class=""> 1670: 	}
 </span><span class=""> 1671: 
-</span><span class=""> 1672: 	# Merge in each secondary database.
-</span><span class=""> 1673: 	for my $i (1 .. $n - 1) {
-</span><span class=""> 1674: 		my %sec_keys = map { $_ =&gt; 1 } keys %{ $indexed[$i] };
-</span><span class=""> 1675: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1676: 		if ($had_criteria[$i] || $join_type eq &#39;inner&#39;) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1677: 			# Intersect: retain only keys present in this database&#39;s result.
-</span><span class=""> 1678: 			%key_set = map { $_ =&gt; 1 } grep { $sec_keys{$_} } keys %key_set;
-</span><span class=""> 1679: 		} elsif ($join_type eq &#39;outer&#39;) {
-</span><span class=""> 1680: 			# Union: add any keys from this database not yet in the set.
-</span><span class=""> 1681: 			$key_set{$_} = 1 for keys %sec_keys;
-</span><span class=""> 1682: 		}
-</span><span class=""> 1683: 		# left + no criteria: key_set unchanged (primary defines the set).
-</span><span class=""> 1684: 	}
-</span><span class=""> 1685: 
-</span><span class=""> 1686: 	# Build one merged result row for every primary-database row that qualifies.
-</span><span class=""> 1687: 	# Secondary databases act as lookup tables: when a key maps to multiple
-</span><span class=""> 1688: 	# secondary rows, the last one wins (consistent with construction-time
-</span><span class=""> 1689: 	# last-database-wins column routing).
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1690 → 1692 → 1717</span></span> 1690: 	my @result;
-</span><span class=""> 1691: 	my @removed = keys %{ $self-&gt;{_removed_cols} };
-</span><span class=""> 1692: 	for my $key (sort keys %key_set) {
-</span><span class=""> 1693: 		# All qualifying rows from the primary database for this key.
-</span><span class=""> 1694: 		# Use [{}] so that outer-join keys absent from the primary still
-</span><span class=""> 1695: 		# produce one merged row filled from secondary databases.
-</span><span class=""> 1696: 		my @base_rows = @{ $indexed[0]{$key} // [{}] };
-</span><span class=""> 1697: 
-</span><span class=""> 1698: 		for my $prow (@base_rows) {
-</span><span class=""> 1699: 			my %merged = %{$prow};
-</span><span class=""> 1700: 
-</span><span class=""> 1701: 			for my $i (1 .. $n - 1) {
-</span><span class=""> 1702: 				my $sec_arr = $indexed[$i]{$key};
-</span><span class=""> 1703: 				next unless $sec_arr &amp;&amp; @{$sec_arr};
-</span><span class=""> 1704: 				my %row_copy = %{ $sec_arr-&gt;[-1] };  # last wins for secondaries
-</span><span class=""> 1705: 				my $local_jc = $self-&gt;{_join_map}{$i};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1706: 				if ($local_jc &amp;&amp; $local_jc ne $join_col) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1707: 					$row_copy{$join_col} = delete $row_copy{$local_jc};
-</span><span class=""> 1708: 				}
-</span><span class=""> 1709: 				%merged = (%merged, %row_copy);
-</span><span class=""> 1710: 			}
-</span><span class=""> 1711: 
-</span><span class=""> 1712: 			delete @merged{@removed} if @removed;
-</span><span class=""> 1713: 			push @result, \%merged;
-</span><span class=""> 1714: 		}
-</span><span class=""> 1715: 	}
-</span><span class=""> 1716: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1717: 	return \@result;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1718: }
-</span><span class=""> 1719: 
-</span><span class=""> 1720: # _merge_criteria( \%base, \%extra ) -&gt; \%merged
-</span><span class=""> 1721: # Purpose: Merge two criteria hashrefs for the same database column set.
-</span><span class=""> 1722: # Entry:   %base is the permanent filter; %extra is the query-time criteria.
-</span><span class=""> 1723: # Exit:    Returns a new hashref with both applied.
-</span><span class=""> 1724: # Merging rule: when both values for the same column are operator hashrefs
-</span><span class=""> 1725: #   (e.g. { &#39;&gt;&#39; =&gt; 60 } and { &#39;&lt;&#39; =&gt; 365 }), the operators are combined
-</span><span class=""> 1726: #   so both constraints apply simultaneously (AND semantics).
-</span><span class=""> 1727: #   Otherwise the extra (query-time) value overwrites the base value.
-</span><span class=""> 1728: sub _merge_criteria {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1729 → 1731 → 1740</span></span> 1729: 	my ($base, $extra) = @_;
-</span><span class=""> 1730: 	my %merged = %{$base};
-</span><span class=""> 1731: 	for my $col (keys %{$extra}) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1732: 		if (exists $merged{$col}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1733: 		        &amp;&amp; ref($merged{$col}) eq &#39;HASH&#39;
-</span><span class=""> 1734: 		        &amp;&amp; ref($extra-&gt;{$col}) eq &#39;HASH&#39;) {
-</span><span class=""> 1735: 			$merged{$col} = { %{ $merged{$col} }, %{ $extra-&gt;{$col} } };
-</span><span class=""> 1736: 		} else {
-</span><span class=""> 1737: 			$merged{$col} = $extra-&gt;{$col};
-</span><span class=""> 1738: 		}
-</span><span class=""> 1739: 	}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1740: 	return \%merged;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1741: }
-</span><span class=""> 1742: 
-</span><span class=""> 1743: # _msg( $i18n, $key, @sprintf_args ) -&gt; $string
-</span><span class=""> 1744: # Purpose: Format a user-facing message, routing through the i18n object when
-</span><span class=""> 1745: #          one is provided.  Falls back to the built-in %MESSAGES dictionary.
-</span><span class=""> 1746: # Entry:   $i18n may be undef.  $key must be a key in %MESSAGES.
-</span><span class=""> 1747: # Exit:    Returns the formatted string.
-</span><span class=""> 1748: sub _msg {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1749 → 1751 → 1755</span></span> 1749: 	my ($i18n, $key, @args) = @_;
-</span><span class=""> 1750: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1751: 	if ($i18n &amp;&amp; $i18n-&gt;can(&#39;translate&#39;)) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1752: 		return $i18n-&gt;translate($key, @args);
+</span><span class=""> 1672: 	# Seed the key set from the primary database.
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1673 → 1679 → 1696</span></span> 1673: 	my %key_set = map { $_ =&gt; 1 } keys %{ $indexed[0] };
+</span><span class=""> 1674: 
+</span><span class=""> 1675: 	# Merge in each secondary database.
+</span><span class=""> 1676: 	# Premise 1: indexed[$i] is a valid hashref (returned by _fetch_indexed).
+</span><span class=""> 1677: 	# Premise 2: join_type &acirc;&#136;&#136; {left, inner, outer} (enforced by validate_strict).
+</span><span class=""> 1678: 	# Conclusion: the three branches below are exhaustive and mutually exclusive.
+</span><span class=""> 1679: 	for my $i (1 .. $n - 1) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1680: 		if ($had_criteria[$i] || $join_type eq &#39;inner&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1681: 			# Intersect: delete keys absent from secondary in-place.
+</span><span class=""> 1682: 			# In-place delete avoids allocating an intermediate result hash
+</span><span class=""> 1683: 			# (O(1) extra memory vs O(n) for a map-based rebuild).
+</span><span class=""> 1684: 			delete $key_set{$_} for grep { !exists $indexed[$i]{$_} } keys %key_set;
+</span><span class=""> 1685: 		} elsif ($join_type eq &#39;outer&#39;) {
+</span><span class=""> 1686: 			# Union: add every key from secondary not yet in the set.
+</span><span class=""> 1687: 			$key_set{$_} = 1 for keys %{ $indexed[$i] };
+</span><span class=""> 1688: 		}
+</span><span class=""> 1689: 		# left + no criteria: key_set unchanged (primary defines the set).
+</span><span class=""> 1690: 	}
+</span><span class=""> 1691: 
+</span><span class=""> 1692: 	# Build one merged result row for every primary-database row that qualifies.
+</span><span class=""> 1693: 	# Secondary databases act as lookup tables: when a key maps to multiple
+</span><span class=""> 1694: 	# secondary rows, the last one wins (consistent with construction-time
+</span><span class=""> 1695: 	# last-database-wins column routing).
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1696 → 1698 → 1723</span></span> 1696: 	my @result;
+</span><span class=""> 1697: 	my @removed = keys %{ $self-&gt;{_removed_cols} };
+</span><span class=""> 1698: 	for my $key (sort keys %key_set) {
+</span><span class=""> 1699: 		# All qualifying rows from the primary database for this key.
+</span><span class=""> 1700: 		# Use [{}] so that outer-join keys absent from the primary still
+</span><span class=""> 1701: 		# produce one merged row filled from secondary databases.
+</span><span class=""> 1702: 		my @base_rows = @{ $indexed[0]{$key} // [{}] };
+</span><span class=""> 1703: 
+</span><span class=""> 1704: 		for my $prow (@base_rows) {
+</span><span class=""> 1705: 			my %merged = %{$prow};
+</span><span class=""> 1706: 
+</span><span class=""> 1707: 			for my $i (1 .. $n - 1) {
+</span><span class=""> 1708: 				my $sec_arr = $indexed[$i]{$key};
+</span><span class=""> 1709: 				next unless $sec_arr &amp;&amp; @{$sec_arr};
+</span><span class=""> 1710: 				my %row_copy = %{ $sec_arr-&gt;[-1] };  # last wins for secondaries
+</span><span class=""> 1711: 				my $local_jc = $self-&gt;{_join_map}{$i};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1712: 				if ($local_jc &amp;&amp; $local_jc ne $join_col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1713: 					$row_copy{$join_col} = delete $row_copy{$local_jc};
+</span><span class=""> 1714: 				}
+</span><span class=""> 1715: 				%merged = (%merged, %row_copy);
+</span><span class=""> 1716: 			}
+</span><span class=""> 1717: 
+</span><span class=""> 1718: 			delete @merged{@removed} if @removed;
+</span><span class=""> 1719: 			push @result, \%merged;
+</span><span class=""> 1720: 		}
+</span><span class=""> 1721: 	}
+</span><span class=""> 1722: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1723: 	return \@result;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1724: }
+</span><span class=""> 1725: 
+</span><span class=""> 1726: # _merge_criteria( \%base, \%extra ) -&gt; \%merged
+</span><span class=""> 1727: # Purpose: Merge two criteria hashrefs for the same database column set.
+</span><span class=""> 1728: # Entry:   %base is the permanent filter; %extra is the query-time criteria.
+</span><span class=""> 1729: # Exit:    Returns a new hashref with both applied.
+</span><span class=""> 1730: # Merging rule: when both values for the same column are operator hashrefs
+</span><span class=""> 1731: #   (e.g. { &#39;&gt;&#39; =&gt; 60 } and { &#39;&lt;&#39; =&gt; 365 }), the operators are combined
+</span><span class=""> 1732: #   so both constraints apply simultaneously (AND semantics).
+</span><span class=""> 1733: #   Otherwise the extra (query-time) value overwrites the base value.
+</span><span class=""> 1734: sub _merge_criteria {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1735 → 1737 → 1746</span></span> 1735: 	my ($base, $extra) = @_;
+</span><span class=""> 1736: 	my %merged = %{$base};
+</span><span class=""> 1737: 	for my $col (keys %{$extra}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1738: 		if (exists $merged{$col}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1739: 		        &amp;&amp; ref($merged{$col}) eq &#39;HASH&#39;
+</span><span class=""> 1740: 		        &amp;&amp; ref($extra-&gt;{$col}) eq &#39;HASH&#39;) {
+</span><span class=""> 1741: 			$merged{$col} = { %{ $merged{$col} }, %{ $extra-&gt;{$col} } };
+</span><span class=""> 1742: 		} else {
+</span><span class=""> 1743: 			$merged{$col} = $extra-&gt;{$col};
+</span><span class=""> 1744: 		}
+</span><span class=""> 1745: 	}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1746: 	return \%merged;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1747: }
+</span><span class=""> 1748: 
+</span><span class=""> 1749: # _msg( $i18n, $key, @sprintf_args ) -&gt; $string
+</span><span class=""> 1750: # Purpose: Format a user-facing message, routing through the i18n object when
+</span><span class=""> 1751: #          one is provided.  Falls back to the built-in %MESSAGES dictionary.
+</span><span class=""> 1752: # Entry:   $i18n may be undef.  $key must be a key in %MESSAGES.
+</span><span class=""> 1753: # Exit:    Returns the formatted string.
+</span><span class=""> 1754: sub _msg {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1755 → 1757 → 1761</span></span> 1755: 	my ($i18n, $key, @args) = @_;
+</span><span class=""> 1756: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1757: 	if ($i18n &amp;&amp; $i18n-&gt;can(&#39;translate&#39;)) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1758: 		return $i18n-&gt;translate($key, @args);
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
 					<ul>
-				<li><b>BOOL_NEGATE_1752_3: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>BOOL_NEGATE_1758_3: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -2214,7 +2199,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>RETURN_UNDEF_1752_3: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+							</li><li><b>RETURN_UNDEF_1758_3: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -2223,178 +2208,178 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 1753: 	}
-</span><span class=""> 1754: 
-</span><span class=""> 1755: 	my $fmt = $MESSAGES{$key}
-</span><span class=""> 1756: 		// sprintf($MESSAGES{error_unknown_message}, $key);
-</span><span class=""> 1757: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1758: 	return @args ? sprintf($fmt, @args) : $fmt;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1759: }
+<span class=""> 1759: 	}
 </span><span class=""> 1760: 
-</span><span class=""> 1761: 1;
-</span><span class=""> 1762: 
-</span><span class=""> 1763: __END__
-</span><span class=""> 1764: 
-</span><span class=""> 1765: =head1 MESSAGES
+</span><span class=""> 1761: 	my $fmt = $MESSAGES{$key}
+</span><span class=""> 1762: 		// sprintf($MESSAGES{error_unknown_message}, $key);
+</span><span class=""> 1763: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1764: 	return @args ? sprintf($fmt, @args) : $fmt;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1765: }
 </span><span class=""> 1766: 
-</span><span class=""> 1767: The following messages can be produced by C&lt;Database::Join&gt;.  All messages
-</span><span class=""> 1768: can be localised by supplying an C&lt;i18n&gt; object to C&lt;new&gt;.
-</span><span class=""> 1769: 
-</span><span class=""> 1770: =over 4
-</span><span class=""> 1771: 
-</span><span class=""> 1772: =item C&lt;error_no_databases&gt;
-</span><span class=""> 1773: 
-</span><span class=""> 1774: B&lt;When:&gt; The C&lt;databases&gt; arrayref passed to C&lt;new&gt; is empty.
+</span><span class=""> 1767: 1;
+</span><span class=""> 1768: 
+</span><span class=""> 1769: __END__
+</span><span class=""> 1770: 
+</span><span class=""> 1771: =head1 MESSAGES
+</span><span class=""> 1772: 
+</span><span class=""> 1773: The following messages can be produced by C&lt;Database::Join&gt;.  All messages
+</span><span class=""> 1774: can be localised by supplying an C&lt;i18n&gt; object to C&lt;new&gt;.
 </span><span class=""> 1775: 
-</span><span class=""> 1776: B&lt;Fix:&gt; Pass at least one C&lt;Database::Abstraction&gt; subclass object.
+</span><span class=""> 1776: =over 4
 </span><span class=""> 1777: 
-</span><span class=""> 1778: =item C&lt;error_invalid_db&gt;
+</span><span class=""> 1778: =item C&lt;error_no_databases&gt;
 </span><span class=""> 1779: 
-</span><span class=""> 1780: B&lt;When:&gt; An element of the C&lt;databases&gt; array (or the argument to
-</span><span class=""> 1781: C&lt;add_database&gt;) is not an object, or is not a C&lt;Database::Abstraction&gt;
-</span><span class=""> 1782: subclass.
+</span><span class=""> 1780: B&lt;When:&gt; The C&lt;databases&gt; arrayref passed to C&lt;new&gt; is empty.
+</span><span class=""> 1781: 
+</span><span class=""> 1782: B&lt;Fix:&gt; Pass at least one C&lt;Database::Abstraction&gt; subclass object.
 </span><span class=""> 1783: 
-</span><span class=""> 1784: B&lt;Fix:&gt; Instantiate the component database with its own C&lt;new&gt; method before
-</span><span class=""> 1785: passing it to C&lt;Database::Join&gt;.
-</span><span class=""> 1786: 
-</span><span class=""> 1787: =item C&lt;error_join_col_missing&gt;
-</span><span class=""> 1788: 
-</span><span class=""> 1789: B&lt;When:&gt; The join key column (or its C&lt;join_map&gt; alias) does not exist in one
-</span><span class=""> 1790: of the component databases.
-</span><span class=""> 1791: 
-</span><span class=""> 1792: B&lt;Fix:&gt; Either add the column to the database, change C&lt;join_column&gt; to a
-</span><span class=""> 1793: column that is present everywhere, or use C&lt;join_map&gt; to declare the local
-</span><span class=""> 1794: alias for databases that call it something different.
-</span><span class=""> 1795: 
-</span><span class=""> 1796: =item C&lt;error_remove_join_col&gt;
+</span><span class=""> 1784: =item C&lt;error_invalid_db&gt;
+</span><span class=""> 1785: 
+</span><span class=""> 1786: B&lt;When:&gt; An element of the C&lt;databases&gt; array (or the argument to
+</span><span class=""> 1787: C&lt;add_database&gt;) is not an object, or is not a C&lt;Database::Abstraction&gt;
+</span><span class=""> 1788: subclass.
+</span><span class=""> 1789: 
+</span><span class=""> 1790: B&lt;Fix:&gt; Instantiate the component database with its own C&lt;new&gt; method before
+</span><span class=""> 1791: passing it to C&lt;Database::Join&gt;.
+</span><span class=""> 1792: 
+</span><span class=""> 1793: =item C&lt;error_join_col_missing&gt;
+</span><span class=""> 1794: 
+</span><span class=""> 1795: B&lt;When:&gt; The join key column (or its C&lt;join_map&gt; alias) does not exist in one
+</span><span class=""> 1796: of the component databases.
 </span><span class=""> 1797: 
-</span><span class=""> 1798: B&lt;When:&gt; C&lt;remove_column&gt; is called with the name of the join key column.
-</span><span class=""> 1799: 
-</span><span class=""> 1800: B&lt;Fix:&gt; The join key is required for the merge to work and cannot be hidden.
-</span><span class=""> 1801: Remove a different column.
-</span><span class=""> 1802: 
-</span><span class=""> 1803: =item C&lt;warn_unknown_column&gt; (carp)
-</span><span class=""> 1804: 
-</span><span class=""> 1805: B&lt;When:&gt; A criterion is passed for a column that does not exist in any
-</span><span class=""> 1806: component database (or has been removed with C&lt;remove_column&gt;).
-</span><span class=""> 1807: 
-</span><span class=""> 1808: B&lt;Fix:&gt; Check the column name spelling.  The criterion is ignored.
-</span><span class=""> 1809: 
-</span><span class=""> 1810: =item C&lt;error_query_unsupported&gt;
-</span><span class=""> 1811: 
-</span><span class=""> 1812: B&lt;When:&gt; C&lt;query()&gt; is called on a C&lt;Database::Join&gt; object.
+</span><span class=""> 1798: B&lt;Fix:&gt; Either add the column to the database, change C&lt;join_column&gt; to a
+</span><span class=""> 1799: column that is present everywhere, or use C&lt;join_map&gt; to declare the local
+</span><span class=""> 1800: alias for databases that call it something different.
+</span><span class=""> 1801: 
+</span><span class=""> 1802: =item C&lt;error_remove_join_col&gt;
+</span><span class=""> 1803: 
+</span><span class=""> 1804: B&lt;When:&gt; C&lt;remove_column&gt; is called with the name of the join key column.
+</span><span class=""> 1805: 
+</span><span class=""> 1806: B&lt;Fix:&gt; The join key is required for the merge to work and cannot be hidden.
+</span><span class=""> 1807: Remove a different column.
+</span><span class=""> 1808: 
+</span><span class=""> 1809: =item C&lt;warn_unknown_column&gt; (carp)
+</span><span class=""> 1810: 
+</span><span class=""> 1811: B&lt;When:&gt; A criterion is passed for a column that does not exist in any
+</span><span class=""> 1812: component database (or has been removed with C&lt;remove_column&gt;).
 </span><span class=""> 1813: 
-</span><span class=""> 1814: B&lt;Fix:&gt; Use C&lt;selectall_arrayref&gt;, C&lt;selectall_array&gt;, C&lt;fetchrow_hashref&gt;,
-</span><span class=""> 1815: or C&lt;count&gt; instead.
-</span><span class=""> 1816: 
-</span><span class=""> 1817: =item C&lt;error_execute_unsupported&gt;
-</span><span class=""> 1818: 
-</span><span class=""> 1819: B&lt;When:&gt; C&lt;execute()&gt; is called on a C&lt;Database::Join&gt; object.
-</span><span class=""> 1820: 
-</span><span class=""> 1821: B&lt;Fix:&gt; Use the Perl-level query methods instead.  Raw SQL cannot span
-</span><span class=""> 1822: heterogeneous database backends.
-</span><span class=""> 1823: 
-</span><span class=""> 1824: =back
-</span><span class=""> 1825: 
-</span><span class=""> 1826: =head1 FORMAL SPECIFICATION
-</span><span class=""> 1827: 
-</span><span class=""> 1828: Z calculus schemas for the key invariants and operations.
-</span><span class=""> 1829: Unicode is used throughout this section as required by Z notation.
-</span><span class=""> 1830: 
-</span><span class=""> 1831:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Database_Join &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1832:     dbs        : seq DATABASE_ABSTRACTION
-</span><span class=""> 1833:     join_col   : NAME
-</span><span class=""> 1834:     join_type  : {left, inner, outer}
-</span><span class=""> 1835:     join_map   : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
-</span><span class=""> 1836:     filters    : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
-</span><span class=""> 1837:     col_db     : NAME &acirc;&#135;&cedil; &acirc;&#132;&#149;
-</span><span class=""> 1838:     removed    : &acirc;&#132;&#153; NAME
-</span><span class=""> 1839:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1840:     #dbs &acirc;&#137;&yen; 1
-</span><span class=""> 1841:     dom join_map &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
-</span><span class=""> 1842:     dom filters  &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
-</span><span class=""> 1843:     dom col_db   = (&acirc;&#139;&#131; { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; ran((dbs i).columns) }) \ removed
-</span><span class=""> 1844:     join_col &acirc;&#136;&#137; removed
-</span><span class=""> 1845:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
-</span><span class=""> 1846:         local_jc(i) = if i &acirc;&#136;&#136; dom join_map then join_map(i) else join_col
-</span><span class=""> 1847:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
-</span><span class=""> 1848:         local_jc(i) &acirc;&#136;&#136; ran((dbs i).columns)
-</span><span class=""> 1849: 
-</span><span class=""> 1850:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Init &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1851:     &Icirc;&#148;Database_Join
-</span><span class=""> 1852:     dbs?       : seq DATABASE_ABSTRACTION
-</span><span class=""> 1853:     join_col?  : NAME
-</span><span class=""> 1854:     join_type? : {left, inner, outer}
-</span><span class=""> 1855:     join_map?  : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
-</span><span class=""> 1856:     filters?   : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
-</span><span class=""> 1857:     removed?   : &acirc;&#132;&#153; NAME
-</span><span class=""> 1858:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1859:     #dbs? &acirc;&#137;&yen; 1
-</span><span class=""> 1860:     dbs&#39;      = dbs?
-</span><span class=""> 1861:     join_col&#39; = join_col?
-</span><span class=""> 1862:     join_type&#39;= join_type?
-</span><span class=""> 1863:     join_map&#39; = join_map?
-</span><span class=""> 1864:     filters&#39;  = filters?
-</span><span class=""> 1865:     col_db&#39;   = buildColIndex(dbs?, join_col?, join_map?)
-</span><span class=""> 1866:     removed&#39;  = removed?
-</span><span class=""> 1867: 
-</span><span class=""> 1868:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; SelectAllArrayref &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1869:     &Icirc;&#158;Database_Join        -- state unchanged
-</span><span class=""> 1870:     criteria? : CRITERIA
-</span><span class=""> 1871:     result!   : seq MERGED_ROW
-</span><span class=""> 1872:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1873:     &acirc;&#136;&#128; c : dom criteria? &acirc;&#128;&cent; c &acirc;&#136;&#136; dom col_db &acirc;&#136;&ordf; {join_col}
-</span><span class=""> 1874:     result! = joinedQuery(criteria?)
-</span><span class=""> 1875:     result! is sorted ascending by join_col value
-</span><span class=""> 1876: 
-</span><span class=""> 1877:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; AddDatabase &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1878:     &Icirc;&#148;Database_Join
-</span><span class=""> 1879:     db?         : DATABASE_ABSTRACTION
-</span><span class=""> 1880:     local_jc?   : NAME   -- optional; defaults to join_col
-</span><span class=""> 1881:     filter?     : CRITERIA   -- optional
-</span><span class=""> 1882:     remove?     : &acirc;&#132;&#153; NAME     -- optional
-</span><span class=""> 1883:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1884:     db?.isa(&#39;Database::Abstraction&#39;)
-</span><span class=""> 1885:     local_jc? &acirc;&#136;&#136; ran(db?.columns)
-</span><span class=""> 1886:     dbs&#39;      = dbs ^ &acirc;&#159;&uml;db?&acirc;&#159;&copy;
-</span><span class=""> 1887:     col_db&#39;   = col_db &acirc;&#138;&#149; { c &acirc;&#134;&brvbar; #dbs | c &acirc;&#136;&#136; ran(db?.columns) \ {local_jc?} \ removed }
-</span><span class=""> 1888:     filters&#39;  = if filter? &acirc;&#137;&nbsp; &acirc;&#136;&#133; then filters &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; filter?} else filters
-</span><span class=""> 1889:     join_map&#39; = if local_jc? &acirc;&#137;&nbsp; join_col
-</span><span class=""> 1890:                 then join_map &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; local_jc?}
-</span><span class=""> 1891:                 else join_map
-</span><span class=""> 1892:     removed&#39;  = removed &acirc;&#136;&ordf; remove?
-</span><span class=""> 1893: 
-</span><span class=""> 1894:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; RemoveColumn &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1895:     &Icirc;&#148;Database_Join
-</span><span class=""> 1896:     col? : NAME
-</span><span class=""> 1897:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1898:     col? &acirc;&#137;&nbsp; join_col
-</span><span class=""> 1899:     removed&#39;  = removed &acirc;&#136;&ordf; {col?}
-</span><span class=""> 1900:     col_db&#39;   = col_db \ {col?}
-</span><span class=""> 1901:     join_map&#39; = join_map
-</span><span class=""> 1902:     filters&#39;  = filters
-</span><span class=""> 1903:     dbs&#39;      = dbs
-</span><span class=""> 1904: 
-</span><span class=""> 1905: =head1 REPOSITORY
-</span><span class=""> 1906: 
-</span><span class=""> 1907: L&lt;https://github.com/nigelhorne/Database-Join&gt;
-</span><span class=""> 1908: 
-</span><span class=""> 1909: =head1 SUPPORT
+</span><span class=""> 1814: B&lt;Fix:&gt; Check the column name spelling.  The criterion is ignored.
+</span><span class=""> 1815: 
+</span><span class=""> 1816: =item C&lt;error_query_unsupported&gt;
+</span><span class=""> 1817: 
+</span><span class=""> 1818: B&lt;When:&gt; C&lt;query()&gt; is called on a C&lt;Database::Join&gt; object.
+</span><span class=""> 1819: 
+</span><span class=""> 1820: B&lt;Fix:&gt; Use C&lt;selectall_arrayref&gt;, C&lt;selectall_array&gt;, C&lt;fetchrow_hashref&gt;,
+</span><span class=""> 1821: or C&lt;count&gt; instead.
+</span><span class=""> 1822: 
+</span><span class=""> 1823: =item C&lt;error_execute_unsupported&gt;
+</span><span class=""> 1824: 
+</span><span class=""> 1825: B&lt;When:&gt; C&lt;execute()&gt; is called on a C&lt;Database::Join&gt; object.
+</span><span class=""> 1826: 
+</span><span class=""> 1827: B&lt;Fix:&gt; Use the Perl-level query methods instead.  Raw SQL cannot span
+</span><span class=""> 1828: heterogeneous database backends.
+</span><span class=""> 1829: 
+</span><span class=""> 1830: =back
+</span><span class=""> 1831: 
+</span><span class=""> 1832: =head1 FORMAL SPECIFICATION
+</span><span class=""> 1833: 
+</span><span class=""> 1834: Z calculus schemas for the key invariants and operations.
+</span><span class=""> 1835: Unicode is used throughout this section as required by Z notation.
+</span><span class=""> 1836: 
+</span><span class=""> 1837:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Database_Join &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1838:     dbs        : seq DATABASE_ABSTRACTION
+</span><span class=""> 1839:     join_col   : NAME
+</span><span class=""> 1840:     join_type  : {left, inner, outer}
+</span><span class=""> 1841:     join_map   : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
+</span><span class=""> 1842:     filters    : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
+</span><span class=""> 1843:     col_db     : NAME &acirc;&#135;&cedil; &acirc;&#132;&#149;
+</span><span class=""> 1844:     removed    : &acirc;&#132;&#153; NAME
+</span><span class=""> 1845:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1846:     #dbs &acirc;&#137;&yen; 1
+</span><span class=""> 1847:     dom join_map &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
+</span><span class=""> 1848:     dom filters  &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
+</span><span class=""> 1849:     dom col_db   = (&acirc;&#139;&#131; { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; ran((dbs i).columns) }) \ removed
+</span><span class=""> 1850:     join_col &acirc;&#136;&#137; removed
+</span><span class=""> 1851:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
+</span><span class=""> 1852:         local_jc(i) = if i &acirc;&#136;&#136; dom join_map then join_map(i) else join_col
+</span><span class=""> 1853:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
+</span><span class=""> 1854:         local_jc(i) &acirc;&#136;&#136; ran((dbs i).columns)
+</span><span class=""> 1855: 
+</span><span class=""> 1856:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Init &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1857:     &Icirc;&#148;Database_Join
+</span><span class=""> 1858:     dbs?       : seq DATABASE_ABSTRACTION
+</span><span class=""> 1859:     join_col?  : NAME
+</span><span class=""> 1860:     join_type? : {left, inner, outer}
+</span><span class=""> 1861:     join_map?  : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
+</span><span class=""> 1862:     filters?   : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
+</span><span class=""> 1863:     removed?   : &acirc;&#132;&#153; NAME
+</span><span class=""> 1864:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1865:     #dbs? &acirc;&#137;&yen; 1
+</span><span class=""> 1866:     dbs&#39;      = dbs?
+</span><span class=""> 1867:     join_col&#39; = join_col?
+</span><span class=""> 1868:     join_type&#39;= join_type?
+</span><span class=""> 1869:     join_map&#39; = join_map?
+</span><span class=""> 1870:     filters&#39;  = filters?
+</span><span class=""> 1871:     col_db&#39;   = buildColIndex(dbs?, join_col?, join_map?)
+</span><span class=""> 1872:     removed&#39;  = removed?
+</span><span class=""> 1873: 
+</span><span class=""> 1874:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; SelectAllArrayref &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1875:     &Icirc;&#158;Database_Join        -- state unchanged
+</span><span class=""> 1876:     criteria? : CRITERIA
+</span><span class=""> 1877:     result!   : seq MERGED_ROW
+</span><span class=""> 1878:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1879:     &acirc;&#136;&#128; c : dom criteria? &acirc;&#128;&cent; c &acirc;&#136;&#136; dom col_db &acirc;&#136;&ordf; {join_col}
+</span><span class=""> 1880:     result! = joinedQuery(criteria?)
+</span><span class=""> 1881:     result! is sorted ascending by join_col value
+</span><span class=""> 1882: 
+</span><span class=""> 1883:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; AddDatabase &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1884:     &Icirc;&#148;Database_Join
+</span><span class=""> 1885:     db?         : DATABASE_ABSTRACTION
+</span><span class=""> 1886:     local_jc?   : NAME   -- optional; defaults to join_col
+</span><span class=""> 1887:     filter?     : CRITERIA   -- optional
+</span><span class=""> 1888:     remove?     : &acirc;&#132;&#153; NAME     -- optional
+</span><span class=""> 1889:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1890:     db?.isa(&#39;Database::Abstraction&#39;)
+</span><span class=""> 1891:     local_jc? &acirc;&#136;&#136; ran(db?.columns)
+</span><span class=""> 1892:     dbs&#39;      = dbs ^ &acirc;&#159;&uml;db?&acirc;&#159;&copy;
+</span><span class=""> 1893:     col_db&#39;   = col_db &acirc;&#138;&#149; { c &acirc;&#134;&brvbar; #dbs | c &acirc;&#136;&#136; ran(db?.columns) \ {local_jc?} \ removed }
+</span><span class=""> 1894:     filters&#39;  = if filter? &acirc;&#137;&nbsp; &acirc;&#136;&#133; then filters &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; filter?} else filters
+</span><span class=""> 1895:     join_map&#39; = if local_jc? &acirc;&#137;&nbsp; join_col
+</span><span class=""> 1896:                 then join_map &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; local_jc?}
+</span><span class=""> 1897:                 else join_map
+</span><span class=""> 1898:     removed&#39;  = removed &acirc;&#136;&ordf; remove?
+</span><span class=""> 1899: 
+</span><span class=""> 1900:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; RemoveColumn &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1901:     &Icirc;&#148;Database_Join
+</span><span class=""> 1902:     col? : NAME
+</span><span class=""> 1903:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1904:     col? &acirc;&#137;&nbsp; join_col
+</span><span class=""> 1905:     removed&#39;  = removed &acirc;&#136;&ordf; {col?}
+</span><span class=""> 1906:     col_db&#39;   = col_db \ {col?}
+</span><span class=""> 1907:     join_map&#39; = join_map
+</span><span class=""> 1908:     filters&#39;  = filters
+</span><span class=""> 1909:     dbs&#39;      = dbs
 </span><span class=""> 1910: 
-</span><span class=""> 1911: This module is provided as-is without any warranty.
+</span><span class=""> 1911: =head1 REPOSITORY
 </span><span class=""> 1912: 
-</span><span class=""> 1913: =head1 AUTHOR
+</span><span class=""> 1913: L&lt;https://github.com/nigelhorne/Database-Join&gt;
 </span><span class=""> 1914: 
-</span><span class=""> 1915: Nigel Horne, C&lt;&lt; &lt;njh@nigelhorne.com&gt; &gt;&gt;
+</span><span class=""> 1915: =head1 SUPPORT
 </span><span class=""> 1916: 
-</span><span class=""> 1917: =head1 LICENSE AND COPYRIGHT
+</span><span class=""> 1917: This module is provided as-is without any warranty.
 </span><span class=""> 1918: 
-</span><span class=""> 1919: Copyright (C) 2026 Nigel Horne.
+</span><span class=""> 1919: =head1 AUTHOR
 </span><span class=""> 1920: 
-</span><span class=""> 1921: Usage is subject to the GPL2 licence terms.
-</span><span class=""> 1922: If you use it, please let me know.
-</span><span class=""> 1923: 
-</span><span class=""> 1924: =cut
+</span><span class=""> 1921: Nigel Horne, C&lt;&lt; &lt;njh@nigelhorne.com&gt; &gt;&gt;
+</span><span class=""> 1922: 
+</span><span class=""> 1923: =head1 LICENSE AND COPYRIGHT
+</span><span class=""> 1924: 
+</span><span class=""> 1925: Copyright (C) 2026 Nigel Horne.
+</span><span class=""> 1926: 
+</span><span class=""> 1927: Usage is subject to the GPL2 licence terms.
+</span><span class=""> 1928: If you use it, please let me know.
+</span><span class=""> 1929: 
+</span><span class=""> 1930: =cut
 </span></pre>
 
 <script>
