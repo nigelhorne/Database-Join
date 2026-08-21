@@ -20,6 +20,15 @@ Version 0.01
         remove_columns => [ 'email', 'notes' ], # columns to hide (optional)
     );
 
+    # When the join key has different names in each database, use join_map.
+    # Here 'statecode' in the primary database corresponds to 'entry' in the second.
+    my $join2 = Database::Join->new(
+        databases   => [ $states, $capitals ],
+        join_column => 'statecode',
+        join_map    => { 1 => 'entry' },
+    );
+    my $rows = $join2->selectall_arrayref();  # rows use 'statecode' throughout
+
     # Same API as Database::Abstraction ---------------------------------
 
     # All rows from both databases merged on the join_column
@@ -91,7 +100,9 @@ _last_ database's value overwrites earlier ones in merged rows.
 
 - In-memory join only.  Not suitable for very large result sets.
 - The `query()` chained builder and `execute()` raw SQL are not supported.
-- Only equi-joins on a single shared column are implemented.
+- Only equi-joins on a single shared key column are implemented.  When the join
+key has different names across databases, use `join_map` to declare the
+per-database column name.
 - Sorting is performed on the `join_column` value only.  Per-column `ORDER BY`
 from the caller is not propagated.
 
@@ -105,6 +116,7 @@ from the caller is not propagated.
         databases      => [ $db1, $db2 ],          # required
         join_column    => 'entry',                  # optional, default 'entry'
         join_type      => 'left',                   # optional, default 'left'
+        join_map       => { 1 => 'local_col' },    # optional, per-db key aliases
         remove_columns => [ 'email', 'internal_id' ], # optional
         logger         => $log,                     # optional
         i18n           => $locale,                  # optional
@@ -129,6 +141,7 @@ to calling `remove_column` once per name after construction.
     join_column    => { type => 'string',   optional => 1, default => 'entry' }
     join_type      => { type => 'string',   optional => 1, default => 'left',
                         enum => ['inner','left','outer'] }
+    join_map       => { type => 'hashref',  optional => 1 }
     remove_columns => { type => 'arrayref', optional => 1 }
     logger         => { type => 'object',   optional => 1 }
     i18n           => { type => 'object',   optional => 1 }
@@ -149,6 +162,31 @@ to calling `remove_column` once per name after construction.
     #       self._join_type    = join_type
     #       self._removed_cols = set(remove_columns)
     #       self._col_db       = build_col_index(databases) \ remove_columns
+
+## join\_map — joining on differently-named columns
+
+When the join key column has a different name in each database, pass a
+`join_map` hashref to `new` (or a `join_column` argument to
+`add_database`).  Keys are zero-based database indices; values are the
+local column name for that database.  The canonical name used throughout
+the merged view is always `join_column`.
+
+    # 'statecode' in $states corresponds to 'entry' in $capitals
+    my $join = Database::Join->new(
+        databases   => [ $states, $capitals ],
+        join_column => 'statecode',
+        join_map    => { 1 => 'entry' },
+    );
+
+    # All rows use 'statecode' — 'entry' is never exposed
+    my $rows  = $join->selectall_arrayref();
+    my $row   = $join->fetchrow_hashref(statecode => 'CA');
+
+    # add_database equivalent: pass join_column for the incoming database
+    my $join2 = Database::Join->new(databases => [$states], join_column => 'statecode');
+    $join2->add_database($capitals, join_column => 'entry');
+
+Databases not mentioned in `join_map` use `join_column` directly.
 
 ## selectall\_arrayref
 
@@ -392,6 +430,12 @@ The method mirrors the parameter conventions of `new`:
 An optional `remove_columns` list hides specific columns from the newly
 added database in exactly the same way as calling `remove_column` for each.
 
+When the join key has a different name in the new database, pass
+`join_column => 'local_name'` to declare that alias:
+
+    # 'statecode' is the canonical join key; the new database calls it 'entry'
+    $join->add_database($capitals, join_column => 'entry');
+
 The logger is propagated to the new database if one was set on the join.
 
 ### API SPECIFICATION
@@ -399,6 +443,7 @@ The logger is propagated to the new database if one was set on the join.
 #### Input
 
     database       => { type => 'object',   required => 1 }
+    join_column    => { type => 'string',   optional => 1 }
     remove_columns => { type => 'arrayref', optional => 1 }
 
 #### Output
@@ -492,7 +537,7 @@ All messages that the module can croak or carp, and how to resolve them.
 
 # AUTHOR
 
-Nigel Horne, `<nigel.horne@gmail.com>`
+Nigel Horne, `<njh@nigelhorne.com>`
 
 # LICENSE AND COPYRIGHT
 
@@ -500,3 +545,11 @@ Copyright (C) 2026 Nigel Horne.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
+
+# POD ERRORS
+
+Hey! **The above document had some coding errors, which are explained below:**
+
+- Around line 277:
+
+    Non-ASCII character seen before =encoding in '—'. Assuming UTF-8
