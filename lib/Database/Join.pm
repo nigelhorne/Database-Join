@@ -31,7 +31,6 @@ Readonly::Hash my %MESSAGES => (
 	                         . 'use the owning database directly or rename the column',
 	error_remove_join_col	=> 'Cannot remove join_column "%s"; it is required for the join',
 	warn_unknown_column	=> 'Column "%s" is not present in any configured database; criterion ignored',
-	warn_empty_result	=> 'Cross-database join produced an empty result set',
 	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join; '
 	                            . 'call selectall_arrayref / fetchrow_hashref directly',
 	error_execute_unsupported => 'execute() raw SQL is not supported on Database::Join',
@@ -40,7 +39,7 @@ Readonly::Hash my %MESSAGES => (
 
 =head1 NAME
 
-Database::Join - Combined view across two or more databases
+Database::Join - Read-only combined view across two or more Database::Abstraction objects
 
 =head1 VERSION
 
@@ -48,122 +47,256 @@ Version 0.01
 
 =head1 SYNOPSIS
 
+B<Basic two-database join>
+
     use Database::Join;
 
-    # Each object is an already-instantiated Database::Abstraction subclass
+    # Step 1: create each component database the normal way
     my $customers = Database::Customers->new(directory => '/data');
     my $loyalty   = Database::Loyalty->new(directory  => '/data');
 
+    # Step 2: combine them on the shared key column 'entry'
     my $join = Database::Join->new(
-        databases      => [ $customers, $loyalty ],
-        join_column    => 'entry',              # shared key column (default: 'entry')
-        remove_columns => [ 'email', 'notes' ], # columns to hide (optional)
+        databases   => [ $customers, $loyalty ],
+        join_column => 'entry',
     );
 
-    # When the join key has different names in each database, use join_map.
-    # $cities  (index 0) has a column called 'statecode'  - matches join_column, no entry needed.
-    # $stnames (index 1) has a column called 'entry'      - different name, so declare it.
-    my $join2 = Database::Join->new(
+    # Step 3: query exactly as you would a single Database::Abstraction object
+    my $all_rows  = $join->selectall_arrayref();
+    my $vip_rows  = $join->selectall_arrayref(tier => 'gold');
+    my $one_row   = $join->fetchrow_hashref(entry => 'C001');
+    my $total     = $join->count();
+    my $col_names = $join->columns();
+
+B<Hiding internal columns>
+
+    my $join = Database::Join->new(
+        databases      => [ $customers, $loyalty ],
+        join_column    => 'entry',
+        remove_columns => [ 'internal_id', 'audit_ts' ],
+    );
+    # 'internal_id' and 'audit_ts' never appear in results or columns()
+
+B<join_map: when the key column has different names in each database>
+
+    # $cities  (index 0) has a column called 'statecode' -- matches join_column
+    # $stnames (index 1) has a column called 'entry'     -- different name
+
+    my $join = Database::Join->new(
         databases   => [ $cities,  $stnames ],
         #                index 0   index 1
         join_column => 'statecode',
-        join_map    => { 1 => 'entry' },   # index 1's local name for the join key
+        join_map    => { 1 => 'entry' },  # index 1 calls its join key 'entry'
     );
-    my $rows = $join2->selectall_arrayref();  # every row uses 'statecode'; 'entry' never appears
 
-    # Same API as Database::Abstraction ---------------------------------
-
-    # All rows from both databases merged on the join_column
+    # All returned rows use 'statecode'; 'entry' is never exposed
     my $rows = $join->selectall_arrayref();
 
-    # Criteria on either database work transparently
-    my $vip  = $join->selectall_arrayref(tier => 'gold');
-    my $row  = $join->fetchrow_hashref(entry => 'C001');
+B<filters: permanently restrict a database's visible rows>
 
-    # AUTOLOAD column shortcut
+    # Only show orders placed more than 60 days ago, without repeating
+    # the criterion on every query call.
+    my $join = Database::Join->new(
+        databases   => [ $customers, $orders ],
+        join_column => 'entry',
+        filters     => { 1 => { age_days => { '>' => 60 } } },
+    );
+
+    my $rows = $join->selectall_arrayref();                 # all old orders
+    my $vip  = $join->selectall_arrayref(tier => 'gold');   # old + gold tier
+
+B<Inner and outer join types>
+
+    my $inner = Database::Join->new(
+        databases   => [ $customers, $loyalty ],
+        join_column => 'entry',
+        join_type   => 'inner',   # only keys present in BOTH databases
+    );
+
+    my $outer = Database::Join->new(
+        databases   => [ $customers, $loyalty ],
+        join_column => 'entry',
+        join_type   => 'outer',   # all keys from EITHER database
+    );
+
+B<Building the view incrementally with add_database>
+
+    my $join = Database::Join->new(
+        databases   => [ $customers ],
+        join_column => 'entry',
+    );
+
+    $join->add_database($loyalty)
+         ->add_database($scores, remove_columns => ['raw_score']);
+
+B<AUTOLOAD column shortcut>
+
+    # Returns the 'name' value for entry 'C001' (scalar context)
     my $name = $join->name(entry => 'C001');
 
-    # Introspection (hidden columns are absent)
-    my $all_cols = $join->columns();   # union of all databases' columns
-    my $schema   = $join->schema();    # merged schema
-
-    # Add another database to the view (chainable, same API as new)
-    $join->add_database($scores)
-         ->add_database($db4, remove_columns => ['audit_ts']);
-
-    # Remove a column after construction
-    $join->remove_column('internal_id');
+    # Returns all 'tier' values (list context)
+    my @tiers = $join->tier();
 
 =head1 DESCRIPTION
 
 C<Database::Join> merges two or more L<Database::Abstraction> objects into a
-single logical view.  Each component database is queried independently through
-its own C<Database::Abstraction> interface; the results are then combined
-in Perl memory using a shared key column (C<join_column>).
+single logical, read-only view.  Each component database is queried
+independently through its own C<Database::Abstraction> interface.  The results
+are combined in Perl memory using a shared key column (C<join_column>).
 
 The module exposes the same read-only API as C<Database::Abstraction>:
 C<selectall_arrayref>, C<selectall_array>, C<fetchrow_hashref>, C<count>,
-C<columns>, C<schema>, C<updated>, and the C<AUTOLOAD> column shortcut.
+C<columns>, C<schema>, C<updated>, C<set_logger>, and the AUTOLOAD column
+shortcut.  Callers do not need to know how many underlying databases are
+involved.
+
+Think of it as a virtual database table that is assembled on demand from
+several real tables, one per component database.
 
 =head2 Join semantics
 
-The C<join_type> parameter controls what happens when a key value exists in
-some databases but not all:
+The C<join_type> parameter controls what happens when a particular key value
+exists in some component databases but not all:
 
 =over 4
 
-=item C<left> (default)
+=item C<left> (the default)
 
 All rows from the I<primary> (first) database are returned.  Columns from
-subsequent databases are filled in where a matching row is found and omitted
-where there is no match.
+subsequent databases are included where a matching row is found, and simply
+absent from the hashref where there is no match.  If you are familiar with
+SQL, this is a LEFT OUTER JOIN on the first table.
 
 =item C<inner>
 
 Only rows whose join-column value is present in I<every> component database
-are returned.
+are returned.  This is equivalent to a SQL INNER JOIN.
 
 =item C<outer>
 
-Every join-column value found in I<any> database is returned.  Missing columns
-from databases that lack that key are simply absent from the merged row.
+Every join-column value found in I<any> component database is returned.
+Columns from databases that do not have that key value are absent from the
+merged row.  This is a FULL OUTER JOIN.
 
 =back
 
-=head2 Column ownership
+B<Important override rule:> whenever you pass a query criterion for a column
+that belongs to a secondary database, that database automatically acts as an
+inner-join partner for that query only -- regardless of C<join_type>.  This
+gives WHERE-clause semantics.  For example, if you have a LEFT join but query
+C<< tier => 'gold' >> on a secondary database, only rows whose secondary entry
+has tier = 'gold' are returned (rows with no secondary entry are excluded, just
+as a WHERE clause would exclude them).
 
-At construction time C<Database::Join> calls C<columns()> on each database to
-build an internal column-to-database index.  When criteria are passed to a
-query method, each criterion is routed to the database that owns the column.
+=head2 Column ownership and routing
 
-The C<join_column> itself is treated specially: criteria on it are broadcast
-to I<all> databases so that each database fetches only the relevant rows.
+At construction time, C<Database::Join> calls C<columns()> on each component
+database and builds an internal index that maps every column name to the
+database that owns it.
+
+When you pass criteria to a query method, each key-value pair is automatically
+routed to the right database.  You never need to say which database a column
+belongs to.
+
+The C<join_column> is special: criteria on it are broadcast to I<all>
+databases so that each database fetches only the relevant rows before the
+in-memory merge.
 
 When the same non-join column name exists in more than one database, the
-I<last> database's value overwrites earlier ones in merged rows.
+I<last> database in the C<databases> array wins: its value overwrites earlier
+ones in merged rows.
 
 =head1 LIMITATIONS
 
 =over 4
 
-=item *
+=item In-memory join only
 
-In-memory join only.  Not suitable for very large result sets.
+All matching rows from every component database are fetched into memory before
+the merge.  This is not suitable for very large result sets.
 
-=item *
+=item No chained builder or raw SQL
 
-The C<query()> chained builder and C<execute()> raw SQL are not supported.
+C<query()> and C<execute()> are not implemented.  Use C<selectall_arrayref>
+or C<fetchrow_hashref> instead.
 
-=item *
+=item Single-column equi-join only
 
-Only equi-joins on a single shared key column are implemented.  When the join
-key has different names across databases, use C<join_map> to declare the
-per-database column name.
+Joining on more than one column simultaneously, or on expressions, is not
+supported.  When the join key has different names in different databases,
+use C<join_map> to declare each database's local column name.
 
-=item *
+=item Sort order
 
-Sorting is performed on the C<join_column> value only.  Per-column C<ORDER BY>
-from the caller is not propagated.
+Results are sorted by the C<join_column> value only.  Caller-specified
+C<ORDER BY> is not propagated to the component databases.
+
+=item count() fetches all rows
+
+C<count()> executes the full join and counts the resulting rows in Perl.  It
+does not push a C<COUNT(*)> query down to the databases.
+
+=back
+
+=head1 COMMON PITFALLS
+
+=over 4
+
+=item The join_column must exist in every component database
+
+If even one database is missing the join key column, C<new()> (or
+C<add_database()>) will C<croak> immediately.  Use C<join_map> when the
+column has a different local name in some databases.
+
+=item Criteria on a removed column are silently dropped
+
+If you call C<remove_column('tier')> and later query
+C<< selectall_arrayref(tier => 'gold') >>, the criterion is ignored (with a
+C<carp> warning) and all rows are returned.  Always pass criteria before
+removing columns, or restructure your code to avoid this.
+
+=item You cannot remove the join column
+
+C<< $join->remove_column($join->join_column) >> will C<croak>.  The join key
+is required for the merge to work.
+
+=item Left join does not guarantee all columns are populated
+
+Under a LEFT join, rows from the primary database that have no matching row
+in a secondary database will be returned with I<no keys> from that secondary
+database.  Accessing C<< $row->{score} >> on such a row returns C<undef> --
+not zero, not an empty string.  Always test C<defined $row->{score}> rather
+than just C<$row->{score}> when the secondary match is optional.
+
+=item Filters act as inner-join partners
+
+Any database that has a C<filters> entry is promoted to an inner-join partner,
+regardless of C<join_type>.  A row whose join-key value does not appear in
+the filtered database's result is removed from the merged output entirely, not
+merely missing its secondary columns.  This is intentional but can be
+surprising if you expected LEFT join semantics.
+
+=item Criteria-merging replaces scalar filters
+
+When both a base filter and a query criterion target the same column, and both
+are operator hashrefs (e.g. C<< { '>' => 60 } >>), the operators are combined
+(AND semantics).  But if the query criterion is a plain scalar (e.g.
+C<< score => 75 >>), it I<replaces> the base filter for that column entirely --
+the base filter is ignored for that query.
+
+=item AUTOLOAD sees the full merged join when filters or join_map are active
+
+When either C<filters> or C<join_map> is in effect, the AUTOLOAD shortcut
+(C<< $join->columnname(...) >>) runs the full join query rather than
+delegating directly to the owning database.  This is necessary for correctness
+but means the result respects all active filters and join-key translations,
+which may differ from what the owning database would return on its own.
+
+=item Duplicate column names: last database wins
+
+When two component databases each have a column called C<notes>, the second
+database's value silently overwrites the first in every merged row.  Use
+C<remove_columns> (or C<remove_column>) to drop the unwanted duplicate.
 
 =back
 
@@ -174,24 +307,27 @@ from the caller is not propagated.
 =head3 SYNOPSIS
 
     my $join = Database::Join->new(
-        databases      => [ $db1, $db2 ],          # required
-        join_column    => 'entry',                  # optional, default 'entry'
-        join_type      => 'left',                   # optional, default 'left'
-        join_map       => { 1 => 'local_col' },    # optional - see join_map section below
-        remove_columns => [ 'email', 'internal_id' ], # optional
-        logger         => $log,                     # optional
-        i18n           => $locale,                  # optional
+        databases      => [ $db1, $db2 ],
+        join_column    => 'entry',
+        join_type      => 'left',
+        join_map       => { 1 => 'local_col' },
+        filters        => { 1 => { score => { '>' => 60 } } },
+        remove_columns => [ 'email', 'internal_id' ],
+        logger         => $log,
+        i18n           => $locale,
     );
 
 =head3 DESCRIPTION
 
-Constructs and returns a new C<Database::Join> object.  Each element of
-C<databases> must be an instantiated subclass of C<Database::Abstraction>.
-The C<join_column> must be present in all component databases.
+Constructs and returns a new C<Database::Join> object.
 
-Columns listed in C<remove_columns> are hidden from the merged view: they
-do not appear in C<columns()>, C<schema()>, or any returned row hashref,
-and criteria that reference them are silently dropped.  This is equivalent
+Each element of C<databases> must be an already-instantiated subclass of
+C<Database::Abstraction>.  The constructor calls C<columns()> on every
+database to build an internal column-routing table and verifies that
+C<join_column> (or its local alias from C<join_map>) is present in each one.
+
+Columns listed in C<remove_columns> are hidden immediately: they do not appear
+in C<columns()>, C<schema()>, or any returned row hashref.  This is equivalent
 to calling C<remove_column> once per name after construction.
 
 =head3 API SPECIFICATION
@@ -199,24 +335,71 @@ to calling C<remove_column> once per name after construction.
 =head4 Input
 
     databases      => { type => 'arrayref', required => 1 }
+                      # One or more Database::Abstraction subclass objects.
+
     join_column    => { type => 'string',   optional => 1, default => 'entry' }
+                      # The column name shared by all databases (the join key).
+
     join_type      => { type => 'string',   optional => 1, default => 'left',
-                        enum => ['inner','left','outer'] }
+                        enum => ['inner', 'left', 'outer'] }
+                      # Controls which keys appear in the result when not all
+                      # databases share the same key values.
+
     join_map       => { type => 'hashref',  optional => 1 }
-                      # Keys are zero-based indices into 'databases';
-                      # values are the local column name for the join key
-                      # in that database.  See the join_map section below.
+                      # Zero-based database index => local column name.
+                      # See the join_map section for full details.
+
     filters        => { type => 'hashref',  optional => 1 }
-                      # Keys are zero-based indices into 'databases';
-                      # values are criteria hashrefs applied permanently to
-                      # that database.  See the filters section below.
+                      # Zero-based database index => criteria hashref.
+                      # Permanent row restrictions on individual databases.
+                      # See the filters section for full details.
+
     remove_columns => { type => 'arrayref', optional => 1 }
+                      # Column names to hide from the merged view.
+
     logger         => { type => 'object',   optional => 1 }
+                      # Logger object propagated to all component databases.
+
     i18n           => { type => 'object',   optional => 1 }
+                      # Localisation object with a translate($key, @args) method.
 
 =head4 Output
 
-    Database::Join blessed object reference.
+    A blessed Database::Join object.
+
+=head3 EXAMPLE
+
+    # Customers database: entry | name | email
+    # Loyalty   database: entry | tier | points
+
+    my $join = Database::Join->new(
+        databases      => [ $customers, $loyalty ],
+        join_column    => 'entry',
+        join_type      => 'inner',            # only customers who also have loyalty records
+        remove_columns => [ 'email' ],        # hide PII from query results
+        filters        => { 1 => { points => { '>' => 0 } } }, # ignore zero-point records
+    );
+
+    my $rows = $join->selectall_arrayref();
+    # Each row: { entry => ..., name => ..., tier => ..., points => ... }
+    # 'email' is absent. Zero-point loyalty records are excluded.
+
+=head3 PSEUDOCODE
+
+    validate all parameters with validate_strict
+    croak if databases is empty
+    croak if any element of databases is not a Database::Abstraction subclass
+    bless the object with all fields initialised
+    call _build_col_index to map every column to its owning database
+        and verify join_column presence in each database
+    for each column in remove_columns: call remove_column
+    return the new object
+
+=head3 MESSAGES
+
+    error_no_databases     -- databases arrayref was empty
+    error_invalid_db       -- an element of databases is not a D::A subclass
+    error_join_col_missing -- join_column (or its join_map alias) not found in a database
 
 =cut
 
@@ -279,106 +462,170 @@ sub new {
 =head2 join_map - joining on differently-named columns
 
 By default every component database must have a column whose name matches
-C<join_column>.  If a database calls that column something different, declare
-the mapping with C<join_map>.
+C<join_column>.  If a database uses a different local name for the join key,
+declare the mapping with C<join_map>.
 
 C<join_map> is a hashref.  Each B<key> is the B<zero-based position> of a
 database in the C<databases> array (0 = first, 1 = second, and so on).  Each
-B<value> is the name that B<that database> uses for the join key.  Databases
-not listed in C<join_map> are assumed to already have a column named
-C<join_column>.
+B<value> is the name that B<that particular database> uses for the join key.
 
-Throughout the merged view the join key is always referred to by
-C<join_column>; the local alias is never exposed in returned rows, in
-C<columns()>, or in C<schema()>.
+Databases not listed in C<join_map> are assumed to already have a column
+named C<join_column> and need no entry.
 
-B<Example> - cities table uses C<statecode>; state-names table uses C<entry>:
+Throughout the merged view the join key is I<always> referred to by the name
+given in C<join_column>.  The local alias is never exposed in returned rows,
+in C<columns()>, or in C<schema()>.
 
-    #                       index 0     index 1
-    my @databases = (      $cities,    $stnames  );
-    #  column name:       'statecode'  'entry'
-    #  join_column:       'statecode'  - already matches, no map needed
-    #                                  - different name, declare it:
+B<When do you need join_map?>
+
+You need C<join_map> when you have two tables like:
+
+    cities table  : entry (the city name) | statecode
+    stnames table : entry (the state code) | state
+
+Here you want to join cities.statecode to stnames.entry.  You choose
+C<< join_column => 'statecode' >> as the canonical name, but stnames calls
+that same concept C<entry>, so you declare:
+
+    join_map => { 1 => 'entry' }  # stnames (index 1) calls it 'entry'
+
+B<Example>
+
+    #                        index 0     index 1
+    my @databases = (       $cities,    $stnames  );
+    #  join key column:    'statecode'  'entry'
+    #  join_column:        'statecode' (chosen canonical name)
+    #  stnames differs, so declare the alias:
 
     my $join = Database::Join->new(
         databases   => \@databases,
         join_column => 'statecode',
-        join_map    => { 1 => 'entry' },   # $stnames (index 1) calls it 'entry'
+        join_map    => { 1 => 'entry' },
     );
 
-    my $rows = $join->selectall_arrayref();           # rows use 'statecode'
-    my $row  = $join->fetchrow_hashref(statecode => 'CA');
+    my $rows = $join->selectall_arrayref();
+    # Each $row has keys: entry (city), statecode, state
+    # 'entry' from stnames is never exposed directly.
 
-If you are adding a database with C<add_database> instead of listing it in
-the constructor, pass C<join_column> to name the incoming database's local
-column:
+    my $row = $join->fetchrow_hashref(statecode => 'CA');
 
-    my $join2 = Database::Join->new(databases => [$cities], join_column => 'statecode');
-    $join2->add_database($stnames, join_column => 'entry');
+B<Using add_database instead>
 
-This is exactly equivalent to using C<join_map => { 1 => 'entry' }> in the
-constructor.
+If you build the join incrementally with C<add_database>, pass
+C<join_column> directly to that call instead of using C<join_map>:
+
+    my $join = Database::Join->new(
+        databases   => [ $cities ],
+        join_column => 'statecode',
+    );
+    $join->add_database($stnames, join_column => 'entry');
+
+This is exactly equivalent to the C<join_map> form above.
+
+=head3 FORMAL SPECIFICATION
+
+    ─── JoinMap ───────────────────────────────────────────────────────
+    join_map : ℕ ⇸ NAME
+    dbs      : seq DATABASE_ABSTRACTION
+    join_col : NAME
+    ───────────────────────────────────────────────────────────────────
+    dom join_map ⊆ 0 ‥ (#dbs - 1)
+    ∀ i : dom join_map • (join_map i) ∈ ran(dbs i).columns
+    ∀ i : 0 ‥ (#dbs - 1) \ dom join_map •
+        join_col ∈ ran(dbs i).columns
+
+    -- Resolution of the local join-key name for database i:
+    local_jc(i) == if i ∈ dom join_map then join_map(i) else join_col
+
+    -- The canonical name is always join_col; local_jc is never exposed.
 
 =head2 filters - permanent per-database row filters
 
-Normally every row in a component database is a candidate for the merged view.
-C<filters> lets you restrict a database to a subset of its rows permanently,
-without repeating the criterion on every query call.  The typical use case is
-to exclude stale, inactive, or out-of-range rows from the logical view
-altogether so callers never see them.
+C<filters> lets you restrict a component database to a subset of its rows
+permanently, without repeating the criterion on every query call.
+
+Think of it as telling the join: "whenever you query this database, always
+add these extra conditions".  Callers never need to specify the restriction
+themselves and can never accidentally omit it.
 
 C<filters> is a hashref.  Each B<key> is the B<zero-based position> of a
 database in the C<databases> array (same numbering as C<join_map>).  Each
 B<value> is a criteria hashref in the same format as C<selectall_arrayref>
-accepts: plain scalars, operator hashrefs (C<< { '>' => 60 } >>), or any
-other form C<Database::Abstraction> supports.
+accepts.
 
-B<Key-set semantics>: a filtered database always acts as an inner-join
-partner for key-set resolution, regardless of C<join_type>.  Any join-key
-value not present in the filtered result is excluded from the merged output
-entirely.  This ensures that the filter reduces the view rather than merely
-hiding secondary-database columns.
+B<Key-set semantics>
 
-B<Criteria merging>: when a query call also supplies a criterion for a column
-that already has a base filter, the two are combined:
+A filtered database always acts as an inner-join partner, regardless of the
+C<join_type> setting.  Any join-key value that does not pass the filter is
+excluded from the merged output entirely -- not just missing its secondary
+columns.  This ensures the filter genuinely restricts the view rather than
+simply hiding a few fields.
+
+B<Criteria merging>
+
+When a query call also passes a criterion for a column that already has a base
+filter, the two constraints are combined:
 
 =over 4
 
 =item *
 
-When both the base filter and the query criterion are operator hashrefs
+When both the base filter value and the query criterion are operator hashrefs
 (e.g. C<< { '>' => 60 } >> and C<< { '<' => 365 } >>), their operators are
-merged so that I<both> constraints apply (AND semantics).
+merged: I<both> constraints apply simultaneously (AND semantics).
 
 =item *
 
 When either value is a plain scalar, or the operators conflict, the
-query-time criterion wins and the base filter for that column is ignored.
+query-time criterion wins and the base filter for that column is ignored for
+that one call.
 
 =back
 
-B<Example> - only show orders placed more than 60 days ago:
+B<Example -- only show orders placed more than 60 days ago>
 
-    #                      index 0       index 1
     my $join = Database::Join->new(
-        databases   => [ $customers,  $orders ],
+        databases   => [ $customers, $orders ],
         join_column => 'entry',
         filters     => { 1 => { age_days => { '>' => 60 } } },
     );
 
-    # Every subsequent query sees only old orders - no criterion needed at call site
+    # Every query automatically sees only old orders
     my $rows = $join->selectall_arrayref();
 
-    # Query criteria layer on top of the base filter automatically
+    # Additional criteria layer on top -- gold tier AND old order
     my $vip  = $join->selectall_arrayref(tier => 'gold');
 
     # Range intersection: age_days > 60 AND age_days < 365
-    my $recent_old = $join->selectall_arrayref(age_days => { '<' => 365 });
+    my $mid  = $join->selectall_arrayref(age_days => { '<' => 365 });
 
 When using C<add_database>, pass C<filter> (singular) to set the base
 criteria for the new database:
 
     $join->add_database($orders, filter => { age_days => { '>' => 60 } });
+
+=head3 FORMAL SPECIFICATION
+
+    ─── Filters ─────────────────────────────────────────────────────
+    filters  : ℕ ⇸ CRITERIA
+    dbs      : seq DATABASE_ABSTRACTION
+    ─────────────────────────────────────────────────────────────────
+    dom filters ⊆ 0 ‥ (#dbs - 1)
+
+    -- A filtered database i always contributes to key-set intersection.
+    -- For each query with criteria C:
+    effective_criteria(i, C) ==
+        if i ∈ dom filters
+        then merge_criteria(filters(i), partition(C, i))
+        else partition(C, i)
+
+    -- Criteria merging (AND semantics for operator hashrefs):
+    merge_criteria(base, extra) ==
+        { col : dom base ∪ dom extra •
+            if col ∈ dom base ∩ dom extra
+               ∧ base(col) ∈ HASHREF ∧ extra(col) ∈ HASHREF
+            then col ↦ base(col) ∪ extra(col)   -- operator union
+            else col ↦ (if col ∈ dom extra then extra(col) else base(col)) }
 
 =head2 selectall_arrayref
 
@@ -387,30 +634,65 @@ criteria for the new database:
     my $rows = $join->selectall_arrayref();
     my $rows = $join->selectall_arrayref(tier  => 'gold');
     my $rows = $join->selectall_arrayref(score => { '>' => 80 });
-    my $rows = $join->selectall_arrayref(entry => 'C001');
+    my $rows = $join->selectall_arrayref('C001');  # positional: entry => 'C001'
 
 =head3 DESCRIPTION
 
 Returns an arrayref of hashrefs representing the merged view of all component
-databases, filtered by any supplied criteria.  Criteria for columns that exist
-in different databases are partitioned and evaluated independently; results are
-joined in memory on C<join_column>.
+databases, optionally filtered by the given criteria.
+
+Criteria for columns that live in different databases are routed
+automatically: each database is queried with only the criteria that apply to
+its own columns.  The results are combined in memory using C<join_column>.
 
 Accepts the same criteria syntax as C<Database::Abstraction::selectall_arrayref>.
+A single plain scalar argument is interpreted as the C<join_column> value
+(equivalent to C<< entry => 'C001' >> when C<join_column> is C<'entry'>).
 
 =head3 API SPECIFICATION
 
 =head4 Input
 
-    Criteria: any flat key-value pairs accepted by Database::Abstraction,
-    where keys are column names and values are plain scalars, comparison
-    hashrefs, or set operators.  The join_column may be passed positionally
-    when it is the sole argument and equals 'entry'.
+    Calling conventions (in order of precedence):
+      1. No arguments             -- returns all rows
+      2. One plain scalar         -- shorthand for join_column => $scalar
+      3. Key-value pairs or
+         a criteria hashref       -- routed per-database
+
+    Values may be:
+      Plain scalar                -- exact match
+      Hashref of operators        -- e.g. { '>' => 80 }
 
 =head4 Output
 
-    Arrayref of hashrefs, one per unique join_column value, sorted
-    ascending by join_column.
+    Arrayref of hashrefs; one hashref per qualifying merged row,
+    sorted ascending by join_column value.
+    Returns a reference to an empty array when no rows match.
+
+=head3 EXAMPLE
+
+    # All rows from both databases
+    my $all = $join->selectall_arrayref();
+
+    # Only rows where the 'tier' column (from the loyalty database)
+    # equals 'gold' -- the criterion is routed to the right database
+    my $vip = $join->selectall_arrayref(tier => 'gold');
+
+    # Operator hashref: score > 80
+    my $high = $join->selectall_arrayref(score => { '>' => 80 });
+
+    # Access each merged row
+    for my $row (@{$vip}) {
+        printf "%-10s tier=%-8s score=%d\n",
+            $row->{entry}, $row->{tier}, $row->{score} // 0;
+    }
+
+=head3 FORMAL SPECIFICATION
+
+    selectall_arrayref : CRITERIA → seq MERGED_ROW
+    pre:  ∀ col : dom criteria • col ∈ dom self._col_db ∪ {self._join_col}
+    post: result = _joined_query(criteria)
+          result is sorted ascending by join_col value
 
 =cut
 
@@ -423,26 +705,46 @@ sub selectall_arrayref {
 
 =head3 SYNOPSIS
 
-    my @rows = $join->selectall_array(status => 'active');
+    my @rows = $join->selectall_array(tier => 'gold');
 
-    # Scalar context applies LIMIT 1 (first match only)
-    my $row  = $join->selectall_array(entry => 'C001');
+    # Scalar context: only the first matching row
+    my $first = $join->selectall_array(entry => 'C001');
 
 =head3 DESCRIPTION
 
-In list context returns a list of hashrefs (same rows as C<selectall_arrayref>).
-In scalar context applies an implicit limit and returns only the first match.
+In list context returns a list of merged hashrefs -- the same rows that
+C<selectall_arrayref> would return, just as a flat list rather than an
+arrayref.
+
+In scalar context returns only the first matching hashref (or C<undef> if
+nothing matches).
 
 =head3 API SPECIFICATION
 
 =head4 Input
 
-    Same criteria syntax as selectall_arrayref.
+    Same as selectall_arrayref.
 
 =head4 Output
 
-    List context:   list of hashrefs.
+    List context:   list of hashrefs (may be empty).
     Scalar context: single hashref or undef.
+
+=head3 EXAMPLE
+
+    my @all = $join->selectall_array();
+    print scalar @all, " rows\n";
+
+    # First gold-tier customer only
+    my $first_vip = $join->selectall_array(tier => 'gold');
+    print $first_vip->{name}, "\n" if defined $first_vip;
+
+=head3 FORMAL SPECIFICATION
+
+    selectall_array : CRITERIA → seq MERGED_ROW | MERGED_ROW?
+    pre:  same as selectall_arrayref
+    post: wantarray  => result = @{ selectall_arrayref(criteria) }
+          !wantarray => result = selectall_arrayref(criteria)[0]  (or undef)
 
 =cut
 
@@ -457,25 +759,42 @@ sub selectall_array {
 =head3 SYNOPSIS
 
     my $row = $join->fetchrow_hashref(entry => 'C001');
-    my $row = $join->fetchrow_hashref('C001');   # when join_column is 'entry'
+    my $row = $join->fetchrow_hashref('C001');   # positional shorthand
 
 =head3 DESCRIPTION
 
-Returns a single merged hashref for the first row matching the criteria,
-or C<undef> when there is no match.  Equivalent to calling
-C<selectall_arrayref> and taking the first element.
+Returns a single merged hashref for the first row matching the given
+criteria, or C<undef> when nothing matches.
 
-Accepts the same criteria as C<selectall_arrayref>.
+Equivalent to calling C<selectall_arrayref> and taking only the first element.
+All the same criteria conventions apply.
 
 =head3 API SPECIFICATION
 
 =head4 Input
 
-    Same criteria syntax as selectall_arrayref.
+    Same as selectall_arrayref.
 
 =head4 Output
 
-    Hashref, or undef.
+    Hashref, or undef when no row matches.
+
+=head3 EXAMPLE
+
+    my $row = $join->fetchrow_hashref(entry => 'C001');
+    if (defined $row) {
+        print "Name: $row->{name}, Tier: $row->{tier}\n";
+    } else {
+        print "No record for C001\n";
+    }
+
+    # Positional: works when join_column is 'entry'
+    my $row2 = $join->fetchrow_hashref('C001');
+
+=head3 FORMAL SPECIFICATION
+
+    fetchrow_hashref : CRITERIA → MERGED_ROW?
+    post: result = selectall_arrayref(criteria)[0]  (or undef if empty)
 
 =cut
 
@@ -495,8 +814,9 @@ sub fetchrow_hashref {
 =head3 DESCRIPTION
 
 Returns the number of merged rows that satisfy the given criteria.
-Implemented by running the full join and counting the result; use with care
-on large datasets.
+
+The full join is performed and the resulting rows are counted in Perl; no
+C<COUNT(*)> is pushed down to the component databases.
 
 =head3 API SPECIFICATION
 
@@ -507,6 +827,20 @@ on large datasets.
 =head4 Output
 
     Non-negative integer.
+
+=head3 EXAMPLE
+
+    my $total   = $join->count();
+    my $gold    = $join->count(tier => 'gold');
+    my $high    = $join->count(score => { '>' => 90 });
+
+    printf "%d total, %d gold-tier, %d high-scorers\n",
+        $total, $gold, $high;
+
+=head3 FORMAL SPECIFICATION
+
+    count : CRITERIA → ℕ
+    post: result = #selectall_arrayref(criteria)
 
 =cut
 
@@ -524,9 +858,14 @@ sub count {
 
 =head3 DESCRIPTION
 
-Returns an arrayref of all column names present across all component
-databases, deduplicated and sorted alphabetically.  The C<join_column>
-appears exactly once regardless of how many databases contain it.
+Returns an arrayref of all column names visible in the merged view,
+deduplicated and sorted alphabetically.
+
+The C<join_column> appears exactly once, even if it exists under different
+local names in some databases (see C<join_map>).  Columns that have been
+hidden with C<remove_column> or C<remove_columns> do not appear.
+
+The result is memoised: repeated calls are cheap.
 
 =head3 API SPECIFICATION
 
@@ -536,7 +875,22 @@ appears exactly once regardless of how many databases contain it.
 
 =head4 Output
 
-    Arrayref of column name strings.
+    Arrayref of column name strings, sorted alphabetically.
+
+=head3 EXAMPLE
+
+    my $cols = $join->columns();
+    print join(', ', @{$cols}), "\n";
+    # e.g. "entry, name, score, tier"
+
+=head3 FORMAL SPECIFICATION
+
+    columns : → seq NAME
+    post: result = sort(
+              (⋃ { i : 0 ‥ #dbs-1 • ran(dbs(i).columns) }
+               \ dom removed_cols
+               \ { local_jc(i) | i ∈ dom join_map ∧ local_jc(i) ≠ join_col })
+          )
 
 =cut
 
@@ -573,13 +927,16 @@ sub columns {
 
 =head3 DESCRIPTION
 
-Returns a merged schema hashref for all columns across all component
-databases.  Each key is a column name; each value follows the
-C<Database::Abstraction::schema()> contract:
-C<{ type, nullable, default, pk }>.
+Returns a merged schema hashref for all visible columns across all component
+databases.  Each key is a column name; each value is the schema metadata
+hashref returned by C<Database::Abstraction::schema()> for that column
+(typically C<{ type, nullable, default, pk }>).
 
 When the same column name appears in more than one database the I<last>
-database's metadata is used.
+database's metadata is used.  Columns hidden with C<remove_column> are not
+included.
+
+The result is memoised.
 
 =head3 API SPECIFICATION
 
@@ -589,7 +946,23 @@ database's metadata is used.
 
 =head4 Output
 
-    Hashref: column_name => { type, nullable, default, pk }.
+    Hashref: column_name => { type => ..., nullable => ..., default => ..., pk => ... }.
+
+=head3 EXAMPLE
+
+    my $schema = $join->schema();
+    for my $col (sort keys %{$schema}) {
+        my $info = $schema->{$col};
+        printf "%-15s type=%-10s nullable=%s\n",
+            $col, $info->{type}, $info->{nullable} ? 'yes' : 'no';
+    }
+
+=head3 FORMAL SPECIFICATION
+
+    schema : → NAME ⇸ SCHEMA_INFO
+    post: dom(result) = ran(columns())
+          ∀ col : dom(result) •
+              result(col) = (last database containing col).schema()(col)
 
 =cut
 
@@ -625,8 +998,12 @@ sub schema {
 
 =head3 DESCRIPTION
 
-Returns the Unix timestamp of the most recent update across all component
-databases (i.e. the maximum of all individual C<updated()> return values).
+Returns the Unix timestamp of the most recent modification across all
+component databases.  This is the maximum of all individual C<updated()>
+return values.
+
+Use this to implement simple cache-invalidation logic: if C<updated()>
+has advanced since your last snapshot, re-query.
 
 =head3 API SPECIFICATION
 
@@ -636,7 +1013,20 @@ databases (i.e. the maximum of all individual C<updated()> return values).
 
 =head4 Output
 
-    Unix timestamp (integer).
+    Unix timestamp (positive integer).
+
+=head3 EXAMPLE
+
+    my $last_modified = $join->updated();
+    if ($last_modified > $my_cache_timestamp) {
+        $my_cache = $join->selectall_arrayref();
+        $my_cache_timestamp = $last_modified;
+    }
+
+=head3 FORMAL SPECIFICATION
+
+    updated : → ℕ
+    post: result = max { i : 0 ‥ #dbs-1 • dbs(i).updated() }
 
 =cut
 
@@ -655,18 +1045,27 @@ sub updated {
 
 =head3 DESCRIPTION
 
-Propagates a new logger object to all component databases and stores it
-locally for C<Database::Join>'s own diagnostic output.
+Attaches a new logger object to the join and propagates it to every component
+database.  The logger is used for diagnostic output by all component databases.
 
 =head3 API SPECIFICATION
 
 =head4 Input
 
-    $log    Positional: a logger object (required)
+    $log    Positional: a logger object (required).
+            Must support whatever interface Database::Abstraction expects.
 
 =head4 Output
 
-    Returns $self for chaining.
+    Returns C<$self> for method chaining.
+
+=head3 EXAMPLE
+
+    use Log::Any qw($log);
+
+    my $join = Database::Join->new(databases => [$db1, $db2], join_column => 'entry');
+    $join->set_logger($log);
+    # $log is now used by $join and by $db1 and $db2
 
 =cut
 
@@ -685,62 +1084,107 @@ sub set_logger {
 
 =head3 SYNOPSIS
 
+    # Positional: database object as first argument
     $join->add_database($db);
-    $join->add_database($db, remove_columns => ['email']);
+
+    # Named: equivalent to the above
     $join->add_database(database => $db);
+
+    # With options (mixed positional + named)
+    $join->add_database($db, remove_columns => ['internal_id']);
+    $join->add_database($db, join_column    => 'local_key_name');
+    $join->add_database($db, filter         => { score => { '>' => 60 } });
 
     # Chainable
     $join->add_database($db1)->add_database($db2, remove_columns => ['notes']);
 
 =head3 DESCRIPTION
 
-Adds one more L<Database::Abstraction> subclass object to the logical view
-and updates the column ownership index.
+Adds one more C<Database::Abstraction> subclass object to the logical view
+and immediately updates the column-ownership index.
 
-The C<join_column> must be present in the new database.  After the call,
-rows returned by any query method include columns from the newly added
-database, and criteria on those columns are routed to it.  When a column
-name already exists in an earlier database, the new database becomes the
-authoritative source (last-database-wins, the same rule applied at
-construction time).
+After the call, all query methods return rows that include columns from the
+newly added database, and criteria on those new columns are routed to it
+automatically.
 
-The method mirrors the parameter conventions of C<new>:
+When a column name in the new database already exists in an earlier database,
+the new database becomes the authoritative source for that column
+(last-database-wins, the same rule that applies at construction time).
 
-=over 4
+The join-column must be present in the new database (or declared via
+C<join_column>).  The logger is propagated to the new database if one is set.
 
-=item Positional: C<< $join->add_database($db) >>
-
-=item Named: C<< $join->add_database(database => $db) >>
-
-=item Named with options: C<< $join->add_database($db, remove_columns => [...]) >>
-
-=back
-
-An optional C<remove_columns> list hides specific columns from the newly
-added database in exactly the same way as calling C<remove_column> for each.
-
-When the join key has a different name in the new database, pass
-C<< join_column => 'local_name' >> to declare that alias:
-
-    # 'statecode' is the canonical join key; the new database calls it 'entry'
-    $join->add_database($capitals, join_column => 'entry');
-
-The logger is propagated to the new database if one was set on the join.
+C<add_database> is the runtime equivalent of listing the database in the
+C<databases> array to C<new>.  The optional C<join_column> parameter is
+equivalent to a C<join_map> entry; the optional C<filter> parameter is
+equivalent to a C<filters> entry.
 
 =head3 API SPECIFICATION
 
 =head4 Input
 
     database       => { type => 'object',   required => 1 }
+                      # A Database::Abstraction subclass instance.
+
     join_column    => { type => 'string',   optional => 1 }
+                      # The name of the join key in THIS new database,
+                      # when it differs from the canonical join_column.
+
     filter         => { type => 'hashref',  optional => 1 }
-                      # Permanent criteria for this database.  Same format
-                      # as selectall_arrayref.  See the filters section below.
+                      # Permanent criteria for this database only.
+                      # Same format as selectall_arrayref.
+
     remove_columns => { type => 'arrayref', optional => 1 }
+                      # Column names from this database to hide.
 
 =head4 Output
 
     Returns C<$self> to support method chaining.
+
+=head3 EXAMPLE
+
+    my $join = Database::Join->new(
+        databases   => [ $customers ],
+        join_column => 'entry',
+    );
+
+    # Add loyalty data; hide internal columns from it
+    $join->add_database($loyalty, remove_columns => ['audit_ts']);
+
+    # Add score data; only include rows with score > 60
+    $join->add_database($scores, filter => { score => { '>' => 60 } });
+
+    # Add a database whose join key has a different local name
+    $join->add_database($stnames, join_column => 'state_code');
+
+    # All three options combined, and chained
+    $join->add_database($db4,
+        join_column    => 'ref_id',
+        filter         => { active => 1 },
+        remove_columns => ['legacy_col'],
+    );
+
+=head3 PSEUDOCODE
+
+    determine the new database's index (length of current _dbs array)
+    extract the database object from positional or named argument
+    croak if it is not a Database::Abstraction subclass
+    register join_column alias in _join_map if different from canonical
+    register filter in _filters if provided
+    fetch column list from the new database
+    croak if the join key is missing from the new database
+    append the new database to _dbs and _db_cols
+    update _col_db: for each new column, point it at the new index
+        (last-database-wins; skip removed columns and the local join alias)
+    invalidate _col_cache and _schema_cache
+    propagate logger if set
+    apply remove_columns if provided
+    return $self
+
+=head3 MESSAGES
+
+    error_invalid_db       -- argument is not a Database::Abstraction subclass
+    error_join_col_missing -- join_column not found in the new database
 
 =cut
 
@@ -757,7 +1201,7 @@ sub add_database {
 	} elsif (@args && !ref($args[0])) {
 		# First arg is a plain string. Only known named-pair keys are valid here;
 		# anything else is treated as an invalid positional database arg.
-		croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
+		croak $self->_err('error_invalid_db', $idx)
 			unless grep { $args[0] eq $_ } @_ADD_DB_KEYS;
 	}
 
@@ -773,7 +1217,7 @@ sub add_database {
 
 	$db //= $p->{database};
 
-	croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
+	croak $self->_err('error_invalid_db', $idx)
 		unless blessed($db) && $db->isa('Database::Abstraction');
 
 	# Determine and register the local join column name for this database
@@ -784,8 +1228,7 @@ sub add_database {
 	my $cols         = $db->columns();
 	my %col_presence = map { $_ => 1 } @{$cols};
 
-	croak _msg($self->{_i18n}, 'error_join_col_missing',
-	           $local_jc, $idx, ref($db))
+	croak $self->_err('error_join_col_missing', $local_jc, $idx, ref($db))
 		unless $col_presence{$local_jc};
 
 	# Register the new database
@@ -822,50 +1265,78 @@ sub add_database {
 =head3 SYNOPSIS
 
     $join->remove_column('email');
-    $join->remove_column('internal_id')->remove_column('audit_ts');  # chainable
+
+    # Chainable
+    $join->remove_column('internal_id')->remove_column('audit_ts');
 
 =head3 DESCRIPTION
 
-Hides a column from the merged view.  After calling this method:
+Permanently hides a column from the merged view.  After this call:
 
 =over 4
 
 =item *
 
-The column is absent from C<columns()> and C<schema()>.
+The column does not appear in C<columns()> or C<schema()>.
 
 =item *
 
-Returned row hashrefs no longer contain the column key.
+Returned row hashrefs do not contain the column key.
 
 =item *
 
-Criteria referencing the column are dropped with a C<carp> warning (the
-same behaviour as querying by a column that was never present).
+Any query criterion that references the removed column is silently dropped
+(with a C<carp> warning).
 
 =back
 
-Removing the C<join_column> is not permitted and will C<croak>.
+The C<join_column> cannot be removed; attempting to do so will C<croak>.
 Removing a column that does not exist in any database is silently ignored
-(idempotent).  The C<columns()> and C<schema()> memoisation caches are
-cleared automatically.
+(the call is idempotent and safe).  The C<columns()> and C<schema()>
+memoisation caches are cleared automatically.
 
 =head3 API SPECIFICATION
 
 =head4 Input
 
-    $col    Positional string: the column name to remove (required)
+    $col    Positional string: the column name to remove (required).
 
 =head4 Output
 
     Returns C<$self> to support method chaining.
+
+=head3 EXAMPLE
+
+    # Hide private fields immediately after construction
+    my $join = Database::Join->new(
+        databases   => [ $customers, $loyalty ],
+        join_column => 'entry',
+    )->remove_column('email')
+     ->remove_column('internal_notes');
+
+    # Verify they are gone
+    my $cols = $join->columns();
+    # 'email' and 'internal_notes' are absent
+
+=head3 MESSAGES
+
+    error_remove_join_col -- attempt to remove the join_column itself
+
+=head3 FORMAL SPECIFICATION
+
+    remove_column : NAME → Database_Join
+    pre:  col ≠ self._join_col
+    post: self'._removed_cols = self._removed_cols ∪ {col}
+          self'._col_db       = self._col_db \ {col}
+          self'._col_cache    = undef
+          self'._schema_cache = undef
 
 =cut
 
 sub remove_column {
 	my ($self, $col) = @_;
 
-	croak _msg($self->{_i18n}, 'error_remove_join_col', $col)
+	croak $self->_err('error_remove_join_col', $col)
 		if defined $col && $col eq $self->{_join_col};
 
 	if (defined $col && length $col) {
@@ -881,34 +1352,115 @@ sub remove_column {
 =head2 query
 
 Not supported.  C<Database::Join> does not implement the chained query
-builder.  Use C<selectall_arrayref> or C<fetchrow_hashref> directly.
+builder.  Calling this method will always C<croak> with an explanatory message.
+
+Use C<selectall_arrayref>, C<selectall_array>, C<fetchrow_hashref>, or
+C<count> instead.
 
 =cut
 
 sub query {
 	my ($self) = @_;
-	croak _msg($self->{_i18n}, 'error_query_unsupported');
+	croak $self->_err('error_query_unsupported');
 }
 
 =head2 execute
 
-Not supported.  Raw SQL cannot be executed across heterogeneous backends.
-Use the Perl-level query methods instead.
+Not supported.  Raw SQL cannot span heterogeneous backends that may use
+different database engines.  Calling this method will always C<croak>.
+
+Use C<selectall_arrayref> or C<fetchrow_hashref> to query the joined view.
 
 =cut
 
 sub execute {
 	my ($self) = @_;
-	croak _msg($self->{_i18n}, 'error_execute_unsupported');
+	croak $self->_err('error_execute_unsupported');
 }
 
 =head2 AUTOLOAD - column shortcut
 
-Calling an unknown method whose name matches a column name performs a
-column lookup, delegated to whichever component database owns that column.
+Calling an unknown method whose name matches a visible column name performs
+a column lookup across the merged view.
 
-    my $name = $join->name(entry => 'C001');
+=head3 SYNOPSIS
+
+    # Scalar context: value from the first matching row
+    my $name  = $join->name(entry => 'C001');
+
+    # List context: values from every matching row
     my @tiers = $join->tier();
+
+    # With a positional join-key argument (when join_column is 'entry')
+    my $score = $join->score('C001');
+
+=head3 DESCRIPTION
+
+AUTOLOAD routes the call to the appropriate component database by looking up
+the column name in the internal column-ownership index.
+
+When either C<join_map> or C<filters> is active, AUTOLOAD performs a full
+join query instead of delegating directly to the owning database.  This is
+necessary because:
+
+=over 4
+
+=item *
+
+With C<join_map>, the owning database's primary key may differ from the
+canonical join key used in the call arguments.
+
+=item *
+
+With C<filters>, bypassing the join would return rows that the filter is
+meant to exclude.
+
+=back
+
+In list context, every matching merged row contributes one value to the
+returned list.  In scalar context, only the first row's value is returned.
+
+Calling a method whose name begins with C<_> (a private method) via AUTOLOAD
+will C<croak> with a clear error message rather than being silently ignored.
+
+=head3 EXAMPLE
+
+    # Lookup a single customer's name (scalar context)
+    my $name = $join->name('C001');   # 'C001' maps to entry => 'C001'
+    print "Name: $name\n";
+
+    # Get every tier value in the view (list context)
+    my @all_tiers = $join->tier();
+    my %freq;
+    $freq{$_}++ for @all_tiers;
+
+    # join_map active: AUTOLOAD runs a full join so the criteria are
+    # translated correctly between the canonical and local key names.
+    my @leesburg_states = sort $join->state('Leesburg');
+    # ['Florida', 'Virginia'] if Leesburg appears in two states
+
+=head3 PSEUDOCODE
+
+    extract column name from $AUTOLOAD
+    return if DESTROY
+    croak if column name starts with '_' (private method guard)
+    croak if column name is not in _col_db (unknown column)
+    if join_map or filters are active:
+        parse calling arguments using _parse_query_args
+        call _joined_query to get all merged rows
+        return map { $_->{col} } @rows  in list context
+        return $rows[0]{col}            in scalar context
+    else:
+        delegate directly to the owning database
+
+=head3 FORMAL SPECIFICATION
+
+    AUTOLOAD : NAME × CRITERIA → VALUE | seq VALUE
+    pre:  col ∈ dom self._col_db
+          col does not begin with '_'
+    post: let rows = _joined_query(criteria)
+          wantarray  => result = { r : rows • r(col) }
+          !wantarray => result = rows(0)(col)  (or undef if rows is empty)
 
 =cut
 
@@ -952,7 +1504,7 @@ sub DESTROY {}
 # _parse_query_args( $self, $positional_key, @caller_args ) -> \%params
 # Purpose: Normalise the three calling conventions used by every public query
 #          method and AUTOLOAD into a single criteria hashref.
-# Entry:   $positional_key — the column name mapped to a bare scalar argument;
+# Entry:   $positional_key -- the column name mapped to a bare scalar argument;
 #          pass undef to use the join_column (the default for public methods).
 # Exit:    Always returns a hashref; never undef.
 # Effects: None.
@@ -973,9 +1525,12 @@ sub _err {
 }
 
 # _build_col_index()
-# Calls columns() on each database at construction time to populate
-# _col_db (column => db_index) and _db_cols (per-db column lists).
-# The join_column is verified to exist in every database.
+# Purpose: Populate _col_db (column_name => db_index) and _db_cols
+#          (per-db column-presence hashrefs) by calling columns() on each
+#          component database at construction time.
+# Entry:   _dbs, _join_col, _join_map must already be set.
+# Exit:    _col_db and _db_cols are set; join_column verified in every db.
+# Effects: Croaks if any database is missing its join key column.
 sub _build_col_index {
 	my ($self) = @_;
 
@@ -989,8 +1544,7 @@ sub _build_col_index {
 		my $cols      = $db->columns();
 		$db_cols[$i]  = { map { $_ => 1 } @{$cols} };
 
-		croak _msg($self->{_i18n}, 'error_join_col_missing',
-		           $local_jc, $i, ref($db))
+		croak $self->_err('error_join_col_missing', $local_jc, $i, ref($db))
 			unless $db_cols[$i]{$local_jc};
 
 		for my $col (@{$cols}) {
@@ -1008,9 +1562,13 @@ sub _build_col_index {
 }
 
 # _partition_criteria( \%params ) -> \@per_db
-# Splits a criteria hashref into per-database slices, routing each
-# criterion to the database that owns its column.  The join_column is
-# broadcast to all databases.  Unknown columns trigger a carp and are dropped.
+# Purpose: Split a flat criteria hashref into one slice per component database.
+# Entry:   $params is a criteria hashref; all keys must be column names or
+#          join_column.
+# Exit:    Returns an arrayref of per-database criteria hashrefs.  The
+#          join_column criterion is broadcast to every database using each
+#          database's local join-key name.  Unknown columns trigger a carp.
+# Effects: Carps for each unrecognised column name.
 sub _partition_criteria {
 	my ($self, $params) = @_;
 
@@ -1028,7 +1586,7 @@ sub _partition_criteria {
 		} elsif (defined(my $idx = $self->{_col_db}{$col})) {
 			$per_db[$idx]{$col} = $params->{$col};
 		} else {
-			carp _msg($self->{_i18n}, 'warn_unknown_column', $col);
+			carp $self->_err('warn_unknown_column', $col);
 		}
 	}
 
@@ -1036,12 +1594,13 @@ sub _partition_criteria {
 }
 
 # _fetch_indexed( $db_idx, \%criteria ) -> \%join_val_to_\@rows
-# Queries one component database and returns a hashref where each key maps
-# to an arrayref of all rows sharing that join-column value.  Multiple rows
-# per key are preserved so that the primary database can contribute more than
-# one merged result row for a given join-key value (e.g. two cities in the
-# same state).  Secondary databases are treated as lookup tables: the caller
-# uses the last element of the array for each key.
+# Purpose: Query one component database and index its rows by join-key value.
+# Entry:   $db_idx is the zero-based database index; $criteria is the
+#          pre-partitioned criteria hashref for this database.
+# Exit:    Returns a hashref: join-key value => arrayref of row hashrefs.
+#          Multiple rows sharing the same join-key value are all preserved
+#          (important for the primary database when one key maps to many rows).
+# Effects: Calls selectall_arrayref on the component database.
 sub _fetch_indexed {
 	my ($self, $db_idx, $criteria) = @_;
 
@@ -1063,22 +1622,24 @@ sub _fetch_indexed {
 
 # _joined_query( \%params ) -> \@merged_rows
 #
-# Core algorithm.  Criteria are routed per-database; the key set is then
-# built using the following rules, applied sequentially for each database
-# after the primary:
+# Purpose: Core join algorithm.  Partitions criteria, fetches per-database
+#          results, resolves the key set, and merges rows.
 #
-#   - If the database had criteria in this query, it acts as an INNER-JOIN
-#     partner regardless of join_type: only keys present in its filtered
-#     result survive into the key set.  This gives WHERE-clause semantics
-#     (e.g. tier=>'gold' on a LEFT join still returns only the matching rows).
+# Key-set resolution (applied for each secondary database after the primary):
 #
-#   - If the database had NO criteria:
-#       inner  -> intersect  (standard inner join)
-#       left   -> no change  (primary defines the key set)
-#       outer  -> union      (all keys from any database)
+#   If the database had criteria in this query call (after base filter overlay),
+#   it acts as an INNER-JOIN partner: only keys present in its filtered result
+#   survive.  This gives WHERE-clause semantics even under a LEFT join.
 #
-# Rows are merged by updating a %merged hash from each database in order,
-# so later databases' values overwrite earlier ones for duplicate columns.
+#   If the database had NO effective criteria:
+#     inner  -> intersect  (standard inner join)
+#     left   -> no change  (primary defines the key set)
+#     outer  -> union      (all keys from any database)
+#
+# Row merge: for each qualifying primary row, secondary rows are overlaid in
+# index order.  For duplicate columns, later databases win.  Local join-key
+# aliases are renamed to the canonical join_column before merging.
+# Removed columns are deleted from every merged row.
 sub _joined_query {
 	my ($self, $params) = @_;
 
@@ -1153,17 +1714,17 @@ sub _joined_query {
 		}
 	}
 
-	carp _msg($self->{_i18n}, 'warn_empty_result')
-		unless @result;
-
 	return \@result;
 }
 
 # _merge_criteria( \%base, \%extra ) -> \%merged
-# Merges two criteria hashrefs.  When both specify the same column as operator
-# hashrefs ({ '>' => N }), the operators are combined so both constraints apply
-# (AND semantics, e.g. age > 60 AND age < 365).  Otherwise the extra
-# (query-time) value overwrites the base filter for that column.
+# Purpose: Merge two criteria hashrefs for the same database column set.
+# Entry:   %base is the permanent filter; %extra is the query-time criteria.
+# Exit:    Returns a new hashref with both applied.
+# Merging rule: when both values for the same column are operator hashrefs
+#   (e.g. { '>' => 60 } and { '<' => 365 }), the operators are combined
+#   so both constraints apply simultaneously (AND semantics).
+#   Otherwise the extra (query-time) value overwrites the base value.
 sub _merge_criteria {
 	my ($base, $extra) = @_;
 	my %merged = %{$base};
@@ -1180,6 +1741,10 @@ sub _merge_criteria {
 }
 
 # _msg( $i18n, $key, @sprintf_args ) -> $string
+# Purpose: Format a user-facing message, routing through the i18n object when
+#          one is provided.  Falls back to the built-in %MESSAGES dictionary.
+# Entry:   $i18n may be undef.  $key must be a key in %MESSAGES.
+# Exit:    Returns the formatted string.
 sub _msg {
 	my ($i18n, $key, @args) = @_;
 
@@ -1199,20 +1764,143 @@ __END__
 
 =head1 MESSAGES
 
-All messages that the module can croak or carp, and how to resolve them.
+The following messages can be produced by C<Database::Join>.  All messages
+can be localised by supplying an C<i18n> object to C<new>.
 
-=head3 MESSAGES
+=over 4
 
-    Key                       | Trigger                            | Resolution
-    --------------------------|------------------------------------|---------------------------------
-    error_no_databases        | Empty databases arrayref           | Pass at least one D::A object
-    error_invalid_db          | Element is not a D::A subclass     | Instantiate subclass first
-    error_join_col_missing    | join_column absent from a database | Add the column or change join_column
-    error_remove_join_col     | Attempt to remove join_column      | Remove a different column
-    warn_unknown_column       | Criterion column not in any DB     | Check column name spelling
-    warn_empty_result         | Join yields zero rows              | Relax criteria or check data
-    error_query_unsupported   | query() called                     | Use selectall_arrayref instead
-    error_execute_unsupported | execute() called                   | Use Perl-level query methods
+=item C<error_no_databases>
+
+B<When:> The C<databases> arrayref passed to C<new> is empty.
+
+B<Fix:> Pass at least one C<Database::Abstraction> subclass object.
+
+=item C<error_invalid_db>
+
+B<When:> An element of the C<databases> array (or the argument to
+C<add_database>) is not an object, or is not a C<Database::Abstraction>
+subclass.
+
+B<Fix:> Instantiate the component database with its own C<new> method before
+passing it to C<Database::Join>.
+
+=item C<error_join_col_missing>
+
+B<When:> The join key column (or its C<join_map> alias) does not exist in one
+of the component databases.
+
+B<Fix:> Either add the column to the database, change C<join_column> to a
+column that is present everywhere, or use C<join_map> to declare the local
+alias for databases that call it something different.
+
+=item C<error_remove_join_col>
+
+B<When:> C<remove_column> is called with the name of the join key column.
+
+B<Fix:> The join key is required for the merge to work and cannot be hidden.
+Remove a different column.
+
+=item C<warn_unknown_column> (carp)
+
+B<When:> A criterion is passed for a column that does not exist in any
+component database (or has been removed with C<remove_column>).
+
+B<Fix:> Check the column name spelling.  The criterion is ignored.
+
+=item C<error_query_unsupported>
+
+B<When:> C<query()> is called on a C<Database::Join> object.
+
+B<Fix:> Use C<selectall_arrayref>, C<selectall_array>, C<fetchrow_hashref>,
+or C<count> instead.
+
+=item C<error_execute_unsupported>
+
+B<When:> C<execute()> is called on a C<Database::Join> object.
+
+B<Fix:> Use the Perl-level query methods instead.  Raw SQL cannot span
+heterogeneous database backends.
+
+=back
+
+=head1 FORMAL SPECIFICATION
+
+Z calculus schemas for the key invariants and operations.
+Unicode is used throughout this section as required by Z notation.
+
+    ─── Database_Join ─────────────────────────────────────────────────
+    dbs        : seq DATABASE_ABSTRACTION
+    join_col   : NAME
+    join_type  : {left, inner, outer}
+    join_map   : ℕ ⇸ NAME
+    filters    : ℕ ⇸ CRITERIA
+    col_db     : NAME ⇸ ℕ
+    removed    : ℙ NAME
+    ───────────────────────────────────────────────────────────────────
+    #dbs ≥ 1
+    dom join_map ⊆ 0 ‥ (#dbs - 1)
+    dom filters  ⊆ 0 ‥ (#dbs - 1)
+    dom col_db   = (⋃ { i : 0 ‥ #dbs-1 • ran((dbs i).columns) }) \ removed
+    join_col ∉ removed
+    ∀ i : 0 ‥ #dbs-1 •
+        local_jc(i) = if i ∈ dom join_map then join_map(i) else join_col
+    ∀ i : 0 ‥ #dbs-1 •
+        local_jc(i) ∈ ran((dbs i).columns)
+
+    ─── Init ──────────────────────────────────────────────────────────
+    ΔDatabase_Join
+    dbs?       : seq DATABASE_ABSTRACTION
+    join_col?  : NAME
+    join_type? : {left, inner, outer}
+    join_map?  : ℕ ⇸ NAME
+    filters?   : ℕ ⇸ CRITERIA
+    removed?   : ℙ NAME
+    ───────────────────────────────────────────────────────────────────
+    #dbs? ≥ 1
+    dbs'      = dbs?
+    join_col' = join_col?
+    join_type'= join_type?
+    join_map' = join_map?
+    filters'  = filters?
+    col_db'   = buildColIndex(dbs?, join_col?, join_map?)
+    removed'  = removed?
+
+    ─── SelectAllArrayref ─────────────────────────────────────────────
+    ΞDatabase_Join        -- state unchanged
+    criteria? : CRITERIA
+    result!   : seq MERGED_ROW
+    ───────────────────────────────────────────────────────────────────
+    ∀ c : dom criteria? • c ∈ dom col_db ∪ {join_col}
+    result! = joinedQuery(criteria?)
+    result! is sorted ascending by join_col value
+
+    ─── AddDatabase ───────────────────────────────────────────────────
+    ΔDatabase_Join
+    db?         : DATABASE_ABSTRACTION
+    local_jc?   : NAME   -- optional; defaults to join_col
+    filter?     : CRITERIA   -- optional
+    remove?     : ℙ NAME     -- optional
+    ───────────────────────────────────────────────────────────────────
+    db?.isa('Database::Abstraction')
+    local_jc? ∈ ran(db?.columns)
+    dbs'      = dbs ^ ⟨db?⟩
+    col_db'   = col_db ⊕ { c ↦ #dbs | c ∈ ran(db?.columns) \ {local_jc?} \ removed }
+    filters'  = if filter? ≠ ∅ then filters ⊕ {#dbs ↦ filter?} else filters
+    join_map' = if local_jc? ≠ join_col
+                then join_map ⊕ {#dbs ↦ local_jc?}
+                else join_map
+    removed'  = removed ∪ remove?
+
+    ─── RemoveColumn ──────────────────────────────────────────────────
+    ΔDatabase_Join
+    col? : NAME
+    ───────────────────────────────────────────────────────────────────
+    col? ≠ join_col
+    removed'  = removed ∪ {col?}
+    col_db'   = col_db \ {col?}
+    join_map' = join_map
+    filters'  = filters
+    dbs'      = dbs
 
 =head1 REPOSITORY
 
@@ -1226,61 +1914,11 @@ This module is provided as-is without any warranty.
 
 Nigel Horne, C<< <njh@nigelhorne.com> >>
 
-=head1 FORMAL SPECIFICATION
-
-=head2 new
-
-    # new : seq DA_Object x String? x JoinType? x seq String? -> Database_Join
-    # pre:  len databases >= 1
-    #       forall db : databases | db.isa('Database::Abstraction')
-    #       forall db : databases | join_column in db.columns
-    #       join_column not in remove_columns
-    # post: self._dbs          = databases
-    #       self._join_col     = join_column
-    #       self._join_type    = join_type
-    #       self._removed_cols = set(remove_columns)
-    #       self._col_db       = build_col_index(databases) \ remove_columns
-
-=head2 selectall_arrayref
-
-    # selectall_arrayref : CriteriaMap -> seq MergedRow
-    # pre:  all criterion column names in dom self._col_db
-    #       union { join_column }
-    # post: result = join(
-    #           forall i: query(self._dbs[i], criteria_for[i]),
-    #           key    = self._join_col,
-    #           type   = self._join_type )
-
-=head2 fetchrow_hashref
-
-    # fetchrow_hashref : CriteriaMap -> MergedRow?
-    # post: result = selectall_arrayref(criteria)[0]
-
-=head2 add_database
-
-    # add_database : DA_Object x seq String? -> Database_Join
-    # pre:  database.isa('Database::Abstraction')
-    #       self._join_col in database.columns
-    #       self._join_col not in remove_columns
-    # post: self._dbs          = self._dbs ^ [database]
-    #       self._col_db       = self._col_db ++ col_index(database) \ remove_columns
-    #       self._removed_cols = self._removed_cols union set(remove_columns)
-
-=head2 remove_column
-
-    # remove_column : String -> Database_Join
-    # pre:  col != self._join_col
-    # post: self._removed_cols = self._removed_cols union {col}
-    #       self._col_db       = self._col_db \ {col}
-    #       self._col_cache    = undef
-    #       self._schema_cache = undef
-
 =head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2026 Nigel Horne.
 
 Usage is subject to the GPL2 licence terms.
-If you use it,
-please let me know.
+If you use it, please let me know.
 
 =cut

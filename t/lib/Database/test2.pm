@@ -1,10 +1,5 @@
 package Database::test2;
-
 use strict;
 use warnings;
-
-use Database::Abstraction;
-
-our @ISA = ('Database::Abstraction');
-
+use parent 'Database::Abstraction';
 1;

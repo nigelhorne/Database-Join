@@ -229,10 +229,10 @@ my $join_al = Database::Join->new(
 	filters     => { 1 => { score => { '>' => 60 } } },
 );
 
-# Carol has score=55 which is filtered out; her score should not be visible.
-my $carol_score = $join_al->score('c003');
-ok(!defined($carol_score) || $carol_score == 55,
-	'AUTOLOAD on filtered-out row returns undef or raw value (secondary absent)');
+# Carol has score=55 which the secondary filter (score > 60) excludes.
+# The full join query sees no merged row for c003, so AUTOLOAD returns undef.
+is($join_al->score('c003'), undef,
+	'AUTOLOAD respects filter: filtered-out row returns undef');
 
 # Alice's score is above the threshold, so it is accessible.
 is($join_al->score('c001'), 95, 'AUTOLOAD returns score for passing row');
