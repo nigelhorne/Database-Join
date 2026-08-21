@@ -17,6 +17,7 @@ t/cities.t
 t/data/cities.csv
 t/data/states.csv
 t/function.t
+t/integration.t
 t/lib/Database/cities.pm
 t/lib/Database/djcust.pm
 t/lib/Database/djloyalty.pm
