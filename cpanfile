@@ -16,7 +16,7 @@ on 'test' => sub {
 	requires 'File::Temp';
 	requires 'IPC::System::Simple';
 	requires 'Test::Exception', '0.43';
-	requires 'Test::Most', '1.302';
+	requires 'Test::Most';
 };
 
 on 'develop' => sub {
