@@ -4,132 +4,132 @@
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326232.96355,
+         "finish" : 1787326890.91791,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "-e",
-         "start" : 1787326227.38837,
+         "start" : 1787326886.16241,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326227.53133,
+         "finish" : 1787326886.27736,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "-e",
-         "start" : 1787326227.53119,
+         "start" : 1787326886.27723,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326227.8382,
+         "finish" : 1787326886.56507,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/00-load.t",
-         "start" : 1787326227.83697,
+         "start" : 1787326886.56393,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326228.33735,
+         "finish" : 1787326887.00367,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/01-new.t",
-         "start" : 1787326228.32088,
+         "start" : 1787326886.95946,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326228.86424,
+         "finish" : 1787326887.55779,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/10-select.t",
-         "start" : 1787326228.83781,
+         "start" : 1787326887.41073,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326229.39063,
+         "finish" : 1787326887.98389,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/20-remove-column.t",
-         "start" : 1787326229.37013,
+         "start" : 1787326887.96302,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326229.93332,
+         "finish" : 1787326888.42124,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/30-add-database.t",
-         "start" : 1787326229.90304,
+         "start" : 1787326888.38394,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326230.48733,
+         "finish" : 1787326888.86987,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/40-filters.t",
-         "start" : 1787326230.45108,
+         "start" : 1787326888.82769,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326231.05261,
+         "finish" : 1787326889.33547,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/50-logic-proofs.t",
-         "start" : 1787326231.01323,
+         "start" : 1787326889.2918,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326231.58151,
+         "finish" : 1787326889.81375,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/cgi_security.t",
-         "start" : 1787326231.56175,
+         "start" : 1787326889.74013,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326232.22641,
+         "finish" : 1787326890.32354,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/cities.t",
-         "start" : 1787326232.14545,
+         "start" : 1787326890.25736,
          "version" : "0.01"
       },
       {
          "OS" : "linux",
          "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
          "dir" : "/home/runner/work/Database-Join/Database-Join",
-         "finish" : 1787326232.80477,
+         "finish" : 1787326890.78994,
          "name" : "Database-Join",
          "perl" : "5.40.5",
          "run" : "t/test1_2.t",
-         "start" : 1787326232.77281,
+         "start" : 1787326890.75767,
          "version" : "0.01"
       }
    ],
@@ -143,29 +143,29 @@
             "uncoverable" : 0
          },
          "condition" : {
-            "covered" : 29,
+            "covered" : 30,
             "error" : 17,
-            "percentage" : 63.0434782608696,
-            "total" : 46,
+            "percentage" : 63.8297872340426,
+            "total" : 47,
             "uncoverable" : 0
          },
          "statement" : {
-            "covered" : 176,
-            "error" : 15,
-            "percentage" : 92.1465968586387,
-            "total" : 191
+            "covered" : 181,
+            "error" : 14,
+            "percentage" : 92.8205128205128,
+            "total" : 195
          },
          "subroutine" : {
-            "covered" : 30,
+            "covered" : 31,
             "error" : 3,
-            "percentage" : 90.9090909090909,
-            "total" : 33
+            "percentage" : 91.1764705882353,
+            "total" : 34
          },
          "total" : {
-            "covered" : 285,
-            "error" : 51,
-            "percentage" : 84.8214285714286,
-            "total" : 336,
+            "covered" : 292,
+            "error" : 50,
+            "percentage" : 85.3801169590643,
+            "total" : 342,
             "uncoverable" : 0
          }
       },
@@ -178,29 +178,29 @@
             "uncoverable" : 0
          },
          "condition" : {
-            "covered" : 29,
+            "covered" : 30,
             "error" : 17,
-            "percentage" : 63.0434782608696,
-            "total" : 46,
+            "percentage" : 63.8297872340426,
+            "total" : 47,
             "uncoverable" : 0
          },
          "statement" : {
-            "covered" : 176,
-            "error" : 15,
-            "percentage" : 92.1465968586387,
-            "total" : 191
+            "covered" : 181,
+            "error" : 14,
+            "percentage" : 92.8205128205128,
+            "total" : 195
          },
          "subroutine" : {
-            "covered" : 30,
+            "covered" : 31,
             "error" : 3,
-            "percentage" : 90.9090909090909,
-            "total" : 33
+            "percentage" : 91.1764705882353,
+            "total" : 34
          },
          "total" : {
-            "covered" : 285,
-            "error" : 51,
-            "percentage" : 84.8214285714286,
-            "total" : 336,
+            "covered" : 292,
+            "error" : 50,
+            "percentage" : 85.3801169590643,
+            "total" : 342,
             "uncoverable" : 0
          }
       }
