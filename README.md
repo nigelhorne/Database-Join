@@ -535,6 +535,14 @@ All messages that the module can croak or carp, and how to resolve them.
     error_query_unsupported   | query() called                     | Use selectall_arrayref instead
     error_execute_unsupported | execute() called                   | Use Perl-level query methods
 
+# REPOSITORY
+
+[https://github.com/nigelhorne/Database-Join](https://github.com/nigelhorne/Database-Join)
+
+# SUPPORT
+
+This module is provided as-is without any warranty.
+
 # AUTHOR
 
 Nigel Horne, `<njh@nigelhorne.com>`
@@ -543,8 +551,9 @@ Nigel Horne, `<njh@nigelhorne.com>`
 
 Copyright (C) 2026 Nigel Horne.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+Usage is subject to the GPL2 licence terms.
+If you use it,
+please let me know.
 
 # POD ERRORS
 
