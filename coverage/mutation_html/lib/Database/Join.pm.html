@@ -1,0 +1,1808 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>File: lib/Database/Join.pm</title>
+<style>
+
+/* --------------------------------------------------
+   CSS Variables (Light Mode Default)
+-------------------------------------------------- */
+
+:root {
+    --bg: #ffffff;
+    --text: #000000;
+    --table-header: #333;
+    --table-header-text: #ffffff;
+
+    --survived-1: #f8d7da;
+    --survived-2: #f5b7b1;
+    --survived-3: #ec7063;
+
+    --killed: #d4edda;
+    --border: #cccccc;
+}
+
+/* --------------------------------------------------
+   Dark Mode Overrides
+-------------------------------------------------- */
+
+html[data-theme='dark'] {
+    --bg: #1e1e1e;
+    --text: #dddddd;
+    --table-header: #222;
+    --table-header-text: #ffffff;
+
+    --survived-1: #5c2b2e;
+    --survived-2: #7b2c2f;
+    --survived-3: #a93226;
+
+    --killed: #1e4620;
+    --border: #555;
+}
+
+/* --------------------------------------------------
+   Global Styles
+-------------------------------------------------- */
+
+body {
+	font-family: sans-serif;
+	background: var(--bg);
+	color: var(--text);
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th {
+    background: var(--table-header);
+    color: var(--table-header-text);
+}
+
+.survived-1 { background-color: var(--survived-1); }
+.survived-2 { background-color: var(--survived-2); }
+.survived-3 { background-color: var(--survived-3); }
+
+.killed { background-color: var(--killed); }
+
+.legend {
+    border: 1px solid #ccc;
+    background: #fafafa;
+    padding: 10px;
+    margin: 15px 0;
+    font-size: 0.9em;
+}
+
+.legend pre {
+    background: #f4f4f4;
+    padding: 5px;
+}
+
+.legend-box {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin: 0 6px 0 20px;
+    vertical-align: middle;
+    border: 1px solid var(--border);
+}
+
+/* White box for non-mutated lines */
+.legend-box.none {
+	background-color: var(--bg);
+}
+
+/* --------------------------------------------------
+   Suggested Test Box Styling
+   Theme-aware and readable in light & dark modes
+-------------------------------------------------- */
+
+.suggested-test {
+    margin-top: 6px;
+    margin-bottom: 12px;
+
+    /* Use theme variables instead of hardcoded colors */
+    background: var(--bg);
+    color: var(--text);
+
+    padding: 8px;
+    border-radius: 4px;
+
+    /* Subtle border for visual separation */
+    border: 1px solid var(--border);
+}
+
+/* Label styling */
+.suggest-label {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+/* Ensure the test code block inherits readable colors */
+.suggested-test pre {
+    background: transparent;   /* Prevent nested dark blocks */
+    color: inherit;            /* Match theme text color */
+    margin: 0;
+    font-family: monospace;
+}
+
+pre { line-height: 1.4; }
+
+pre > details {
+    margin: 0.2em 0;
+}
+
+pre > details:first-child {
+    margin-top: 0;
+}
+
+pre > details:last-child {
+    margin-bottom: 0;
+}
+
+pre details,
+pre summary,
+pre ul,
+pre li {
+    white-space: normal;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+}
+
+.nav { margin-bottom: 1em; }
+
+.toggle {
+    float: right;
+    cursor: pointer;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+/* Tooltip container */
+.tooltip {
+	position: relative;
+	cursor: help;
+}
+
+/* Tooltip bubble */
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 0;
+    top: 100%;
+    background: var(--table-header);
+    color: var(--table-header-text);
+    padding: 6px 10px;
+    white-space: normal;
+    max-width: 300px;
+    min-width: 30ch;
+    font-size: 12px;
+    border-radius: 6px;
+    z-index: 1000;
+    margin-left: 10ch;   /* move tooltip ~10 characters to the right */
+}
+
+.mutant-details {
+	margin-left: 2em;
+	font-size: 0.9em;
+}
+
+/* Indent the list of mutations that displays when expanding by 8 characters */
+pre details.mutant-details ul {
+	padding-left: 8ch;
+	margin: 0.2em 0;
+}
+
+.mutant-details summary {
+	cursor: pointer;
+	font-weight: bold;
+}
+
+.lcsaj-dot {
+    color: #5555ff;
+    font-size: 10px;
+    margin-right: 3px;
+}
+
+.lcsaj-dot-uncovered {
+    color: #cc4444;
+    font-size: 10px;
+    margin-right: 3px;
+}
+
+.lcsaj-tip {
+	position: relative;
+	display: inline-block;
+}
+
+.lcsaj-tip .lcsaj-tip-text {
+	visibility: hidden;
+	background-color: #333;
+	color: #fff;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	white-space: nowrap;
+	position: fixed;
+	z-index: 9999;
+	pointer-events: none;
+}
+
+.lcsaj-tip:hover .lcsaj-tip-text {
+	visibility: visible;
+}
+
+.cpd-dot {
+    color: #cc8800;
+    font-size: 10px;
+    margin-right: 3px;
+    cursor: help;
+    text-decoration: none;
+}
+a.cpd-dot { cursor: pointer; }
+a.cpd-dot:hover { color: #ff8800; }
+
+.cpd-tip {
+    position: relative;
+    display: inline-block;
+}
+
+.cpd-tip .cpd-tip-text {
+    visibility: hidden;
+    background-color: #333;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.cpd-tip:hover .cpd-tip-text {
+    visibility: visible;
+}
+
+/* CPD drill-down page styles */
+.dup-line { background-color: #fff3cd; display: block; }
+.dup-line:hover { background-color: #ffe082; }
+.intra-dot { color: #9944cc; margin-right: 4px; cursor: help; text-decoration: none; }
+a.intra-dot { cursor: pointer; }
+a.intra-dot:hover { color: #7700bb; }
+.cpd-legend {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    display: inline-block;
+    padding: 6px 10px;
+    margin-bottom: 1em;
+    font-size: 0.9em;
+}
+
+</style>
+</head>
+<body>
+<button class="toggle" onclick="toggleTheme()">🌙 Toggle Theme</button>
+<h1>lib/Database/Join.pm</h1>
+<div class="nav"><a href="../../../index.html">Index</a>
+</div><div class='summary'>
+<strong>Structural Coverage (Approximate)</strong><p>
+TER1 (Statement): 89.82%<br>
+TER2 (Branch): 79.59%<br>
+TER3 (LCSAJ): 100.0% (19/19)<br>
+Approximate LCSAJ segments: 99<br>
+</div>
+
+    <div class="legend">
+        <h3>LCSAJ Legend</h3>
+
+        <p>
+        <span class="lcsaj-dot">●</span>
+        <b>Covered</b> — this LCSAJ path was executed during testing.
+        </p>
+
+        <p>
+        <span class="lcsaj-dot-uncovered">●</span>
+        <b>Not covered</b> — this LCSAJ path was never executed. These are the paths to focus on.
+        </p>
+
+        <p>
+        Multiple dots on a line indicate that multiple control-flow paths begin at that line.
+        Hovering over any dot shows:
+        </p>
+
+        <pre>
+        start → end → jump
+        </pre>
+
+        <ul>
+        <li><b>start</b> – first line of the linear sequence</li>
+        <li><b>end</b> – last line before control flow changes</li>
+        <li><b>jump</b> – line execution jumps to next</li>
+        </ul>
+
+        <p>
+        Uncovered paths show <b>[NOT COVERED]</b> in the tooltip.
+	</p>
+    </div>
+
+		<div class="legend">
+			<h3>Mutant Testing Legend</h3>
+			<span class="legend-box survived-1"></span> Survived (tests missed this)
+			<span class="legend-box killed"></span> Killed (tests detected this)
+			<span class="legend-box none"></span> No mutation
+		</div>
+	<pre>
+<span class="">    1: package Database::Join;
+</span><span class="">    2: 
+</span><span class="">    3: # ABSTRACT: Combined view across two or more Database::Abstraction objects
+</span><span class="">    4: 
+</span><span class="">    5: use strict;
+</span><span class="">    6: use warnings;
+</span><span class="">    7: use autodie qw(:all);
+</span><span class="">    8: 
+</span><span class="">    9: use Carp qw(croak carp);
+</span><span class="">   10: use List::Util qw(max);
+</span><span class="">   11: use Readonly;
+</span><span class="">   12: use Scalar::Util qw(blessed);
+</span><span class="">   13: use Params::Get qw(get_params);
+</span><span class="">   14: use Params::Validate::Strict qw(validate_strict);
+</span><span class="">   15: 
+</span><span class="">   16: # Named-pair keys accepted by add_database; kept here so the guard and the
+</span><span class="">   17: # validate_strict schema cannot silently diverge.
+</span><span class="">   18: Readonly::Array my @_ADD_DB_KEYS =&gt; qw(database join_column filter remove_columns);
+</span><span class="">   19: 
+</span><span class="">   20: our $VERSION = &#39;0.01&#39;;
+</span><span class="">   21: 
+</span><span class="">   22: # ---------------------------------------------------------------------------
+</span><span class="">   23: # All user-facing strings route through this dictionary.  Supply an i18n
+</span><span class="">   24: # object with a translate($key, @sprintf_args) method to localise them.
+</span><span class="">   25: # ---------------------------------------------------------------------------
+</span><span class="">   26: Readonly::Hash my %MESSAGES =&gt; (
+</span><span class="">   27: 	error_no_databases	=&gt; &#39;At least one Database::Abstraction object is required&#39;,
+</span><span class="">   28: 	error_invalid_db	=&gt; &#39;databases[%d] is not a Database::Abstraction object&#39;,
+</span><span class="">   29: 	error_join_col_missing	=&gt; &#39;join_column &quot;%s&quot; is absent from databases[%d] (%s)&#39;,
+</span><span class="">   30: 	error_col_conflict	=&gt; &#39;Column &quot;%s&quot; exists in multiple databases; &#39;
+</span><span class="">   31: 	                         . &#39;use the owning database directly or rename the column&#39;,
+</span><span class="">   32: 	error_remove_join_col	=&gt; &#39;Cannot remove join_column &quot;%s&quot;; it is required for the join&#39;,
+</span><span class="">   33: 	warn_unknown_column	=&gt; &#39;Column &quot;%s&quot; is not present in any configured database; criterion ignored&#39;,
+</span><span class="">   34: 	warn_empty_result	=&gt; &#39;Cross-database join produced an empty result set&#39;,
+</span><span class="">   35: 	error_query_unsupported	=&gt; &#39;query() chained builder is not supported on Database::Join; &#39;
+</span><span class="">   36: 	                            . &#39;call selectall_arrayref / fetchrow_hashref directly&#39;,
+</span><span class="">   37: 	error_execute_unsupported =&gt; &#39;execute() raw SQL is not supported on Database::Join&#39;,
+</span><span class="">   38: 	error_unknown_message	=&gt; &#39;Unknown message key &quot;%s&quot;&#39;,
+</span><span class="">   39: );
+</span><span class="">   40: 
+</span><span class="">   41: =head1 NAME
+</span><span class="">   42: 
+</span><span class="">   43: Database::Join - Combined view across two or more databases
+</span><span class="">   44: 
+</span><span class="">   45: =head1 VERSION
+</span><span class="">   46: 
+</span><span class="">   47: Version 0.01
+</span><span class="">   48: 
+</span><span class="">   49: =head1 SYNOPSIS
+</span><span class="">   50: 
+</span><span class="">   51:     use Database::Join;
+</span><span class="">   52: 
+</span><span class="">   53:     # Each object is an already-instantiated Database::Abstraction subclass
+</span><span class="">   54:     my $customers = Database::Customers-&gt;new(directory =&gt; &#39;/data&#39;);
+</span><span class="">   55:     my $loyalty   = Database::Loyalty-&gt;new(directory  =&gt; &#39;/data&#39;);
+</span><span class="">   56: 
+</span><span class="">   57:     my $join = Database::Join-&gt;new(
+</span><span class="">   58:         databases      =&gt; [ $customers, $loyalty ],
+</span><span class="">   59:         join_column    =&gt; &#39;entry&#39;,              # shared key column (default: &#39;entry&#39;)
+</span><span class="">   60:         remove_columns =&gt; [ &#39;email&#39;, &#39;notes&#39; ], # columns to hide (optional)
+</span><span class="">   61:     );
+</span><span class="">   62: 
+</span><span class="">   63:     # When the join key has different names in each database, use join_map.
+</span><span class="">   64:     # $cities  (index 0) has a column called &#39;statecode&#39;  - matches join_column, no entry needed.
+</span><span class="">   65:     # $stnames (index 1) has a column called &#39;entry&#39;      - different name, so declare it.
+</span><span class="">   66:     my $join2 = Database::Join-&gt;new(
+</span><span class="">   67:         databases   =&gt; [ $cities,  $stnames ],
+</span><span class="">   68:         #                index 0   index 1
+</span><span class="">   69:         join_column =&gt; &#39;statecode&#39;,
+</span><span class="">   70:         join_map    =&gt; { 1 =&gt; &#39;entry&#39; },   # index 1&#39;s local name for the join key
+</span><span class="">   71:     );
+</span><span class="">   72:     my $rows = $join2-&gt;selectall_arrayref();  # every row uses &#39;statecode&#39;; &#39;entry&#39; never appears
+</span><span class="">   73: 
+</span><span class="">   74:     # Same API as Database::Abstraction ---------------------------------
+</span><span class="">   75: 
+</span><span class="">   76:     # All rows from both databases merged on the join_column
+</span><span class="">   77:     my $rows = $join-&gt;selectall_arrayref();
+</span><span class="">   78: 
+</span><span class="">   79:     # Criteria on either database work transparently
+</span><span class="">   80:     my $vip  = $join-&gt;selectall_arrayref(tier =&gt; &#39;gold&#39;);
+</span><span class="">   81:     my $row  = $join-&gt;fetchrow_hashref(entry =&gt; &#39;C001&#39;);
+</span><span class="">   82: 
+</span><span class="">   83:     # AUTOLOAD column shortcut
+</span><span class="">   84:     my $name = $join-&gt;name(entry =&gt; &#39;C001&#39;);
+</span><span class="">   85: 
+</span><span class="">   86:     # Introspection (hidden columns are absent)
+</span><span class="">   87:     my $all_cols = $join-&gt;columns();   # union of all databases&#39; columns
+</span><span class="">   88:     my $schema   = $join-&gt;schema();    # merged schema
+</span><span class="">   89: 
+</span><span class="">   90:     # Add another database to the view (chainable, same API as new)
+</span><span class="">   91:     $join-&gt;add_database($scores)
+</span><span class="">   92:          -&gt;add_database($db4, remove_columns =&gt; [&#39;audit_ts&#39;]);
+</span><span class="">   93: 
+</span><span class="">   94:     # Remove a column after construction
+</span><span class="">   95:     $join-&gt;remove_column(&#39;internal_id&#39;);
+</span><span class="">   96: 
+</span><span class="">   97: =head1 DESCRIPTION
+</span><span class="">   98: 
+</span><span class="">   99: C&lt;Database::Join&gt; merges two or more L&lt;Database::Abstraction&gt; objects into a
+</span><span class="">  100: single logical view.  Each component database is queried independently through
+</span><span class="">  101: its own C&lt;Database::Abstraction&gt; interface; the results are then combined
+</span><span class="">  102: in Perl memory using a shared key column (C&lt;join_column&gt;).
+</span><span class="">  103: 
+</span><span class="">  104: The module exposes the same read-only API as C&lt;Database::Abstraction&gt;:
+</span><span class="">  105: C&lt;selectall_arrayref&gt;, C&lt;selectall_array&gt;, C&lt;fetchrow_hashref&gt;, C&lt;count&gt;,
+</span><span class="">  106: C&lt;columns&gt;, C&lt;schema&gt;, C&lt;updated&gt;, and the C&lt;AUTOLOAD&gt; column shortcut.
+</span><span class="">  107: 
+</span><span class="">  108: =head2 Join semantics
+</span><span class="">  109: 
+</span><span class="">  110: The C&lt;join_type&gt; parameter controls what happens when a key value exists in
+</span><span class="">  111: some databases but not all:
+</span><span class="">  112: 
+</span><span class="">  113: =over 4
+</span><span class="">  114: 
+</span><span class="">  115: =item C&lt;left&gt; (default)
+</span><span class="">  116: 
+</span><span class="">  117: All rows from the I&lt;primary&gt; (first) database are returned.  Columns from
+</span><span class="">  118: subsequent databases are filled in where a matching row is found and omitted
+</span><span class="">  119: where there is no match.
+</span><span class="">  120: 
+</span><span class="">  121: =item C&lt;inner&gt;
+</span><span class="">  122: 
+</span><span class="">  123: Only rows whose join-column value is present in I&lt;every&gt; component database
+</span><span class="">  124: are returned.
+</span><span class="">  125: 
+</span><span class="">  126: =item C&lt;outer&gt;
+</span><span class="">  127: 
+</span><span class="">  128: Every join-column value found in I&lt;any&gt; database is returned.  Missing columns
+</span><span class="">  129: from databases that lack that key are simply absent from the merged row.
+</span><span class="">  130: 
+</span><span class="">  131: =back
+</span><span class="">  132: 
+</span><span class="">  133: =head2 Column ownership
+</span><span class="">  134: 
+</span><span class="">  135: At construction time C&lt;Database::Join&gt; calls C&lt;columns()&gt; on each database to
+</span><span class="">  136: build an internal column-to-database index.  When criteria are passed to a
+</span><span class="">  137: query method, each criterion is routed to the database that owns the column.
+</span><span class="">  138: 
+</span><span class="">  139: The C&lt;join_column&gt; itself is treated specially: criteria on it are broadcast
+</span><span class="">  140: to I&lt;all&gt; databases so that each database fetches only the relevant rows.
+</span><span class="">  141: 
+</span><span class="">  142: When the same non-join column name exists in more than one database, the
+</span><span class="">  143: I&lt;last&gt; database&#39;s value overwrites earlier ones in merged rows.
+</span><span class="">  144: 
+</span><span class="">  145: =head1 LIMITATIONS
+</span><span class="">  146: 
+</span><span class="">  147: =over 4
+</span><span class="">  148: 
+</span><span class="">  149: =item *
+</span><span class="">  150: 
+</span><span class="">  151: In-memory join only.  Not suitable for very large result sets.
+</span><span class="">  152: 
+</span><span class="">  153: =item *
+</span><span class="">  154: 
+</span><span class="">  155: The C&lt;query()&gt; chained builder and C&lt;execute()&gt; raw SQL are not supported.
+</span><span class="">  156: 
+</span><span class="">  157: =item *
+</span><span class="">  158: 
+</span><span class="">  159: Only equi-joins on a single shared key column are implemented.  When the join
+</span><span class="">  160: key has different names across databases, use C&lt;join_map&gt; to declare the
+</span><span class="">  161: per-database column name.
+</span><span class="">  162: 
+</span><span class="">  163: =item *
+</span><span class="">  164: 
+</span><span class="">  165: Sorting is performed on the C&lt;join_column&gt; value only.  Per-column C&lt;ORDER BY&gt;
+</span><span class="">  166: from the caller is not propagated.
+</span><span class="">  167: 
+</span><span class="">  168: =back
+</span><span class="">  169: 
+</span><span class="">  170: =head1 METHODS
+</span><span class="">  171: 
+</span><span class="">  172: =head2 new
+</span><span class="">  173: 
+</span><span class="">  174: =head3 SYNOPSIS
+</span><span class="">  175: 
+</span><span class="">  176:     my $join = Database::Join-&gt;new(
+</span><span class="">  177:         databases      =&gt; [ $db1, $db2 ],          # required
+</span><span class="">  178:         join_column    =&gt; &#39;entry&#39;,                  # optional, default &#39;entry&#39;
+</span><span class="">  179:         join_type      =&gt; &#39;left&#39;,                   # optional, default &#39;left&#39;
+</span><span class="">  180:         join_map       =&gt; { 1 =&gt; &#39;local_col&#39; },    # optional - see join_map section below
+</span><span class="">  181:         remove_columns =&gt; [ &#39;email&#39;, &#39;internal_id&#39; ], # optional
+</span><span class="">  182:         logger         =&gt; $log,                     # optional
+</span><span class="">  183:         i18n           =&gt; $locale,                  # optional
+</span><span class="">  184:     );
+</span><span class="">  185: 
+</span><span class="">  186: =head3 DESCRIPTION
+</span><span class="">  187: 
+</span><span class="">  188: Constructs and returns a new C&lt;Database::Join&gt; object.  Each element of
+</span><span class="">  189: C&lt;databases&gt; must be an instantiated subclass of C&lt;Database::Abstraction&gt;.
+</span><span class="">  190: The C&lt;join_column&gt; must be present in all component databases.
+</span><span class="">  191: 
+</span><span class="">  192: Columns listed in C&lt;remove_columns&gt; are hidden from the merged view: they
+</span><span class="">  193: do not appear in C&lt;columns()&gt;, C&lt;schema()&gt;, or any returned row hashref,
+</span><span class="">  194: and criteria that reference them are silently dropped.  This is equivalent
+</span><span class="">  195: to calling C&lt;remove_column&gt; once per name after construction.
+</span><span class="">  196: 
+</span><span class="">  197: =head3 API SPECIFICATION
+</span><span class="">  198: 
+</span><span class="">  199: =head4 Input
+</span><span class="">  200: 
+</span><span class="">  201:     databases      =&gt; { type =&gt; &#39;arrayref&#39;, required =&gt; 1 }
+</span><span class="">  202:     join_column    =&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1, default =&gt; &#39;entry&#39; }
+</span><span class="">  203:     join_type      =&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1, default =&gt; &#39;left&#39;,
+</span><span class="">  204:                         enum =&gt; [&#39;inner&#39;,&#39;left&#39;,&#39;outer&#39;] }
+</span><span class="">  205:     join_map       =&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 }
+</span><span class="">  206:                       # Keys are zero-based indices into &#39;databases&#39;;
+</span><span class="">  207:                       # values are the local column name for the join key
+</span><span class="">  208:                       # in that database.  See the join_map section below.
+</span><span class="">  209:     filters        =&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 }
+</span><span class="">  210:                       # Keys are zero-based indices into &#39;databases&#39;;
+</span><span class="">  211:                       # values are criteria hashrefs applied permanently to
+</span><span class="">  212:                       # that database.  See the filters section below.
+</span><span class="">  213:     remove_columns =&gt; { type =&gt; &#39;arrayref&#39;, optional =&gt; 1 }
+</span><span class="">  214:     logger         =&gt; { type =&gt; &#39;object&#39;,   optional =&gt; 1 }
+</span><span class="">  215:     i18n           =&gt; { type =&gt; &#39;object&#39;,   optional =&gt; 1 }
+</span><span class="">  216: 
+</span><span class="">  217: =head4 Output
+</span><span class="">  218: 
+</span><span class="">  219:     Database::Join blessed object reference.
+</span><span class="">  220: 
+</span><span class="">  221: =cut
+</span><span class="">  222: 
+</span><span class="">  223: sub new {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">224 → 244 → 250</span></span>  224: 	my ($class, @args) = @_;
+</span><span class="">  225: 
+</span><span class="">  226: 	my $p = validate_strict(
+</span><span class="">  227: 		schema =&gt; {
+</span><span class="">  228: 			databases	=&gt; { type =&gt; &#39;arrayref&#39; },
+</span><span class="">  229: 			join_column	=&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1, default =&gt; &#39;entry&#39; },
+</span><span class="">  230: 			join_type	=&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1, default =&gt; &#39;left&#39;,
+</span><span class="">  231: 			                  enum =&gt; [&#39;inner&#39;, &#39;left&#39;, &#39;outer&#39;] },
+</span><span class="">  232: 			join_map	=&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 },
+</span><span class="">  233: 			filters		=&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 },
+</span><span class="">  234: 			remove_columns	=&gt; { type =&gt; &#39;arrayref&#39;, optional =&gt; 1 },
+</span><span class="">  235: 			logger		=&gt; { type =&gt; &#39;object&#39;,   optional =&gt; 1 },
+</span><span class="">  236: 			i18n		=&gt; { type =&gt; &#39;object&#39;,   optional =&gt; 1 },
+</span><span class="">  237: 		},
+</span><span class="">  238: 		input =&gt; get_params(undef, \@args) // {},
+</span><span class="">  239: 	);
+</span><span class="">  240: 
+</span><span class="">  241: 	croak _msg($p-&gt;{i18n}, &#39;error_no_databases&#39;)
+</span><span class="">  242: 		unless @{ $p-&gt;{databases} };
+</span><span class="">  243: 
+</span><span class="">  244: 	for my $i (0 .. $#{ $p-&gt;{databases} }) {
+</span><span class="">  245: 		croak _msg($p-&gt;{i18n}, &#39;error_invalid_db&#39;, $i)
+</span><span class="">  246: 			unless blessed($p-&gt;{databases}[$i])
+</span><span class="">  247: 			    &amp;&amp; $p-&gt;{databases}[$i]-&gt;isa(&#39;Database::Abstraction&#39;);
+</span><span class="">  248: 	}
+</span><span class="">  249: 
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">250 → 268 → 272</span></span>  250: 	my $self = bless {
+</span><span class="">  251: 		_dbs          =&gt; $p-&gt;{databases},
+</span><span class="">  252: 		_join_col     =&gt; $p-&gt;{join_column},
+</span><span class="">  253: 		_join_type    =&gt; $p-&gt;{join_type},
+</span><span class="">  254: 		_join_map     =&gt; $p-&gt;{join_map} // {},	# db_index =&gt; local join col name
+</span><span class="">  255: 		_filters      =&gt; $p-&gt;{filters}  // {},	# db_index =&gt; criteria hashref
+</span><span class="">  256: 		_logger       =&gt; $p-&gt;{logger},
+</span><span class="">  257: 		_i18n         =&gt; $p-&gt;{i18n},
+</span><span class="">  258: 		_col_db       =&gt; {},	# column_name =&gt; db_index
+</span><span class="">  259: 		_db_cols      =&gt; [],	# per-db column-presence hashref
+</span><span class="">  260: 		_removed_cols =&gt; {},	# column_name =&gt; 1 (hidden from the view)
+</span><span class="">  261: 		_col_cache    =&gt; undef,	# memoised columns() result
+</span><span class="">  262: 		_schema_cache =&gt; undef,	# memoised schema() result
+</span><span class="">  263: 	}, $class;
+</span><span class="">  264: 
+</span><span class="">  265: 	$self-&gt;_build_col_index();
+</span><span class="">  266: 
+</span><span class="">  267: 	# Apply column removals requested in the constructor
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  268: 	if (my $rc = $p-&gt;{remove_columns}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="">  269: 		$self-&gt;remove_column($_) for @{$rc};
+</span><span class="">  270: 	}
+</span><span class="">  271: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  272: 	return $self;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  273: }
+</span><span class="">  274: 
+</span><span class="">  275: # ---------------------------------------------------------------------------
+</span><span class="">  276: # Public API (mirrors Database::Abstraction)
+</span><span class="">  277: # ---------------------------------------------------------------------------
+</span><span class="">  278: 
+</span><span class="">  279: =head2 join_map - joining on differently-named columns
+</span><span class="">  280: 
+</span><span class="">  281: By default every component database must have a column whose name matches
+</span><span class="">  282: C&lt;join_column&gt;.  If a database calls that column something different, declare
+</span><span class="">  283: the mapping with C&lt;join_map&gt;.
+</span><span class="">  284: 
+</span><span class="">  285: C&lt;join_map&gt; is a hashref.  Each B&lt;key&gt; is the B&lt;zero-based position&gt; of a
+</span><span class="">  286: database in the C&lt;databases&gt; array (0 = first, 1 = second, and so on).  Each
+</span><span class="">  287: B&lt;value&gt; is the name that B&lt;that database&gt; uses for the join key.  Databases
+</span><span class="">  288: not listed in C&lt;join_map&gt; are assumed to already have a column named
+</span><span class="">  289: C&lt;join_column&gt;.
+</span><span class="">  290: 
+</span><span class="">  291: Throughout the merged view the join key is always referred to by
+</span><span class="">  292: C&lt;join_column&gt;; the local alias is never exposed in returned rows, in
+</span><span class="">  293: C&lt;columns()&gt;, or in C&lt;schema()&gt;.
+</span><span class="">  294: 
+</span><span class="">  295: B&lt;Example&gt; - cities table uses C&lt;statecode&gt;; state-names table uses C&lt;entry&gt;:
+</span><span class="">  296: 
+</span><span class="">  297:     #                       index 0     index 1
+</span><span class="">  298:     my @databases = (      $cities,    $stnames  );
+</span><span class="">  299:     #  column name:       &#39;statecode&#39;  &#39;entry&#39;
+</span><span class="">  300:     #  join_column:       &#39;statecode&#39;  - already matches, no map needed
+</span><span class="">  301:     #                                  - different name, declare it:
+</span><span class="">  302: 
+</span><span class="">  303:     my $join = Database::Join-&gt;new(
+</span><span class="">  304:         databases   =&gt; \@databases,
+</span><span class="">  305:         join_column =&gt; &#39;statecode&#39;,
+</span><span class="">  306:         join_map    =&gt; { 1 =&gt; &#39;entry&#39; },   # $stnames (index 1) calls it &#39;entry&#39;
+</span><span class="">  307:     );
+</span><span class="">  308: 
+</span><span class="">  309:     my $rows = $join-&gt;selectall_arrayref();           # rows use &#39;statecode&#39;
+</span><span class="">  310:     my $row  = $join-&gt;fetchrow_hashref(statecode =&gt; &#39;CA&#39;);
+</span><span class="">  311: 
+</span><span class="">  312: If you are adding a database with C&lt;add_database&gt; instead of listing it in
+</span><span class="">  313: the constructor, pass C&lt;join_column&gt; to name the incoming database&#39;s local
+</span><span class="">  314: column:
+</span><span class="">  315: 
+</span><span class="">  316:     my $join2 = Database::Join-&gt;new(databases =&gt; [$cities], join_column =&gt; &#39;statecode&#39;);
+</span><span class="">  317:     $join2-&gt;add_database($stnames, join_column =&gt; &#39;entry&#39;);
+</span><span class="">  318: 
+</span><span class="">  319: This is exactly equivalent to using C&lt;join_map =&gt; { 1 =&gt; &#39;entry&#39; }&gt; in the
+</span><span class="">  320: constructor.
+</span><span class="">  321: 
+</span><span class="">  322: =head2 filters - permanent per-database row filters
+</span><span class="">  323: 
+</span><span class="">  324: Normally every row in a component database is a candidate for the merged view.
+</span><span class="">  325: C&lt;filters&gt; lets you restrict a database to a subset of its rows permanently,
+</span><span class="">  326: without repeating the criterion on every query call.  The typical use case is
+</span><span class="">  327: to exclude stale, inactive, or out-of-range rows from the logical view
+</span><span class="">  328: altogether so callers never see them.
+</span><span class="">  329: 
+</span><span class="">  330: C&lt;filters&gt; is a hashref.  Each B&lt;key&gt; is the B&lt;zero-based position&gt; of a
+</span><span class="">  331: database in the C&lt;databases&gt; array (same numbering as C&lt;join_map&gt;).  Each
+</span><span class="">  332: B&lt;value&gt; is a criteria hashref in the same format as C&lt;selectall_arrayref&gt;
+</span><span class="">  333: accepts: plain scalars, operator hashrefs (C&lt;&lt; { &#39;&gt;&#39; =&gt; 60 } &gt;&gt;), or any
+</span><span class="">  334: other form C&lt;Database::Abstraction&gt; supports.
+</span><span class="">  335: 
+</span><span class="">  336: B&lt;Key-set semantics&gt;: a filtered database always acts as an inner-join
+</span><span class="">  337: partner for key-set resolution, regardless of C&lt;join_type&gt;.  Any join-key
+</span><span class="">  338: value not present in the filtered result is excluded from the merged output
+</span><span class="">  339: entirely.  This ensures that the filter reduces the view rather than merely
+</span><span class="">  340: hiding secondary-database columns.
+</span><span class="">  341: 
+</span><span class="">  342: B&lt;Criteria merging&gt;: when a query call also supplies a criterion for a column
+</span><span class="">  343: that already has a base filter, the two are combined:
+</span><span class="">  344: 
+</span><span class="">  345: =over 4
+</span><span class="">  346: 
+</span><span class="">  347: =item *
+</span><span class="">  348: 
+</span><span class="">  349: When both the base filter and the query criterion are operator hashrefs
+</span><span class="">  350: (e.g. C&lt;&lt; { &#39;&gt;&#39; =&gt; 60 } &gt;&gt; and C&lt;&lt; { &#39;&lt;&#39; =&gt; 365 } &gt;&gt;), their operators are
+</span><span class="">  351: merged so that I&lt;both&gt; constraints apply (AND semantics).
+</span><span class="">  352: 
+</span><span class="">  353: =item *
+</span><span class="">  354: 
+</span><span class="">  355: When either value is a plain scalar, or the operators conflict, the
+</span><span class="">  356: query-time criterion wins and the base filter for that column is ignored.
+</span><span class="">  357: 
+</span><span class="">  358: =back
+</span><span class="">  359: 
+</span><span class="">  360: B&lt;Example&gt; - only show orders placed more than 60 days ago:
+</span><span class="">  361: 
+</span><span class="">  362:     #                      index 0       index 1
+</span><span class="">  363:     my $join = Database::Join-&gt;new(
+</span><span class="">  364:         databases   =&gt; [ $customers,  $orders ],
+</span><span class="">  365:         join_column =&gt; &#39;entry&#39;,
+</span><span class="">  366:         filters     =&gt; { 1 =&gt; { age_days =&gt; { &#39;&gt;&#39; =&gt; 60 } } },
+</span><span class="">  367:     );
+</span><span class="">  368: 
+</span><span class="">  369:     # Every subsequent query sees only old orders - no criterion needed at call site
+</span><span class="">  370:     my $rows = $join-&gt;selectall_arrayref();
+</span><span class="">  371: 
+</span><span class="">  372:     # Query criteria layer on top of the base filter automatically
+</span><span class="">  373:     my $vip  = $join-&gt;selectall_arrayref(tier =&gt; &#39;gold&#39;);
+</span><span class="">  374: 
+</span><span class="">  375:     # Range intersection: age_days &gt; 60 AND age_days &lt; 365
+</span><span class="">  376:     my $recent_old = $join-&gt;selectall_arrayref(age_days =&gt; { &#39;&lt;&#39; =&gt; 365 });
+</span><span class="">  377: 
+</span><span class="">  378: When using C&lt;add_database&gt;, pass C&lt;filter&gt; (singular) to set the base
+</span><span class="">  379: criteria for the new database:
+</span><span class="">  380: 
+</span><span class="">  381:     $join-&gt;add_database($orders, filter =&gt; { age_days =&gt; { &#39;&gt;&#39; =&gt; 60 } });
+</span><span class="">  382: 
+</span><span class="">  383: =head2 selectall_arrayref
+</span><span class="">  384: 
+</span><span class="">  385: =head3 SYNOPSIS
+</span><span class="">  386: 
+</span><span class="">  387:     my $rows = $join-&gt;selectall_arrayref();
+</span><span class="">  388:     my $rows = $join-&gt;selectall_arrayref(tier  =&gt; &#39;gold&#39;);
+</span><span class="">  389:     my $rows = $join-&gt;selectall_arrayref(score =&gt; { &#39;&gt;&#39; =&gt; 80 });
+</span><span class="">  390:     my $rows = $join-&gt;selectall_arrayref(entry =&gt; &#39;C001&#39;);
+</span><span class="">  391: 
+</span><span class="">  392: =head3 DESCRIPTION
+</span><span class="">  393: 
+</span><span class="">  394: Returns an arrayref of hashrefs representing the merged view of all component
+</span><span class="">  395: databases, filtered by any supplied criteria.  Criteria for columns that exist
+</span><span class="">  396: in different databases are partitioned and evaluated independently; results are
+</span><span class="">  397: joined in memory on C&lt;join_column&gt;.
+</span><span class="">  398: 
+</span><span class="">  399: Accepts the same criteria syntax as C&lt;Database::Abstraction::selectall_arrayref&gt;.
+</span><span class="">  400: 
+</span><span class="">  401: =head3 API SPECIFICATION
+</span><span class="">  402: 
+</span><span class="">  403: =head4 Input
+</span><span class="">  404: 
+</span><span class="">  405:     Criteria: any flat key-value pairs accepted by Database::Abstraction,
+</span><span class="">  406:     where keys are column names and values are plain scalars, comparison
+</span><span class="">  407:     hashrefs, or set operators.  The join_column may be passed positionally
+</span><span class="">  408:     when it is the sole argument and equals &#39;entry&#39;.
+</span><span class="">  409: 
+</span><span class="">  410: =head4 Output
+</span><span class="">  411: 
+</span><span class="">  412:     Arrayref of hashrefs, one per unique join_column value, sorted
+</span><span class="">  413:     ascending by join_column.
+</span><span class="">  414: 
+</span><span class="">  415: =cut
+</span><span class="">  416: 
+</span><span class="">  417: sub selectall_arrayref {
+</span><span class="">  418: 	my ($self, @args) = @_;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  419: 	return $self-&gt;_joined_query($self-&gt;_parse_query_args(undef, @args));
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  420: }
+</span><span class="">  421: 
+</span><span class="">  422: =head2 selectall_array
+</span><span class="">  423: 
+</span><span class="">  424: =head3 SYNOPSIS
+</span><span class="">  425: 
+</span><span class="">  426:     my @rows = $join-&gt;selectall_array(status =&gt; &#39;active&#39;);
+</span><span class="">  427: 
+</span><span class="">  428:     # Scalar context applies LIMIT 1 (first match only)
+</span><span class="">  429:     my $row  = $join-&gt;selectall_array(entry =&gt; &#39;C001&#39;);
+</span><span class="">  430: 
+</span><span class="">  431: =head3 DESCRIPTION
+</span><span class="">  432: 
+</span><span class="">  433: In list context returns a list of hashrefs (same rows as C&lt;selectall_arrayref&gt;).
+</span><span class="">  434: In scalar context applies an implicit limit and returns only the first match.
+</span><span class="">  435: 
+</span><span class="">  436: =head3 API SPECIFICATION
+</span><span class="">  437: 
+</span><span class="">  438: =head4 Input
+</span><span class="">  439: 
+</span><span class="">  440:     Same criteria syntax as selectall_arrayref.
+</span><span class="">  441: 
+</span><span class="">  442: =head4 Output
+</span><span class="">  443: 
+</span><span class="">  444:     List context:   list of hashrefs.
+</span><span class="">  445:     Scalar context: single hashref or undef.
+</span><span class="">  446: 
+</span><span class="">  447: =cut
+</span><span class="">  448: 
+</span><span class="">  449: sub selectall_array {
+</span><span class="">  450: 	my ($self, @args) = @_;
+</span><span class="">  451: 	my $rows = $self-&gt;_joined_query($self-&gt;_parse_query_args(undef, @args));
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths.">  452: 	return wantarray ? @{$rows} : $rows-&gt;[0];
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_452_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_452_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="">  453: }
+</span><span class="">  454: 
+</span><span class="">  455: =head2 fetchrow_hashref
+</span><span class="">  456: 
+</span><span class="">  457: =head3 SYNOPSIS
+</span><span class="">  458: 
+</span><span class="">  459:     my $row = $join-&gt;fetchrow_hashref(entry =&gt; &#39;C001&#39;);
+</span><span class="">  460:     my $row = $join-&gt;fetchrow_hashref(&#39;C001&#39;);   # when join_column is &#39;entry&#39;
+</span><span class="">  461: 
+</span><span class="">  462: =head3 DESCRIPTION
+</span><span class="">  463: 
+</span><span class="">  464: Returns a single merged hashref for the first row matching the criteria,
+</span><span class="">  465: or C&lt;undef&gt; when there is no match.  Equivalent to calling
+</span><span class="">  466: C&lt;selectall_arrayref&gt; and taking the first element.
+</span><span class="">  467: 
+</span><span class="">  468: Accepts the same criteria as C&lt;selectall_arrayref&gt;.
+</span><span class="">  469: 
+</span><span class="">  470: =head3 API SPECIFICATION
+</span><span class="">  471: 
+</span><span class="">  472: =head4 Input
+</span><span class="">  473: 
+</span><span class="">  474:     Same criteria syntax as selectall_arrayref.
+</span><span class="">  475: 
+</span><span class="">  476: =head4 Output
+</span><span class="">  477: 
+</span><span class="">  478:     Hashref, or undef.
+</span><span class="">  479: 
+</span><span class="">  480: =cut
+</span><span class="">  481: 
+</span><span class="">  482: sub fetchrow_hashref {
+</span><span class="">  483: 	my ($self, @args) = @_;
+</span><span class="">  484: 	my $rows = $self-&gt;_joined_query($self-&gt;_parse_query_args(undef, @args));
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  485: 	return $rows-&gt;[0];
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  486: }
+</span><span class="">  487: 
+</span><span class="">  488: =head2 count
+</span><span class="">  489: 
+</span><span class="">  490: =head3 SYNOPSIS
+</span><span class="">  491: 
+</span><span class="">  492:     my $total  = $join-&gt;count();
+</span><span class="">  493:     my $active = $join-&gt;count(tier =&gt; &#39;gold&#39;);
+</span><span class="">  494: 
+</span><span class="">  495: =head3 DESCRIPTION
+</span><span class="">  496: 
+</span><span class="">  497: Returns the number of merged rows that satisfy the given criteria.
+</span><span class="">  498: Implemented by running the full join and counting the result; use with care
+</span><span class="">  499: on large datasets.
+</span><span class="">  500: 
+</span><span class="">  501: =head3 API SPECIFICATION
+</span><span class="">  502: 
+</span><span class="">  503: =head4 Input
+</span><span class="">  504: 
+</span><span class="">  505:     Same criteria syntax as selectall_arrayref.
+</span><span class="">  506: 
+</span><span class="">  507: =head4 Output
+</span><span class="">  508: 
+</span><span class="">  509:     Non-negative integer.
+</span><span class="">  510: 
+</span><span class="">  511: =cut
+</span><span class="">  512: 
+</span><span class="">  513: sub count {
+</span><span class="">  514: 	my ($self, @args) = @_;
+</span><span class="">  515: 	my $rows = $self-&gt;_joined_query($self-&gt;_parse_query_args(undef, @args));
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  516: 	return scalar @{$rows};
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  517: }
+</span><span class="">  518: 
+</span><span class="">  519: =head2 columns
+</span><span class="">  520: 
+</span><span class="">  521: =head3 SYNOPSIS
+</span><span class="">  522: 
+</span><span class="">  523:     my $cols = $join-&gt;columns();
+</span><span class="">  524: 
+</span><span class="">  525: =head3 DESCRIPTION
+</span><span class="">  526: 
+</span><span class="">  527: Returns an arrayref of all column names present across all component
+</span><span class="">  528: databases, deduplicated and sorted alphabetically.  The C&lt;join_column&gt;
+</span><span class="">  529: appears exactly once regardless of how many databases contain it.
+</span><span class="">  530: 
+</span><span class="">  531: =head3 API SPECIFICATION
+</span><span class="">  532: 
+</span><span class="">  533: =head4 Input
+</span><span class="">  534: 
+</span><span class="">  535:     None.
+</span><span class="">  536: 
+</span><span class="">  537: =head4 Output
+</span><span class="">  538: 
+</span><span class="">  539:     Arrayref of column name strings.
+</span><span class="">  540: 
+</span><span class="">  541: =cut
+</span><span class="">  542: 
+</span><span class="">  543: sub columns {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">544 → 552 → 564</span></span>  544: 	my ($self) = @_;
+</span><span class="">  545: 
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values.">  546: 	return $self-&gt;{_col_cache} if $self-&gt;{_col_cache};
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_546_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_546_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="">  547: 
+</span><span class="">  548: 	my %seen;
+</span><span class="">  549: 	my @cols;
+</span><span class="">  550: 	my $join_col = $self-&gt;{_join_col};
+</span><span class="">  551: 
+</span><span class="">  552: 	for my $i (0 .. $#{ $self-&gt;{_dbs} }) {
+</span><span class="">  553: 		my $local_jc = $self-&gt;{_join_map}{$i};
+</span><span class="">  554: 		for my $col (@{ $self-&gt;{_dbs}[$i]-&gt;columns() }) {
+</span><span class="">  555: 			next if $seen{$col}++;
+</span><span class="">  556: 			next if $self-&gt;{_removed_cols}{$col};
+</span><span class="">  557: 			# The local join-key alias is not a data column; the canonical name
+</span><span class="">  558: 			# is already contributed by the database that owns it under that name.
+</span><span class="">  559: 			next if $local_jc &amp;&amp; $col eq $local_jc &amp;&amp; $col ne $join_col;
+</span><span class="">  560: 			push @cols, $col;
+</span><span class="">  561: 		}
+</span><span class="">  562: 	}
+</span><span class="">  563: 
+</span><span class="">  564: 	$self-&gt;{_col_cache} = [ sort @cols ];
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  565: 	return $self-&gt;{_col_cache};
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  566: }
+</span><span class="">  567: 
+</span><span class="">  568: =head2 schema
+</span><span class="">  569: 
+</span><span class="">  570: =head3 SYNOPSIS
+</span><span class="">  571: 
+</span><span class="">  572:     my $schema = $join-&gt;schema();
+</span><span class="">  573: 
+</span><span class="">  574: =head3 DESCRIPTION
+</span><span class="">  575: 
+</span><span class="">  576: Returns a merged schema hashref for all columns across all component
+</span><span class="">  577: databases.  Each key is a column name; each value follows the
+</span><span class="">  578: C&lt;Database::Abstraction::schema()&gt; contract:
+</span><span class="">  579: C&lt;{ type, nullable, default, pk }&gt;.
+</span><span class="">  580: 
+</span><span class="">  581: When the same column name appears in more than one database the I&lt;last&gt;
+</span><span class="">  582: database&#39;s metadata is used.
+</span><span class="">  583: 
+</span><span class="">  584: =head3 API SPECIFICATION
+</span><span class="">  585: 
+</span><span class="">  586: =head4 Input
+</span><span class="">  587: 
+</span><span class="">  588:     None.
+</span><span class="">  589: 
+</span><span class="">  590: =head4 Output
+</span><span class="">  591: 
+</span><span class="">  592:     Hashref: column_name =&gt; { type, nullable, default, pk }.
+</span><span class="">  593: 
+</span><span class="">  594: =cut
+</span><span class="">  595: 
+</span><span class="">  596: sub schema {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">597 → 602 → 614</span></span>  597: 	my ($self) = @_;
+</span><span class="">  598: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  599: 	return $self-&gt;{_schema_cache} if $self-&gt;{_schema_cache};
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  600: 
+</span><span class="">  601: 	my %merged;
+</span><span class="">  602: 	for my $i (0 .. $#{ $self-&gt;{_dbs} }) {
+</span><span class="">  603: 		my $s        = $self-&gt;{_dbs}[$i]-&gt;schema();
+</span><span class="">  604: 		my $local_jc = $self-&gt;{_join_map}{$i};
+</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch.">  605: 		if ($local_jc &amp;&amp; $local_jc ne $self-&gt;{_join_col}) {
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
+					<ul>
+				<li><b>COND_INV_605_3: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+</li></ul></details>
+<span class="">  606: 			my %s_copy = %{$s};
+</span><span class="">  607: 			delete $s_copy{$local_jc};
+</span><span class="">  608: 			%merged = (%merged, %s_copy);
+</span><span class="">  609: 		} else {
+</span><span class="">  610: 			%merged = (%merged, %{$s});
+</span><span class="">  611: 		}
+</span><span class="">  612: 	}
+</span><span class="">  613: 
+</span><span class="">  614: 	delete $merged{$_} for keys %{ $self-&gt;{_removed_cols} };
+</span><span class="">  615: 
+</span><span class="">  616: 	$self-&gt;{_schema_cache} = \%merged;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  617: 	return $self-&gt;{_schema_cache};
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  618: }
+</span><span class="">  619: 
+</span><span class="">  620: =head2 updated
+</span><span class="">  621: 
+</span><span class="">  622: =head3 SYNOPSIS
+</span><span class="">  623: 
+</span><span class="">  624:     my $ts = $join-&gt;updated();
+</span><span class="">  625: 
+</span><span class="">  626: =head3 DESCRIPTION
+</span><span class="">  627: 
+</span><span class="">  628: Returns the Unix timestamp of the most recent update across all component
+</span><span class="">  629: databases (i.e. the maximum of all individual C&lt;updated()&gt; return values).
+</span><span class="">  630: 
+</span><span class="">  631: =head3 API SPECIFICATION
+</span><span class="">  632: 
+</span><span class="">  633: =head4 Input
+</span><span class="">  634: 
+</span><span class="">  635:     None.
+</span><span class="">  636: 
+</span><span class="">  637: =head4 Output
+</span><span class="">  638: 
+</span><span class="">  639:     Unix timestamp (integer).
+</span><span class="">  640: 
+</span><span class="">  641: =cut
+</span><span class="">  642: 
+</span><span class="">  643: sub updated {
+</span><span class="">  644: 	my ($self) = @_;
+</span><span class="">  645: 
+</span><span class="">  646: 	my @times = map { $_-&gt;updated() } @{ $self-&gt;{_dbs} };
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths.">  647: 	return max(@times);
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_647_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_647_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="">  648: }
+</span><span class="">  649: 
+</span><span class="">  650: =head2 set_logger
+</span><span class="">  651: 
+</span><span class="">  652: =head3 SYNOPSIS
+</span><span class="">  653: 
+</span><span class="">  654:     $join-&gt;set_logger($log);
+</span><span class="">  655: 
+</span><span class="">  656: =head3 DESCRIPTION
+</span><span class="">  657: 
+</span><span class="">  658: Propagates a new logger object to all component databases and stores it
+</span><span class="">  659: locally for C&lt;Database::Join&gt;&#39;s own diagnostic output.
+</span><span class="">  660: 
+</span><span class="">  661: =head3 API SPECIFICATION
+</span><span class="">  662: 
+</span><span class="">  663: =head4 Input
+</span><span class="">  664: 
+</span><span class="">  665:     $log    Positional: a logger object (required)
+</span><span class="">  666: 
+</span><span class="">  667: =head4 Output
+</span><span class="">  668: 
+</span><span class="">  669:     Returns $self for chaining.
+</span><span class="">  670: 
+</span><span class="">  671: =cut
+</span><span class="">  672: 
+</span><span class="">  673: sub set_logger {
+</span><span class="">  674: 	my ($self, $logger) = @_;
+</span><span class="">  675: 
+</span><span class="">  676: 	croak &#39;Usage: set_logger($logger)&#39; unless defined $logger;
+</span><span class="">  677: 
+</span><span class="">  678: 	$self-&gt;{_logger} = $logger;
+</span><span class="">  679: 	$_-&gt;set_logger($logger) for @{ $self-&gt;{_dbs} };
+</span><span class="">  680: 
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths.">  681: 	return $self;
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_681_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_681_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="">  682: }
+</span><span class="">  683: 
+</span><span class="">  684: =head2 add_database
+</span><span class="">  685: 
+</span><span class="">  686: =head3 SYNOPSIS
+</span><span class="">  687: 
+</span><span class="">  688:     $join-&gt;add_database($db);
+</span><span class="">  689:     $join-&gt;add_database($db, remove_columns =&gt; [&#39;email&#39;]);
+</span><span class="">  690:     $join-&gt;add_database(database =&gt; $db);
+</span><span class="">  691: 
+</span><span class="">  692:     # Chainable
+</span><span class="">  693:     $join-&gt;add_database($db1)-&gt;add_database($db2, remove_columns =&gt; [&#39;notes&#39;]);
+</span><span class="">  694: 
+</span><span class="">  695: =head3 DESCRIPTION
+</span><span class="">  696: 
+</span><span class="">  697: Adds one more L&lt;Database::Abstraction&gt; subclass object to the logical view
+</span><span class="">  698: and updates the column ownership index.
+</span><span class="">  699: 
+</span><span class="">  700: The C&lt;join_column&gt; must be present in the new database.  After the call,
+</span><span class="">  701: rows returned by any query method include columns from the newly added
+</span><span class="">  702: database, and criteria on those columns are routed to it.  When a column
+</span><span class="">  703: name already exists in an earlier database, the new database becomes the
+</span><span class="">  704: authoritative source (last-database-wins, the same rule applied at
+</span><span class="">  705: construction time).
+</span><span class="">  706: 
+</span><span class="">  707: The method mirrors the parameter conventions of C&lt;new&gt;:
+</span><span class="">  708: 
+</span><span class="">  709: =over 4
+</span><span class="">  710: 
+</span><span class="">  711: =item Positional: C&lt;&lt; $join-&gt;add_database($db) &gt;&gt;
+</span><span class="">  712: 
+</span><span class="">  713: =item Named: C&lt;&lt; $join-&gt;add_database(database =&gt; $db) &gt;&gt;
+</span><span class="">  714: 
+</span><span class="">  715: =item Named with options: C&lt;&lt; $join-&gt;add_database($db, remove_columns =&gt; [...]) &gt;&gt;
+</span><span class="">  716: 
+</span><span class="">  717: =back
+</span><span class="">  718: 
+</span><span class="">  719: An optional C&lt;remove_columns&gt; list hides specific columns from the newly
+</span><span class="">  720: added database in exactly the same way as calling C&lt;remove_column&gt; for each.
+</span><span class="">  721: 
+</span><span class="">  722: When the join key has a different name in the new database, pass
+</span><span class="">  723: C&lt;&lt; join_column =&gt; &#39;local_name&#39; &gt;&gt; to declare that alias:
+</span><span class="">  724: 
+</span><span class="">  725:     # &#39;statecode&#39; is the canonical join key; the new database calls it &#39;entry&#39;
+</span><span class="">  726:     $join-&gt;add_database($capitals, join_column =&gt; &#39;entry&#39;);
+</span><span class="">  727: 
+</span><span class="">  728: The logger is propagated to the new database if one was set on the join.
+</span><span class="">  729: 
+</span><span class="">  730: =head3 API SPECIFICATION
+</span><span class="">  731: 
+</span><span class="">  732: =head4 Input
+</span><span class="">  733: 
+</span><span class="">  734:     database       =&gt; { type =&gt; &#39;object&#39;,   required =&gt; 1 }
+</span><span class="">  735:     join_column    =&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1 }
+</span><span class="">  736:     filter         =&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 }
+</span><span class="">  737:                       # Permanent criteria for this database.  Same format
+</span><span class="">  738:                       # as selectall_arrayref.  See the filters section below.
+</span><span class="">  739:     remove_columns =&gt; { type =&gt; &#39;arrayref&#39;, optional =&gt; 1 }
+</span><span class="">  740: 
+</span><span class="">  741: =head4 Output
+</span><span class="">  742: 
+</span><span class="">  743:     Returns C&lt;$self&gt; to support method chaining.
+</span><span class="">  744: 
+</span><span class="">  745: =cut
+</span><span class="">  746: 
+</span><span class="">  747: sub add_database {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">748 → 753 → 764</span></span>  748: 	my ($self, @args) = @_;
+</span><span class="">  749: 
+</span><span class="">  750: 	my $idx = scalar @{ $self-&gt;{_dbs} };
+</span><span class="">  751: 	my $db;
+</span><span class="">  752: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  753: 	if (@args &amp;&amp; ref($args[0])) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="">  754: 		# Positional form: first arg is a reference &acirc;&#128;&#148; extract it now so that
+</span><span class="">  755: 		# get_params does not choke on the mixed positional+named-pairs pattern.
+</span><span class="">  756: 		$db = shift @args;
+</span><span class="">  757: 	} elsif (@args &amp;&amp; !ref($args[0])) {
+</span><span class="">  758: 		# First arg is a plain string. Only known named-pair keys are valid here;
+</span><span class="">  759: 		# anything else is treated as an invalid positional database arg.
+</span><span class="">  760: 		croak _msg($self-&gt;{_i18n}, &#39;error_invalid_db&#39;, $idx)
+</span><span class="">  761: 			unless grep { $args[0] eq $_ } @_ADD_DB_KEYS;
+</span><span class="">  762: 	}
+</span><span class="">  763: 
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">764 → 797 → 804</span></span>  764: 	my $p = validate_strict(
+</span><span class="">  765: 		schema =&gt; {
+</span><span class="">  766: 			database       =&gt; { type =&gt; &#39;object&#39;,   optional =&gt; 1 },
+</span><span class="">  767: 			join_column    =&gt; { type =&gt; &#39;string&#39;,   optional =&gt; 1 },
+</span><span class="">  768: 			filter         =&gt; { type =&gt; &#39;hashref&#39;,  optional =&gt; 1 },
+</span><span class="">  769: 			remove_columns =&gt; { type =&gt; &#39;arrayref&#39;, optional =&gt; 1 },
+</span><span class="">  770: 		},
+</span><span class="">  771: 		input =&gt; (@args ? get_params(undef, @args) : {}) // {},
+</span><span class="">  772: 	);
+</span><span class="">  773: 
+</span><span class="">  774: 	$db //= $p-&gt;{database};
+</span><span class="">  775: 
+</span><span class="">  776: 	croak _msg($self-&gt;{_i18n}, &#39;error_invalid_db&#39;, $idx)
+</span><span class="">  777: 		unless blessed($db) &amp;&amp; $db-&gt;isa(&#39;Database::Abstraction&#39;);
+</span><span class="">  778: 
+</span><span class="">  779: 	# Determine and register the local join column name for this database
+</span><span class="">  780: 	my $local_jc = $p-&gt;{join_column} // $self-&gt;{_join_col};
+</span><span class="">  781: 	$self-&gt;{_join_map}{$idx} = $local_jc if $p-&gt;{join_column};
+</span><span class="">  782: 	$self-&gt;{_filters}{$idx}  = $p-&gt;{filter} if $p-&gt;{filter};
+</span><span class="">  783: 
+</span><span class="">  784: 	my $cols         = $db-&gt;columns();
+</span><span class="">  785: 	my %col_presence = map { $_ =&gt; 1 } @{$cols};
+</span><span class="">  786: 
+</span><span class="">  787: 	croak _msg($self-&gt;{_i18n}, &#39;error_join_col_missing&#39;,
+</span><span class="">  788: 	           $local_jc, $idx, ref($db))
+</span><span class="">  789: 		unless $col_presence{$local_jc};
+</span><span class="">  790: 
+</span><span class="">  791: 	# Register the new database
+</span><span class="">  792: 	push @{ $self-&gt;{_dbs} },     $db;
+</span><span class="">  793: 	push @{ $self-&gt;{_db_cols} }, \%col_presence;
+</span><span class="">  794: 
+</span><span class="">  795: 	# Update column routing: last-database-wins for duplicate column names;
+</span><span class="">  796: 	# skip the local join-key alias (it is not a data column).
+</span><span class="">  797: 	for my $col (@{$cols}) {
+</span><span class="">  798: 		next if $self-&gt;{_removed_cols}{$col};
+</span><span class="">  799: 		next if $local_jc ne $self-&gt;{_join_col} &amp;&amp; $col eq $local_jc;
+</span><span class="">  800: 		$self-&gt;{_col_db}{$col} = $idx;
+</span><span class="">  801: 	}
+</span><span class="">  802: 
+</span><span class="">  803: 	# Invalidate memoisation caches
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">804 → 808 → 813</span></span>  804: 	$self-&gt;{_col_cache}    = undef;
+</span><span class="">  805: 	$self-&gt;{_schema_cache} = undef;
+</span><span class="">  806: 
+</span><span class="">  807: 	# Propagate logger if one is configured
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  808: 	if (my $log = $self-&gt;{_logger}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="">  809: 		$db-&gt;set_logger($log);
+</span><span class="">  810: 	}
+</span><span class="">  811: 
+</span><span class="">  812: 	# Apply any column removals requested for this database
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">813 → 813 → 817</span></span>  813: 	if (my $rc = $p-&gt;{remove_columns}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="">  814: 		$self-&gt;remove_column($_) for @{$rc};
+</span><span class="">  815: 	}
+</span><span class="">  816: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  817: 	return $self;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  818: }
+</span><span class="">  819: 
+</span><span class="">  820: =head2 remove_column
+</span><span class="">  821: 
+</span><span class="">  822: =head3 SYNOPSIS
+</span><span class="">  823: 
+</span><span class="">  824:     $join-&gt;remove_column(&#39;email&#39;);
+</span><span class="">  825:     $join-&gt;remove_column(&#39;internal_id&#39;)-&gt;remove_column(&#39;audit_ts&#39;);  # chainable
+</span><span class="">  826: 
+</span><span class="">  827: =head3 DESCRIPTION
+</span><span class="">  828: 
+</span><span class="">  829: Hides a column from the merged view.  After calling this method:
+</span><span class="">  830: 
+</span><span class="">  831: =over 4
+</span><span class="">  832: 
+</span><span class="">  833: =item *
+</span><span class="">  834: 
+</span><span class="">  835: The column is absent from C&lt;columns()&gt; and C&lt;schema()&gt;.
+</span><span class="">  836: 
+</span><span class="">  837: =item *
+</span><span class="">  838: 
+</span><span class="">  839: Returned row hashrefs no longer contain the column key.
+</span><span class="">  840: 
+</span><span class="">  841: =item *
+</span><span class="">  842: 
+</span><span class="">  843: Criteria referencing the column are dropped with a C&lt;carp&gt; warning (the
+</span><span class="">  844: same behaviour as querying by a column that was never present).
+</span><span class="">  845: 
+</span><span class="">  846: =back
+</span><span class="">  847: 
+</span><span class="">  848: Removing the C&lt;join_column&gt; is not permitted and will C&lt;croak&gt;.
+</span><span class="">  849: Removing a column that does not exist in any database is silently ignored
+</span><span class="">  850: (idempotent).  The C&lt;columns()&gt; and C&lt;schema()&gt; memoisation caches are
+</span><span class="">  851: cleared automatically.
+</span><span class="">  852: 
+</span><span class="">  853: =head3 API SPECIFICATION
+</span><span class="">  854: 
+</span><span class="">  855: =head4 Input
+</span><span class="">  856: 
+</span><span class="">  857:     $col    Positional string: the column name to remove (required)
+</span><span class="">  858: 
+</span><span class="">  859: =head4 Output
+</span><span class="">  860: 
+</span><span class="">  861:     Returns C&lt;$self&gt; to support method chaining.
+</span><span class="">  862: 
+</span><span class="">  863: =cut
+</span><span class="">  864: 
+</span><span class="">  865: sub remove_column {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">866 → 871 → 878</span></span>  866: 	my ($self, $col) = @_;
+</span><span class="">  867: 
+</span><span class="">  868: 	croak _msg($self-&gt;{_i18n}, &#39;error_remove_join_col&#39;, $col)
+</span><span class="">  869: 		if defined $col &amp;&amp; $col eq $self-&gt;{_join_col};
+</span><span class="">  870: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  871: 	if (defined $col &amp;&amp; length $col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="">  872: 		$self-&gt;{_removed_cols}{$col} = 1;
+</span><span class="">  873: 		delete $self-&gt;{_col_db}{$col};
+</span><span class="">  874: 		$self-&gt;{_col_cache}    = undef;
+</span><span class="">  875: 		$self-&gt;{_schema_cache} = undef;
+</span><span class="">  876: 	}
+</span><span class="">  877: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  878: 	return $self;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  879: }
+</span><span class="">  880: 
+</span><span class="">  881: =head2 query
+</span><span class="">  882: 
+</span><span class="">  883: Not supported.  C&lt;Database::Join&gt; does not implement the chained query
+</span><span class="">  884: builder.  Use C&lt;selectall_arrayref&gt; or C&lt;fetchrow_hashref&gt; directly.
+</span><span class="">  885: 
+</span><span class="">  886: =cut
+</span><span class="">  887: 
+</span><span class="">  888: sub query {
+</span><span class="">  889: 	my ($self) = @_;
+</span><span class="">  890: 	croak _msg($self-&gt;{_i18n}, &#39;error_query_unsupported&#39;);
+</span><span class="">  891: }
+</span><span class="">  892: 
+</span><span class="">  893: =head2 execute
+</span><span class="">  894: 
+</span><span class="">  895: Not supported.  Raw SQL cannot be executed across heterogeneous backends.
+</span><span class="">  896: Use the Perl-level query methods instead.
+</span><span class="">  897: 
+</span><span class="">  898: =cut
+</span><span class="">  899: 
+</span><span class="">  900: sub execute {
+</span><span class="">  901: 	my ($self) = @_;
+</span><span class="">  902: 	croak _msg($self-&gt;{_i18n}, &#39;error_execute_unsupported&#39;);
+</span><span class="">  903: }
+</span><span class="">  904: 
+</span><span class="">  905: =head2 AUTOLOAD - column shortcut
+</span><span class="">  906: 
+</span><span class="">  907: Calling an unknown method whose name matches a column name performs a
+</span><span class="">  908: column lookup, delegated to whichever component database owns that column.
+</span><span class="">  909: 
+</span><span class="">  910:     my $name = $join-&gt;name(entry =&gt; &#39;C001&#39;);
+</span><span class="">  911:     my @tiers = $join-&gt;tier();
+</span><span class="">  912: 
+</span><span class="">  913: =cut
+</span><span class="">  914: 
+</span><span class="">  915: our $AUTOLOAD;
+</span><span class="">  916: sub AUTOLOAD {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">917 → 935 → 943</span></span>  917: 	my $self = shift;
+</span><span class="">  918: 
+</span><span class="">  919: 	my ($col) = $AUTOLOAD =~ /::(\w+)$/;
+</span><span class="">  920: 	return if $col eq &#39;DESTROY&#39;;
+</span><span class="">  921: 
+</span><span class="">  922: 	# Private methods must not be reached via AUTOLOAD &acirc;&#128;&#148; croak immediately so
+</span><span class="">  923: 	# typos like $join-&gt;_join_col are not silently swallowed.
+</span><span class="">  924: 	croak ref($self), &quot;: cannot call private method &#39;$col&#39; via AUTOLOAD&quot;
+</span><span class="">  925: 		if $col =~ /^_/;
+</span><span class="">  926: 
+</span><span class="">  927: 	my $db_idx = $self-&gt;{_col_db}{$col};
+</span><span class="">  928: 	croak ref($self), &quot;: unknown column &#39;$col&#39;&quot; unless defined $db_idx;
+</span><span class="">  929: 
+</span><span class="">  930: 	my $db = $self-&gt;{_dbs}[$db_idx];
+</span><span class="">  931: 
+</span><span class="">  932: 	# Use a full join query when join_map OR filters are active.  Direct
+</span><span class="">  933: 	# delegation to the owning database would bypass the join key translation
+</span><span class="">  934: 	# (join_map) and skip any permanent per-database row filters (filters).
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  935: 	if (%{ $self-&gt;{_join_map} } || %{ $self-&gt;{_filters} }) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="">  936: 		my $pk     = $self-&gt;{_dbs}[0]{id} // &#39;entry&#39;;
+</span><span class="">  937: 		my $params = $self-&gt;_parse_query_args($pk, @_);
+</span><span class="">  938: 		my $rows   = $self-&gt;_joined_query($params);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  939: 		return map { $_-&gt;{$col} } @{$rows} if wantarray;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  940: 		return @{$rows} ? $rows-&gt;[0]{$col} : undef;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  941: 	}
+</span><span class="">  942: 
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values.">  943: 	return $db-&gt;$col(@_);
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_943_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_943_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="">  944: }
+</span><span class="">  945: 
+</span><span class="">  946: sub DESTROY {}
+</span><span class="">  947: 
+</span><span class="">  948: # ---------------------------------------------------------------------------
+</span><span class="">  949: # Private helpers
+</span><span class="">  950: # ---------------------------------------------------------------------------
+</span><span class="">  951: 
+</span><span class="">  952: # _parse_query_args( $self, $positional_key, @caller_args ) -&gt; \%params
+</span><span class="">  953: # Purpose: Normalise the three calling conventions used by every public query
+</span><span class="">  954: #          method and AUTOLOAD into a single criteria hashref.
+</span><span class="">  955: # Entry:   $positional_key &acirc;&#128;&#148; the column name mapped to a bare scalar argument;
+</span><span class="">  956: #          pass undef to use the join_column (the default for public methods).
+</span><span class="">  957: # Exit:    Always returns a hashref; never undef.
+</span><span class="">  958: # Effects: None.
+</span><span class="">  959: sub _parse_query_args {
+</span><span class="">  960: 	my ($self, $key, @args) = @_;
+</span><span class="">  961: 	$key //= $self-&gt;{_join_col};
+</span><span class="">  962: 	return {}                           unless @args;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  963: 	return { $key =&gt; $args[0] }        if @args == 1 &amp;&amp; !ref($args[0]);
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic.">  964: 	return get_params(undef, @args) // {};
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="">  965: }
+</span><span class="">  966: 
+</span><span class="">  967: # _err( $self, $msg_key, @sprintf_args ) -&gt; $string
+</span><span class="">  968: # Convenience wrapper around _msg for use after construction, so callers do
+</span><span class="">  969: # not have to extract $self-&gt;{_i18n} at every error site.
+</span><span class="">  970: sub _err {
+</span><span class="">  971: 	my ($self, $key, @args) = @_;
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths.">  972: 	return _msg($self-&gt;{_i18n}, $key, @args);
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_972_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_972_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="">  973: }
+</span><span class="">  974: 
+</span><span class="">  975: # _build_col_index()
+</span><span class="">  976: # Calls columns() on each database at construction time to populate
+</span><span class="">  977: # _col_db (column =&gt; db_index) and _db_cols (per-db column lists).
+</span><span class="">  978: # The join_column is verified to exist in every database.
+</span><span class="">  979: sub _build_col_index {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">980 → 986 → 1004</span></span>  980: 	my ($self) = @_;
+</span><span class="">  981: 
+</span><span class="">  982: 	my $join_col = $self-&gt;{_join_col};
+</span><span class="">  983: 	my %col_db;
+</span><span class="">  984: 	my @db_cols;
+</span><span class="">  985: 
+</span><span class="">  986: 	for my $i (0 .. $#{ $self-&gt;{_dbs} }) {
+</span><span class="">  987: 		my $db        = $self-&gt;{_dbs}[$i];
+</span><span class="">  988: 		my $local_jc  = $self-&gt;{_join_map}{$i} // $join_col;
+</span><span class="">  989: 		my $cols      = $db-&gt;columns();
+</span><span class="">  990: 		$db_cols[$i]  = { map { $_ =&gt; 1 } @{$cols} };
+</span><span class="">  991: 
+</span><span class="">  992: 		croak _msg($self-&gt;{_i18n}, &#39;error_join_col_missing&#39;,
+</span><span class="">  993: 		           $local_jc, $i, ref($db))
+</span><span class="">  994: 			unless $db_cols[$i]{$local_jc};
+</span><span class="">  995: 
+</span><span class="">  996: 		for my $col (@{$cols}) {
+</span><span class="">  997: 			# Skip the local alias for the join key &acirc;&#128;&#148; it is not a data column
+</span><span class="">  998: 			next if $local_jc ne $join_col &amp;&amp; $col eq $local_jc;
+</span><span class="">  999: 			# Last database wins for duplicate non-join columns
+</span><span class=""> 1000: 			$col_db{$col} = $i;
+</span><span class=""> 1001: 		}
+</span><span class=""> 1002: 	}
+</span><span class=""> 1003: 
+</span><span class=""> 1004: 	$self-&gt;{_col_db}  = \%col_db;
+</span><span class=""> 1005: 	$self-&gt;{_db_cols} = \@db_cols;
+</span><span class=""> 1006: 
+</span><span class=""> 1007: 	return;
+</span><span class=""> 1008: }
+</span><span class=""> 1009: 
+</span><span class=""> 1010: # _partition_criteria( \%params ) -&gt; \@per_db
+</span><span class=""> 1011: # Splits a criteria hashref into per-database slices, routing each
+</span><span class=""> 1012: # criterion to the database that owns its column.  The join_column is
+</span><span class=""> 1013: # broadcast to all databases.  Unknown columns trigger a carp and are dropped.
+</span><span class=""> 1014: sub _partition_criteria {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1015 → 1021 → 1035</span></span> 1015: 	my ($self, $params) = @_;
+</span><span class=""> 1016: 
+</span><span class=""> 1017: 	my $join_col = $self-&gt;{_join_col};
+</span><span class=""> 1018: 	my $n        = scalar @{ $self-&gt;{_dbs} };
+</span><span class=""> 1019: 	my @per_db   = map { {} } 1 .. $n;
+</span><span class=""> 1020: 
+</span><span class=""> 1021: 	for my $col (keys %{$params}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1022: 		if ($col eq $join_col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1023: 			# Broadcast to every database using each one&#39;s local key column name
+</span><span class=""> 1024: 			for my $i (0 .. $n - 1) {
+</span><span class=""> 1025: 				my $local = $self-&gt;{_join_map}{$i} // $join_col;
+</span><span class=""> 1026: 				$per_db[$i]{$local} = $params-&gt;{$col};
+</span><span class=""> 1027: 			}
+</span><span class=""> 1028: 		} elsif (defined(my $idx = $self-&gt;{_col_db}{$col})) {
+</span><span class=""> 1029: 			$per_db[$idx]{$col} = $params-&gt;{$col};
+</span><span class=""> 1030: 		} else {
+</span><span class=""> 1031: 			carp _msg($self-&gt;{_i18n}, &#39;warn_unknown_column&#39;, $col);
+</span><span class=""> 1032: 		}
+</span><span class=""> 1033: 	}
+</span><span class=""> 1034: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1035: 	return \@per_db;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1036: }
+</span><span class=""> 1037: 
+</span><span class=""> 1038: # _fetch_indexed( $db_idx, \%criteria ) -&gt; \%join_val_to_\@rows
+</span><span class=""> 1039: # Queries one component database and returns a hashref where each key maps
+</span><span class=""> 1040: # to an arrayref of all rows sharing that join-column value.  Multiple rows
+</span><span class=""> 1041: # per key are preserved so that the primary database can contribute more than
+</span><span class=""> 1042: # one merged result row for a given join-key value (e.g. two cities in the
+</span><span class=""> 1043: # same state).  Secondary databases are treated as lookup tables: the caller
+</span><span class=""> 1044: # uses the last element of the array for each key.
+</span><span class=""> 1045: sub _fetch_indexed {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1046 → 1055 → 1061</span></span> 1046: 	my ($self, $db_idx, $criteria) = @_;
+</span><span class=""> 1047: 
+</span><span class=""> 1048: 	my $db        = $self-&gt;{_dbs}[$db_idx];
+</span><span class=""> 1049: 	my $local_jc  = $self-&gt;{_join_map}{$db_idx} // $self-&gt;{_join_col};
+</span><span class=""> 1050: 
+</span><span class=""> 1051: 	my $rows = $db-&gt;selectall_arrayref($criteria);
+</span><span class=""> 1052: 	$rows //= [];
+</span><span class=""> 1053: 
+</span><span class=""> 1054: 	my %indexed;
+</span><span class=""> 1055: 	for my $row (@{$rows}) {
+</span><span class=""> 1056: 		my $key = $row-&gt;{$local_jc};
+</span><span class=""> 1057: 		next unless defined $key;
+</span><span class=""> 1058: 		push @{ $indexed{$key} }, $row;
+</span><span class=""> 1059: 	}
+</span><span class=""> 1060: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1061: 	return \%indexed;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1062: }
+</span><span class=""> 1063: 
+</span><span class=""> 1064: # _joined_query( \%params ) -&gt; \@merged_rows
+</span><span class=""> 1065: #
+</span><span class=""> 1066: # Core algorithm.  Criteria are routed per-database; the key set is then
+</span><span class=""> 1067: # built using the following rules, applied sequentially for each database
+</span><span class=""> 1068: # after the primary:
+</span><span class=""> 1069: #
+</span><span class=""> 1070: #   - If the database had criteria in this query, it acts as an INNER-JOIN
+</span><span class=""> 1071: #     partner regardless of join_type: only keys present in its filtered
+</span><span class=""> 1072: #     result survive into the key set.  This gives WHERE-clause semantics
+</span><span class=""> 1073: #     (e.g. tier=&gt;&#39;gold&#39; on a LEFT join still returns only the matching rows).
+</span><span class=""> 1074: #
+</span><span class=""> 1075: #   - If the database had NO criteria:
+</span><span class=""> 1076: #       inner  -&gt; intersect  (standard inner join)
+</span><span class=""> 1077: #       left   -&gt; no change  (primary defines the key set)
+</span><span class=""> 1078: #       outer  -&gt; union      (all keys from any database)
+</span><span class=""> 1079: #
+</span><span class=""> 1080: # Rows are merged by updating a %merged hash from each database in order,
+</span><span class=""> 1081: # so later databases&#39; values overwrite earlier ones for duplicate columns.
+</span><span class=""> 1082: sub _joined_query {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1083 → 1094 → 1101</span></span> 1083: 	my ($self, $params) = @_;
+</span><span class=""> 1084: 
+</span><span class=""> 1085: 	my $join_col  = $self-&gt;{_join_col};
+</span><span class=""> 1086: 	my $join_type = $self-&gt;{_join_type};
+</span><span class=""> 1087: 	my $n         = scalar @{ $self-&gt;{_dbs} };
+</span><span class=""> 1088: 
+</span><span class=""> 1089: 	my $per_db = $self-&gt;_partition_criteria($params);
+</span><span class=""> 1090: 
+</span><span class=""> 1091: 	# Overlay any per-database base filters onto the partitioned criteria.
+</span><span class=""> 1092: 	# A filtered database always has effective criteria, so $had_criteria will
+</span><span class=""> 1093: 	# be true for it &acirc;&#128;&#148; giving inner-join key-set semantics regardless of join_type.
+</span><span class=""> 1094: 	for my $i (0 .. $n - 1) {
+</span><span class=""> 1095: 		my $base = $self-&gt;{_filters}{$i} // {};
+</span><span class=""> 1096: 		next unless %{$base};
+</span><span class=""> 1097: 		$per_db-&gt;[$i] = _merge_criteria($base, $per_db-&gt;[$i]);
+</span><span class=""> 1098: 	}
+</span><span class=""> 1099: 
+</span><span class=""> 1100: 	# Fetch and index each database with its own criteria slice.
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1101 → 1103 → 1109</span></span> 1101: 	my @indexed;
+</span><span class=""> 1102: 	my @had_criteria;
+</span><span class=""> 1103: 	for my $i (0 .. $n - 1) {
+</span><span class=""> 1104: 		$indexed[$i]     = $self-&gt;_fetch_indexed($i, $per_db-&gt;[$i]);
+</span><span class=""> 1105: 		$had_criteria[$i] = scalar keys %{ $per_db-&gt;[$i] } ? 1 : 0;
+</span><span class=""> 1106: 	}
+</span><span class=""> 1107: 
+</span><span class=""> 1108: 	# Seed the key set from the primary database.
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1109 → 1112 → 1129</span></span> 1109: 	my %key_set = map { $_ =&gt; 1 } keys %{ $indexed[0] };
+</span><span class=""> 1110: 
+</span><span class=""> 1111: 	# Merge in each secondary database.
+</span><span class=""> 1112: 	for my $i (1 .. $n - 1) {
+</span><span class=""> 1113: 		my %sec_keys = map { $_ =&gt; 1 } keys %{ $indexed[$i] };
+</span><span class=""> 1114: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1115: 		if ($had_criteria[$i] || $join_type eq &#39;inner&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1116: 			# Intersect: retain only keys present in this database&#39;s result.
+</span><span class=""> 1117: 			%key_set = map { $_ =&gt; 1 } grep { $sec_keys{$_} } keys %key_set;
+</span><span class=""> 1118: 		} elsif ($join_type eq &#39;outer&#39;) {
+</span><span class=""> 1119: 			# Union: add any keys from this database not yet in the set.
+</span><span class=""> 1120: 			$key_set{$_} = 1 for keys %sec_keys;
+</span><span class=""> 1121: 		}
+</span><span class=""> 1122: 		# left + no criteria: key_set unchanged (primary defines the set).
+</span><span class=""> 1123: 	}
+</span><span class=""> 1124: 
+</span><span class=""> 1125: 	# Build one merged result row for every primary-database row that qualifies.
+</span><span class=""> 1126: 	# Secondary databases act as lookup tables: when a key maps to multiple
+</span><span class=""> 1127: 	# secondary rows, the last one wins (consistent with construction-time
+</span><span class=""> 1128: 	# last-database-wins column routing).
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1129 → 1131 → 1156</span></span> 1129: 	my @result;
+</span><span class=""> 1130: 	my @removed = keys %{ $self-&gt;{_removed_cols} };
+</span><span class=""> 1131: 	for my $key (sort keys %key_set) {
+</span><span class=""> 1132: 		# All qualifying rows from the primary database for this key.
+</span><span class=""> 1133: 		# Use [{}] so that outer-join keys absent from the primary still
+</span><span class=""> 1134: 		# produce one merged row filled from secondary databases.
+</span><span class=""> 1135: 		my @base_rows = @{ $indexed[0]{$key} // [{}] };
+</span><span class=""> 1136: 
+</span><span class=""> 1137: 		for my $prow (@base_rows) {
+</span><span class=""> 1138: 			my %merged = %{$prow};
+</span><span class=""> 1139: 
+</span><span class=""> 1140: 			for my $i (1 .. $n - 1) {
+</span><span class=""> 1141: 				my $sec_arr = $indexed[$i]{$key};
+</span><span class=""> 1142: 				next unless $sec_arr &amp;&amp; @{$sec_arr};
+</span><span class=""> 1143: 				my %row_copy = %{ $sec_arr-&gt;[-1] };  # last wins for secondaries
+</span><span class=""> 1144: 				my $local_jc = $self-&gt;{_join_map}{$i};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1145: 				if ($local_jc &amp;&amp; $local_jc ne $join_col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1146: 					$row_copy{$join_col} = delete $row_copy{$local_jc};
+</span><span class=""> 1147: 				}
+</span><span class=""> 1148: 				%merged = (%merged, %row_copy);
+</span><span class=""> 1149: 			}
+</span><span class=""> 1150: 
+</span><span class=""> 1151: 			delete @merged{@removed} if @removed;
+</span><span class=""> 1152: 			push @result, \%merged;
+</span><span class=""> 1153: 		}
+</span><span class=""> 1154: 	}
+</span><span class=""> 1155: 
+</span><span class=""> 1156: 	carp _msg($self-&gt;{_i18n}, &#39;warn_empty_result&#39;)
+</span><span class=""> 1157: 		unless @result;
+</span><span class=""> 1158: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1159: 	return \@result;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1160: }
+</span><span class=""> 1161: 
+</span><span class=""> 1162: # _merge_criteria( \%base, \%extra ) -&gt; \%merged
+</span><span class=""> 1163: # Merges two criteria hashrefs.  When both specify the same column as operator
+</span><span class=""> 1164: # hashrefs ({ &#39;&gt;&#39; =&gt; N }), the operators are combined so both constraints apply
+</span><span class=""> 1165: # (AND semantics, e.g. age &gt; 60 AND age &lt; 365).  Otherwise the extra
+</span><span class=""> 1166: # (query-time) value overwrites the base filter for that column.
+</span><span class=""> 1167: sub _merge_criteria {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1168 → 1170 → 1179</span></span> 1168: 	my ($base, $extra) = @_;
+</span><span class=""> 1169: 	my %merged = %{$base};
+</span><span class=""> 1170: 	for my $col (keys %{$extra}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1171: 		if (exists $merged{$col}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 1172: 		        &amp;&amp; ref($merged{$col}) eq &#39;HASH&#39;
+</span><span class=""> 1173: 		        &amp;&amp; ref($extra-&gt;{$col}) eq &#39;HASH&#39;) {
+</span><span class=""> 1174: 			$merged{$col} = { %{ $merged{$col} }, %{ $extra-&gt;{$col} } };
+</span><span class=""> 1175: 		} else {
+</span><span class=""> 1176: 			$merged{$col} = $extra-&gt;{$col};
+</span><span class=""> 1177: 		}
+</span><span class=""> 1178: 	}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1179: 	return \%merged;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1180: }
+</span><span class=""> 1181: 
+</span><span class=""> 1182: # _msg( $i18n, $key, @sprintf_args ) -&gt; $string
+</span><span class=""> 1183: sub _msg {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">1184 → 1186 → 1190</span></span> 1184: 	my ($i18n, $key, @args) = @_;
+</span><span class=""> 1185: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1186: 	if ($i18n &amp;&amp; $i18n-&gt;can(&#39;translate&#39;)) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 1187: 		return $i18n-&gt;translate($key, @args);
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_1187_3: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_1187_3: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class=""> 1188: 	}
+</span><span class=""> 1189: 
+</span><span class=""> 1190: 	my $fmt = $MESSAGES{$key}
+</span><span class=""> 1191: 		// sprintf($MESSAGES{error_unknown_message}, $key);
+</span><span class=""> 1192: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1193: 	return @args ? sprintf($fmt, @args) : $fmt;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1194: }
+</span><span class=""> 1195: 
+</span><span class=""> 1196: 1;
+</span><span class=""> 1197: 
+</span><span class=""> 1198: __END__
+</span><span class=""> 1199: 
+</span><span class=""> 1200: =head1 MESSAGES
+</span><span class=""> 1201: 
+</span><span class=""> 1202: All messages that the module can croak or carp, and how to resolve them.
+</span><span class=""> 1203: 
+</span><span class=""> 1204: =head3 MESSAGES
+</span><span class=""> 1205: 
+</span><span class=""> 1206:     Key                       | Trigger                            | Resolution
+</span><span class=""> 1207:     --------------------------|------------------------------------|---------------------------------
+</span><span class=""> 1208:     error_no_databases        | Empty databases arrayref           | Pass at least one D::A object
+</span><span class=""> 1209:     error_invalid_db          | Element is not a D::A subclass     | Instantiate subclass first
+</span><span class=""> 1210:     error_join_col_missing    | join_column absent from a database | Add the column or change join_column
+</span><span class=""> 1211:     error_remove_join_col     | Attempt to remove join_column      | Remove a different column
+</span><span class=""> 1212:     warn_unknown_column       | Criterion column not in any DB     | Check column name spelling
+</span><span class=""> 1213:     warn_empty_result         | Join yields zero rows              | Relax criteria or check data
+</span><span class=""> 1214:     error_query_unsupported   | query() called                     | Use selectall_arrayref instead
+</span><span class=""> 1215:     error_execute_unsupported | execute() called                   | Use Perl-level query methods
+</span><span class=""> 1216: 
+</span><span class=""> 1217: =head1 REPOSITORY
+</span><span class=""> 1218: 
+</span><span class=""> 1219: L&lt;https://github.com/nigelhorne/Database-Join&gt;
+</span><span class=""> 1220: 
+</span><span class=""> 1221: =head1 SUPPORT
+</span><span class=""> 1222: 
+</span><span class=""> 1223: This module is provided as-is without any warranty.
+</span><span class=""> 1224: 
+</span><span class=""> 1225: =head1 AUTHOR
+</span><span class=""> 1226: 
+</span><span class=""> 1227: Nigel Horne, C&lt;&lt; &lt;njh@nigelhorne.com&gt; &gt;&gt;
+</span><span class=""> 1228: 
+</span><span class=""> 1229: =head1 FORMAL SPECIFICATION
+</span><span class=""> 1230: 
+</span><span class=""> 1231: =head2 new
+</span><span class=""> 1232: 
+</span><span class=""> 1233:     # new : seq DA_Object x String? x JoinType? x seq String? -&gt; Database_Join
+</span><span class=""> 1234:     # pre:  len databases &gt;= 1
+</span><span class=""> 1235:     #       forall db : databases | db.isa(&#39;Database::Abstraction&#39;)
+</span><span class=""> 1236:     #       forall db : databases | join_column in db.columns
+</span><span class=""> 1237:     #       join_column not in remove_columns
+</span><span class=""> 1238:     # post: self._dbs          = databases
+</span><span class=""> 1239:     #       self._join_col     = join_column
+</span><span class=""> 1240:     #       self._join_type    = join_type
+</span><span class=""> 1241:     #       self._removed_cols = set(remove_columns)
+</span><span class=""> 1242:     #       self._col_db       = build_col_index(databases) \ remove_columns
+</span><span class=""> 1243: 
+</span><span class=""> 1244: =head2 selectall_arrayref
+</span><span class=""> 1245: 
+</span><span class=""> 1246:     # selectall_arrayref : CriteriaMap -&gt; seq MergedRow
+</span><span class=""> 1247:     # pre:  all criterion column names in dom self._col_db
+</span><span class=""> 1248:     #       union { join_column }
+</span><span class=""> 1249:     # post: result = join(
+</span><span class=""> 1250:     #           forall i: query(self._dbs[i], criteria_for[i]),
+</span><span class=""> 1251:     #           key    = self._join_col,
+</span><span class=""> 1252:     #           type   = self._join_type )
+</span><span class=""> 1253: 
+</span><span class=""> 1254: =head2 fetchrow_hashref
+</span><span class=""> 1255: 
+</span><span class=""> 1256:     # fetchrow_hashref : CriteriaMap -&gt; MergedRow?
+</span><span class=""> 1257:     # post: result = selectall_arrayref(criteria)[0]
+</span><span class=""> 1258: 
+</span><span class=""> 1259: =head2 add_database
+</span><span class=""> 1260: 
+</span><span class=""> 1261:     # add_database : DA_Object x seq String? -&gt; Database_Join
+</span><span class=""> 1262:     # pre:  database.isa(&#39;Database::Abstraction&#39;)
+</span><span class=""> 1263:     #       self._join_col in database.columns
+</span><span class=""> 1264:     #       self._join_col not in remove_columns
+</span><span class=""> 1265:     # post: self._dbs          = self._dbs ^ [database]
+</span><span class=""> 1266:     #       self._col_db       = self._col_db ++ col_index(database) \ remove_columns
+</span><span class=""> 1267:     #       self._removed_cols = self._removed_cols union set(remove_columns)
+</span><span class=""> 1268: 
+</span><span class=""> 1269: =head2 remove_column
+</span><span class=""> 1270: 
+</span><span class=""> 1271:     # remove_column : String -&gt; Database_Join
+</span><span class=""> 1272:     # pre:  col != self._join_col
+</span><span class=""> 1273:     # post: self._removed_cols = self._removed_cols union {col}
+</span><span class=""> 1274:     #       self._col_db       = self._col_db \ {col}
+</span><span class=""> 1275:     #       self._col_cache    = undef
+</span><span class=""> 1276:     #       self._schema_cache = undef
+</span><span class=""> 1277: 
+</span><span class=""> 1278: =head1 LICENSE AND COPYRIGHT
+</span><span class=""> 1279: 
+</span><span class=""> 1280: Copyright (C) 2026 Nigel Horne.
+</span><span class=""> 1281: 
+</span><span class=""> 1282: Usage is subject to the GPL2 licence terms.
+</span><span class=""> 1283: If you use it,
+</span><span class=""> 1284: please let me know.
+</span><span class=""> 1285: 
+</span><span class=""> 1286: =cut
+</span></pre>
+
+<script>
+function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+}
+
+(function() {
+    const saved = localStorage.getItem('theme');
+    if(saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+    }
+})();
+
+document.addEventListener("mousemove", function(e) {
+	document.querySelectorAll(".lcsaj-tip-text, .cpd-tip-text").forEach(function(tip) {
+		tip.style.left = (e.clientX + 12) + "px";
+		tip.style.top  = (e.clientY + 12) + "px";
+	});
+});
+</script>
+</body>
+</html>
+	
