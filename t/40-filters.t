@@ -252,3 +252,10 @@ lives_ok {
 
 my $bad_rows = $join_bad_idx->selectall_arrayref();
 is(scalar @{$bad_rows}, 3, 'ignored filter leaves all 3 rows');
+
+# Release DBI connections before File::Temp's cleanup END block fires.
+# On Windows, SQLite keeps files locked until all handles are closed; file-scoped
+# 'my' variables outlive END blocks, so we undef explicitly (joins first).
+undef $_ for ($join_base, $join_pf, $join_sf, $join_both, $joined_merge,
+              $join_add, $join_jm_filter, $join_al, $join_bad_idx,
+              $cust, $score);

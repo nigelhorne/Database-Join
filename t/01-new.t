@@ -74,3 +74,8 @@ throws_ok {
 
 my @cols = sort @{ $join->columns() };
 is_deeply(\@cols, [qw(entry name tier)], 'columns() returns union of all databases');
+
+# Release DBI connections before File::Temp's cleanup END block fires.
+# On Windows, SQLite keeps files locked until all handles are closed; file-scoped
+# 'my' variables outlive END blocks, so we undef explicitly (joins first).
+undef $_ for ($join, $cust, $loyalty);

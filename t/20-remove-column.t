@@ -122,3 +122,8 @@ lives_ok { $join->remove_column('no_such_column') }
 
 lives_ok { $join->remove_column('email') }
 	'removing an already-removed column is idempotent';
+
+# Release DBI connections before File::Temp's cleanup END block fires.
+# On Windows, SQLite keeps files locked until all handles are closed; file-scoped
+# 'my' variables outlive END blocks, so we undef explicitly (joins first).
+undef $_ for ($join_rc, $join, $cust, $loyalty);

@@ -159,3 +159,8 @@ lives_ok {
 
 is(scalar @{ $joined2->selectall_arrayref() }, 5,
 	'add_database(join_column) also returns 5 rows');
+
+# Release DBI connections before File::Temp's cleanup END block fires.
+# On Windows, SQLite keeps files locked until all handles are closed; file-scoped
+# 'my' variables outlive END blocks, so we undef explicitly (joins first).
+undef $_ for ($joined, $joined2, $test1, $test2);

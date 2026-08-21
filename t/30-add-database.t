@@ -179,3 +179,8 @@ $join6->add_database($score);
 my $high = $join6->selectall_arrayref(score => { '>' => 80 });
 is(scalar @{$high}, 1,       'criteria on new database column works');
 is($high->[0]{name}, 'Alice', 'correct row returned for score > 80');
+
+# Release DBI connections before File::Temp's cleanup END block fires.
+# On Windows, SQLite keeps files locked until all handles are closed; file-scoped
+# 'my' variables outlive END blocks, so we undef explicitly (joins first).
+undef $_ for ($join, $join2, $join3, $join4, $join6, $cust, $loyalty, $score);

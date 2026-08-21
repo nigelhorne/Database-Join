@@ -144,3 +144,8 @@ is($row->{tier}, 'gold',  'fetchrow_hashref merges tier correctly');
 # ---------------------------------------------------------------------------
 
 is($left->count(), 3, 'count() returns total merged row count');
+
+# Release DBI connections before File::Temp's cleanup END block fires.
+# On Windows, SQLite keeps files locked until all handles are closed; file-scoped
+# 'my' variables outlive END blocks, so we undef explicitly (joins first).
+undef $_ for ($left, $inner, $outer, $cust, $loyalty);
