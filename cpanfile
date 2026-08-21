@@ -18,7 +18,7 @@ on 'test' => sub {
 	requires 'DBD::SQLite', '1.70';
 	requires 'File::Temp';
 	requires 'IPC::System::Simple';
-	requires 'Test::Exception', '0.43';
+	requires 'Test::Mockingbird', '0.13';
 	requires 'Test::Most';
 	requires 'Test::NoWarnings';
 	requires 'Text::xSV::Slurp';

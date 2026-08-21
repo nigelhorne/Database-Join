@@ -34,7 +34,7 @@ WriteMakefile(
 		'DBD::SQLite'     => '1.70',
 		'File::Temp'      => 0,
 		'IPC::System::Simple' => 0,
-		'Test::Exception' => '0.43',
+		'Test::Mockingbird' => '0.13',
 		'Test::Most'      => 0,
 		'Test::NoWarnings' => 0,
 		'Text::xSV::Slurp' => 0,
