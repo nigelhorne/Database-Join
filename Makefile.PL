@@ -37,6 +37,7 @@ WriteMakefile(
 		'Test::Mockingbird' => '0.13',
 		'Test::Most'      => 0,
 		'Test::NoWarnings' => 0,
+		'Test::Returns' => '0.04',
 		'Text::xSV::Slurp' => 0,
 	}, META_MERGE => {
 		'meta-spec' => { version => 2 },

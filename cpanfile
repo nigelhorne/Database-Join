@@ -21,6 +21,7 @@ on 'test' => sub {
 	requires 'Test::Mockingbird', '0.13';
 	requires 'Test::Most';
 	requires 'Test::NoWarnings';
+	requires 'Test::Returns', '0.04';
 	requires 'Text::xSV::Slurp';
 };
 
