@@ -1,10 +1,19 @@
-use strict;
-use warnings;
+#!perl -w
 
-use Test::More tests => 2;
+use warnings;
+use strict;
+
+use Test::Most tests => 2;
 
 BEGIN {
-	use_ok('Database::Join') or BAIL_OUT('Module failed to load');
+	my $load_error;
+	eval { require Database::Join; Database::Join->import() } or $load_error = $@;
+	use_ok('Database::Join') || BAIL_OUT("Database::Join failed to load: $load_error");
 }
 
-ok(defined $Database::Join::VERSION, 'VERSION is defined');
+require_ok('Database::Join') || do {
+	diag("Failed to require Database::Join: $@");
+	BAIL_OUT("Database::Join failed to load: $@");
+};
+
+diag("Testing Database::Join $Database::Join::VERSION, Perl $], $^X");

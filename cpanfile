@@ -9,6 +9,7 @@ requires 'Params::Get', '0.13';
 requires 'Params::Validate::Strict';
 requires 'Readonly', '2.00';
 requires 'Scalar::Util';
+requires 'Sub::Protected';
 requires 'autodie';
 
 on 'test' => sub {

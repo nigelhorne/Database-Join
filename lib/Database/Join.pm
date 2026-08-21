@@ -12,6 +12,7 @@ use Readonly;
 use Scalar::Util qw(blessed);
 use Params::Get qw(get_params);
 use Params::Validate::Strict qw(validate_strict);
+use Sub::Protected;
 
 # Named-pair keys accepted by add_database; kept here so the guard and the
 # validate_strict schema cannot silently diverge.
@@ -299,6 +300,116 @@ database's value silently overwrites the first in every merged row.  Use
 C<remove_columns> (or C<remove_column>) to drop the unwanted duplicate.
 
 =back
+
+=head1 SECURITY CONSIDERATIONS
+
+C<Database::Join> is a pure in-memory routing and merge layer.  It never
+generates SQL strings, never opens files, and never calls C<system()>,
+C<exec()>, or C<eval()>.  The security properties described below are
+architectural guarantees, not run-time checks.
+
+=head2 What Database::Join guarantees
+
+=over 4
+
+=item Criteria partition isolation
+
+Every criterion you pass to a query method is routed to I<exactly one>
+component database (the one that owns that column), or to I<all> databases
+when the criterion is on the join key column.  A hostile value in a criterion
+for column C<name> (owned by database A) will never reach database B.
+
+=item Unknown columns are rejected before reaching any database
+
+If a criterion column name is not present in any component database (or has
+been hidden with C<remove_column>), C<Database::Join> logs a C<carp> warning
+and silently drops the criterion.  No database receives the hostile key.
+
+=item AUTOLOAD only accepts word-character column names
+
+Perl's method dispatch extracts the column name via C<\w+>, which matches only
+C<[A-Za-z0-9_]>.  Hostile method names with shell metacharacters, quotes, or
+spaces cannot reach the AUTOLOAD dispatch path.  Private names (starting with
+C<_>) are additionally blocked with an explicit C<croak>.
+
+=item No value sanitisation (by design)
+
+C<Database::Join> does I<not> sanitise, HTML-encode, or validate the
+I<values> in criteria hashrefs.  Preventing SQL injection is the
+responsibility of the underlying C<Database::Abstraction> objects (which use
+parameterised queries).  Preventing XSS or header injection is the
+responsibility of the CGI or web layer that renders the output.
+
+=item Operator hashref aliasing
+
+When the same join-key criterion (an operator hashref such as
+C<< { '>' => 'A' } >>) is broadcast to multiple component databases, all of
+them receive a reference to the I<same> hashref.  A malicious component
+database that mutates the hashref's contents could affect what subsequent
+databases receive.  Component databases are assumed to be trusted.
+
+=back
+
+=head2 What the caller is responsible for
+
+=over 4
+
+=item Sanitise values before building criteria
+
+DJ passes criterion values verbatim to component databases.  If your
+application accepts user-supplied filter values (e.g. from a CGI query
+string), those values I<must> be validated or sanitised by your application
+before being passed to DJ.
+
+=item Restrict which columns the caller can filter on
+
+Any column in C<columns()> can be used as a filter criterion.  If a column
+should not be filterable by end users (e.g. an internal status flag), hide it
+with C<remove_column> so that queries on it are silently dropped.
+
+=item Do not expose the joined view directly to user-supplied criteria
+
+DJ is not a firewall.  It faithfully routes user input to component databases.
+Wrap DJ calls in a thin service layer that whitelists the permitted criterion
+columns and validates their values.
+
+=back
+
+=head3 API SPECIFICATION (security surface)
+
+    Input accepted by all query methods and passed through DJ to component databases:
+
+    Criterion values:
+        type: scalar string | operator hashref { OP => scalar }
+        validation: NONE (DJ trusts the caller; component DA is responsible)
+        max size: unconstrained (OOM risk on very large values)
+
+    Column name keys in criteria:
+        type: string
+        validation: must be present in _col_db (else carp + drop)
+        character set: any Perl string (including control chars); DJ does
+                       not impose a character-set restriction on criteria KEYS
+
+    AUTOLOAD method-name-as-column:
+        type: \w+ (enforced by Perl regex /::(\w+)$/)
+        validation: must not start with '_'; must be in _col_db
+
+=head3 FORMAL SPECIFICATION (security invariants)
+
+    ─── PartitionIsolation ─────────────────────────────────────────────
+    -- For every query call with criteria C and column col ≠ join_col:
+    ∀ i : 0 ‥ #dbs-1 •
+        i ≠ _col_db(col)  ⟹  col ∉ dom(per_db(i))
+
+    -- Unknown column is dropped before any database sees it:
+    col ∉ dom(_col_db) ∧ col ≠ join_col  ⟹
+        (∀ i : 0 ‥ #dbs-1 • col ∉ dom(per_db(i)))
+
+    ─── NoCodeExecution ────────────────────────────────────────────────
+    -- DJ contains no call to system(), exec(), open(PIPE), or eval().
+    -- Hostile criterion values therefore cannot achieve code execution
+    -- within the Database::Join layer.
+    ∀ v : VALUE • _joined_query({col ↦ v}) ≠ ⊥ due to code injection
 
 =head1 METHODS
 
@@ -1467,6 +1578,7 @@ will C<croak> with a clear error message rather than being silently ignored.
 =cut
 
 our $AUTOLOAD;
+
 sub AUTOLOAD {
 	my $self = shift;
 
@@ -1509,8 +1621,7 @@ sub DESTROY {}
 # Entry:   $positional_key -- the column name mapped to a bare scalar argument;
 #          pass undef to use the join_column (the default for public methods).
 # Exit:    Always returns a hashref; never undef.
-# Effects: None.
-sub _parse_query_args {
+sub _parse_query_args :Protected {
 	my ($self, $key, @args) = @_;
 	$key //= $self->{_join_col};
 	return {}                           unless @args;
@@ -1521,7 +1632,7 @@ sub _parse_query_args {
 # _err( $self, $msg_key, @sprintf_args ) -> $string
 # Convenience wrapper around _msg for use after construction, so callers do
 # not have to extract $self->{_i18n} at every error site.
-sub _err {
+sub _err :Protected {
 	my ($self, $key, @args) = @_;
 	return _msg($self->{_i18n}, $key, @args);
 }
@@ -1533,7 +1644,7 @@ sub _err {
 # Entry:   _dbs, _join_col, _join_map must already be set.
 # Exit:    _col_db and _db_cols are set; join_column verified in every db.
 # Effects: Croaks if any database is missing its join key column.
-sub _build_col_index {
+sub _build_col_index :Protected {
 	my ($self) = @_;
 
 	my $join_col = $self->{_join_col};
@@ -1571,7 +1682,7 @@ sub _build_col_index {
 #          join_column criterion is broadcast to every database using each
 #          database's local join-key name.  Unknown columns trigger a carp.
 # Effects: Carps for each unrecognised column name.
-sub _partition_criteria {
+sub _partition_criteria :Protected {
 	my ($self, $params) = @_;
 
 	my $join_col = $self->{_join_col};
@@ -1603,7 +1714,7 @@ sub _partition_criteria {
 #          Multiple rows sharing the same join-key value are all preserved
 #          (important for the primary database when one key maps to many rows).
 # Effects: Calls selectall_arrayref on the component database.
-sub _fetch_indexed {
+sub _fetch_indexed :Protected {
 	my ($self, $db_idx, $criteria) = @_;
 
 	my $db        = $self->{_dbs}[$db_idx];
@@ -1642,7 +1753,7 @@ sub _fetch_indexed {
 # index order.  For duplicate columns, later databases win.  Local join-key
 # aliases are renamed to the canonical join_column before merging.
 # Removed columns are deleted from every merged row.
-sub _joined_query {
+sub _joined_query :Protected {
 	my ($self, $params) = @_;
 
 	my $join_col  = $self->{_join_col};
@@ -1731,7 +1842,7 @@ sub _joined_query {
 #   (e.g. { '>' => 60 } and { '<' => 365 }), the operators are combined
 #   so both constraints apply simultaneously (AND semantics).
 #   Otherwise the extra (query-time) value overwrites the base value.
-sub _merge_criteria {
+sub _merge_criteria :Protected {
 	my ($base, $extra) = @_;
 	my %merged = %{$base};
 	for my $col (keys %{$extra}) {
@@ -1751,7 +1862,7 @@ sub _merge_criteria {
 #          one is provided.  Falls back to the built-in %MESSAGES dictionary.
 # Entry:   $i18n may be undef.  $key must be a key in %MESSAGES.
 # Exit:    Returns the formatted string.
-sub _msg {
+sub _msg :Protected {
 	my ($i18n, $key, @args) = @_;
 
 	if ($i18n && $i18n->can('translate')) {
@@ -1915,6 +2026,16 @@ L<https://github.com/nigelhorne/Database-Join>
 =head1 SUPPORT
 
 This module is provided as-is without any warranty.
+
+=head1 SEE ALSO
+
+=over 4
+
+=item * L<Configure an Object at Runtime|Object::Configure>
+
+=item * L<Test Dashboard|https://nigelhorne.github.io/Database-Join/coverage/>
+
+=back
 
 =head1 AUTHOR
 

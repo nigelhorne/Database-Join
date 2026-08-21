@@ -27,6 +27,7 @@ WriteMakefile(
 		'Params::Validate::Strict' => 0,
 		'Readonly'                => '2.00',
 		'Scalar::Util'            => 0,
+		'Sub::Protected' => 0
 	}, TEST_REQUIRES => {
 		'DBD::CSV' => 0,
 		'DBD::SQLite'     => '1.70',
