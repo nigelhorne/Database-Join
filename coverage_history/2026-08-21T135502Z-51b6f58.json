@@ -1,0 +1,186 @@
+{
+   "runs" : [
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320510.37021,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "-e",
+         "start" : 1787320506.9802,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320507.08257,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "-e",
+         "start" : 1787320507.08249,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320507.27753,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/00-load.t",
+         "start" : 1787320507.27702,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320507.68224,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/01-new.t",
+         "start" : 1787320507.61797,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320508.06403,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/10-select.t",
+         "start" : 1787320508.04208,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320508.44632,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/20-remove-column.t",
+         "start" : 1787320508.42907,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320508.83773,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/30-add-database.t",
+         "start" : 1787320508.812,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320509.39025,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/40-filters.t",
+         "start" : 1787320509.2042,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320509.82565,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/cities.t",
+         "start" : 1787320509.76812,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Combined view across two or more databases",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787320510.25471,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/test1_2.t",
+         "start" : 1787320510.21966,
+         "version" : "0.01"
+      }
+   ],
+   "summary" : {
+      "Total" : {
+         "branch" : {
+            "covered" : 78,
+            "error" : 20,
+            "percentage" : 79.5918367346939,
+            "total" : 98,
+            "uncoverable" : 0
+         },
+         "condition" : {
+            "covered" : 62,
+            "error" : 34,
+            "percentage" : 64.5833333333333,
+            "total" : 96,
+            "uncoverable" : 0
+         },
+         "statement" : {
+            "covered" : 256,
+            "error" : 29,
+            "percentage" : 89.8245614035088,
+            "total" : 285
+         },
+         "subroutine" : {
+            "covered" : 25,
+            "error" : 7,
+            "percentage" : 78.125,
+            "total" : 32
+         },
+         "total" : {
+            "covered" : 421,
+            "error" : 90,
+            "percentage" : 82.3874755381605,
+            "total" : 511,
+            "uncoverable" : 0
+         }
+      },
+      "blib/lib/Database/Join.pm" : {
+         "branch" : {
+            "covered" : 78,
+            "error" : 20,
+            "percentage" : 79.5918367346939,
+            "total" : 98,
+            "uncoverable" : 0
+         },
+         "condition" : {
+            "covered" : 62,
+            "error" : 34,
+            "percentage" : 64.5833333333333,
+            "total" : 96,
+            "uncoverable" : 0
+         },
+         "statement" : {
+            "covered" : 256,
+            "error" : 29,
+            "percentage" : 89.8245614035088,
+            "total" : 285
+         },
+         "subroutine" : {
+            "covered" : 25,
+            "error" : 7,
+            "percentage" : 78.125,
+            "total" : 32
+         },
+         "total" : {
+            "covered" : 421,
+            "error" : 90,
+            "percentage" : 82.3874755381605,
+            "total" : 511,
+            "uncoverable" : 0
+         }
+      }
+   }
+}
