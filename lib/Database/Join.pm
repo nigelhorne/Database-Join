@@ -57,8 +57,8 @@ Version 0.01
     );
 
     # When the join key has different names in each database, use join_map.
-    # $cities  (index 0) has a column called 'statecode'  — matches join_column, no entry needed.
-    # $stnames (index 1) has a column called 'entry'      — different name, so declare it.
+    # $cities  (index 0) has a column called 'statecode'  - matches join_column, no entry needed.
+    # $stnames (index 1) has a column called 'entry'      - different name, so declare it.
     my $join2 = Database::Join->new(
         databases   => [ $cities,  $stnames ],
         #                index 0   index 1
@@ -173,7 +173,7 @@ from the caller is not propagated.
         databases      => [ $db1, $db2 ],          # required
         join_column    => 'entry',                  # optional, default 'entry'
         join_type      => 'left',                   # optional, default 'left'
-        join_map       => { 1 => 'local_col' },    # optional — see join_map section below
+        join_map       => { 1 => 'local_col' },    # optional - see join_map section below
         remove_columns => [ 'email', 'internal_id' ], # optional
         logger         => $log,                     # optional
         i18n           => $locale,                  # optional
@@ -266,7 +266,7 @@ sub new {
 # Public API (mirrors Database::Abstraction)
 # ---------------------------------------------------------------------------
 
-=head2 join_map — joining on differently-named columns
+=head2 join_map - joining on differently-named columns
 
 By default every component database must have a column whose name matches
 C<join_column>.  If a database calls that column something different, declare
@@ -282,13 +282,13 @@ Throughout the merged view the join key is always referred to by
 C<join_column>; the local alias is never exposed in returned rows, in
 C<columns()>, or in C<schema()>.
 
-B<Example> — cities table uses C<statecode>; state-names table uses C<entry>:
+B<Example> - cities table uses C<statecode>; state-names table uses C<entry>:
 
     #                       index 0     index 1
     my @databases = (      $cities,    $stnames  );
     #  column name:       'statecode'  'entry'
-    #  join_column:       'statecode'  — already matches, no map needed
-    #                                  — different name, declare it:
+    #  join_column:       'statecode'  - already matches, no map needed
+    #                                  - different name, declare it:
 
     my $join = Database::Join->new(
         databases   => \@databases,
