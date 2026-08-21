@@ -27,3 +27,4 @@ t/lib/Database/states.pm
 t/lib/Database/test1.pm
 t/lib/Database/test2.pm
 t/test1_2.t
+t/unit.t
