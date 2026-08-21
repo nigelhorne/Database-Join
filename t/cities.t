@@ -1,4 +1,4 @@
-#!perl -w
+#!perl -wT
 
 use strict;
 use FindBin qw($Bin);

@@ -302,108 +302,6 @@ C<remove_columns> (or C<remove_column>) to drop the unwanted duplicate.
 
 =back
 
-=head1 SECURITY CONSIDERATIONS
-
-C<Database::Join> is a pure in-memory routing and merge layer.  It never
-generates SQL strings, never opens files, and never calls C<system()>,
-C<exec()>, or C<eval()>.  The security properties described below are
-architectural guarantees, not run-time checks.
-
-=head2 What Database::Join guarantees
-
-=over 4
-
-=item Criteria partition isolation
-
-Every criterion you pass to a query method is routed to I<exactly one>
-component database (the one that owns that column), or to I<all> databases
-when the criterion is on the join key column.  A hostile value in a criterion
-for column C<name> (owned by database A) will never reach database B.
-
-=item Unknown columns are rejected before reaching any database
-
-If a criterion column name is not present in any component database (or has
-been hidden with C<remove_column>), C<Database::Join> logs a C<carp> warning
-and silently drops the criterion.  No database receives the hostile key.
-
-=item AUTOLOAD only accepts word-character column names
-
-Perl's method dispatch extracts the column name via C<\w+>, which matches only
-C<[A-Za-z0-9_]>.  Hostile method names with shell metacharacters, quotes, or
-spaces cannot reach the AUTOLOAD dispatch path.  Private names (starting with
-C<_>) are additionally blocked with an explicit C<croak>.
-
-=item No value sanitisation (by design)
-
-C<Database::Join> does I<not> sanitise, HTML-encode, or validate the
-I<values> in criteria hashrefs.  Preventing SQL injection is the
-responsibility of the underlying C<Database::Abstraction> objects (which use
-parameterised queries).  Preventing XSS or header injection is the
-responsibility of the CGI or web layer that renders the output.
-
-=item Taint-mode compatible
-
-C<Database::Join> contains no C<system()>, C<exec()>, backtick, C<open(PIPE)>,
-or C<eval STRING> calls.  It neither opens files nor constructs shell commands.
-The AUTOLOAD regex C</::(\w+)$/>  produces an I<untainted> capture, so the
-column name used for dispatch is clean under C<-T>.  Criteria values are
-passed verbatim to component C<Database::Abstraction> objects; those objects
-are responsible for handling tainted values at the SQL parameterisation layer.
-
-=item Operator hashref aliasing
-
-When the same join-key criterion (an operator hashref such as
-C<< { '>' => 'A' } >>) is broadcast to multiple component databases, all of
-them receive a reference to the I<same> hashref.  A malicious component
-database that mutates the hashref's contents could affect what subsequent
-databases receive.  Component databases are assumed to be trusted.
-
-=back
-
-=head2 What the caller is responsible for
-
-=over 4
-
-=item Sanitise values before building criteria
-
-DJ passes criterion values verbatim to component databases.  If your
-application accepts user-supplied filter values (e.g. from a CGI query
-string), those values I<must> be validated or sanitised by your application
-before being passed to DJ.
-
-=item Restrict which columns the caller can filter on
-
-Any column in C<columns()> can be used as a filter criterion.  If a column
-should not be filterable by end users (e.g. an internal status flag), hide it
-with C<remove_column> so that queries on it are silently dropped.
-
-=item Do not expose the joined view directly to user-supplied criteria
-
-DJ is not a firewall.  It faithfully routes user input to component databases.
-Wrap DJ calls in a thin service layer that whitelists the permitted criterion
-columns and validates their values.
-
-=back
-
-=head3 API SPECIFICATION (security surface)
-
-    Input accepted by all query methods and passed through DJ to component databases:
-
-    Criterion values:
-        type: scalar string | operator hashref { OP => scalar }
-        validation: NONE (DJ trusts the caller; component DA is responsible)
-        max size: unconstrained (OOM risk on very large values)
-
-    Column name keys in criteria:
-        type: string
-        validation: must be present in _col_db (else carp + drop)
-        character set: any Perl string (including control chars); DJ does
-                       not impose a character-set restriction on criteria KEYS
-
-    AUTOLOAD method-name-as-column:
-        type: \w+ (enforced by Perl regex /::(\w+)$/)
-        validation: must not start with '_'; must be in _col_db
-
 =head1 METHODS
 
 =head2 new
@@ -1885,6 +1783,108 @@ This module is provided as-is without any warranty.
 =item * L<Test Dashboard|https://nigelhorne.github.io/Database-Join/coverage/>
 
 =back
+
+=head1 SECURITY CONSIDERATIONS
+
+C<Database::Join> is a pure in-memory routing and merge layer.  It never
+generates SQL strings, never opens files, and never calls C<system()>,
+C<exec()>, or C<eval()>.  The security properties described below are
+architectural guarantees, not run-time checks.
+
+=head2 What Database::Join guarantees
+
+=over 4
+
+=item Criteria partition isolation
+
+Every criterion you pass to a query method is routed to I<exactly one>
+component database (the one that owns that column), or to I<all> databases
+when the criterion is on the join key column.  A hostile value in a criterion
+for column C<name> (owned by database A) will never reach database B.
+
+=item Unknown columns are rejected before reaching any database
+
+If a criterion column name is not present in any component database (or has
+been hidden with C<remove_column>), C<Database::Join> logs a C<carp> warning
+and silently drops the criterion.  No database receives the hostile key.
+
+=item AUTOLOAD only accepts word-character column names
+
+Perl's method dispatch extracts the column name via C<\w+>, which matches only
+C<[A-Za-z0-9_]>.  Hostile method names with shell metacharacters, quotes, or
+spaces cannot reach the AUTOLOAD dispatch path.  Private names (starting with
+C<_>) are additionally blocked with an explicit C<croak>.
+
+=item No value sanitisation (by design)
+
+C<Database::Join> does I<not> sanitise, HTML-encode, or validate the
+I<values> in criteria hashrefs.  Preventing SQL injection is the
+responsibility of the underlying C<Database::Abstraction> objects (which use
+parameterised queries).  Preventing XSS or header injection is the
+responsibility of the CGI or web layer that renders the output.
+
+=item Taint-mode compatible
+
+C<Database::Join> contains no C<system()>, C<exec()>, backtick, C<open(PIPE)>,
+or C<eval STRING> calls.  It neither opens files nor constructs shell commands.
+The AUTOLOAD regex C</::(\w+)$/>  produces an I<untainted> capture, so the
+column name used for dispatch is clean under C<-T>.  Criteria values are
+passed verbatim to component C<Database::Abstraction> objects; those objects
+are responsible for handling tainted values at the SQL parameterisation layer.
+
+=item Operator hashref aliasing
+
+When the same join-key criterion (an operator hashref such as
+C<< { '>' => 'A' } >>) is broadcast to multiple component databases, all of
+them receive a reference to the I<same> hashref.  A malicious component
+database that mutates the hashref's contents could affect what subsequent
+databases receive.  Component databases are assumed to be trusted.
+
+=back
+
+=head2 What the caller is responsible for
+
+=over 4
+
+=item Sanitise values before building criteria
+
+DJ passes criterion values verbatim to component databases.  If your
+application accepts user-supplied filter values (e.g. from a CGI query
+string), those values I<must> be validated or sanitised by your application
+before being passed to DJ.
+
+=item Restrict which columns the caller can filter on
+
+Any column in C<columns()> can be used as a filter criterion.  If a column
+should not be filterable by end users (e.g. an internal status flag), hide it
+with C<remove_column> so that queries on it are silently dropped.
+
+=item Do not expose the joined view directly to user-supplied criteria
+
+DJ is not a firewall.  It faithfully routes user input to component databases.
+Wrap DJ calls in a thin service layer that whitelists the permitted criterion
+columns and validates their values.
+
+=back
+
+=head3 API SPECIFICATION (security surface)
+
+    Input accepted by all query methods and passed through DJ to component databases:
+
+    Criterion values:
+        type: scalar string | operator hashref { OP => scalar }
+        validation: NONE (DJ trusts the caller; component DA is responsible)
+        max size: unconstrained (OOM risk on very large values)
+
+    Column name keys in criteria:
+        type: string
+        validation: must be present in _col_db (else carp + drop)
+        character set: any Perl string (including control chars); DJ does
+                       not impose a character-set restriction on criteria KEYS
+
+    AUTOLOAD method-name-as-column:
+        type: \w+ (enforced by Perl regex /::(\w+)$/)
+        validation: must not start with '_'; must be in _col_db
 
 =encoding UTF-8
 

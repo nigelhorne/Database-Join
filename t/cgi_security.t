@@ -26,10 +26,10 @@ use Readonly;
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 47;
+	plan tests => 48;
 }
 
-use Database::Join;
+use_ok('Database::Join');
 
 # ---------------------------------------------------------------------------
 # Readonly attack payloads -- no magic strings in test bodies
