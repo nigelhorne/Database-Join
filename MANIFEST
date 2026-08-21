@@ -1,3 +1,4 @@
+cpanfile
 lib/Database/Join.pm
 LICENSE
 Makefile.PL
@@ -8,5 +9,12 @@ t/00-load.t
 t/01-new.t
 t/10-select.t
 t/20-remove-column.t
+t/30-add-database.t
+t/data/test1.csv
+t/data/test2.csv
 t/lib/Database/djcust.pm
 t/lib/Database/djloyalty.pm
+t/lib/Database/djscore.pm
+t/lib/Database/test1.pm
+t/lib/Database/test2.pm
+t/test1_2.t

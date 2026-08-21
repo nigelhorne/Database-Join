@@ -896,6 +896,19 @@ sub AUTOLOAD {
 	}
 
 	my $db = $self->{_dbs}[$db_idx];
+
+	# When join_map is in use the owning database's primary key may differ from
+	# the primary database's entry key, so delegating directly would look up
+	# the wrong key.  Do a full join query instead and extract the column.
+	if (%{ $self->{_join_map} }) {
+		my $pk     = $self->{_dbs}[0]{id} // 'entry';
+		my $params = !@_                          ? {}
+		           : (@_ == 1 && !ref($_[0]))     ? { $pk => $_[0] }
+		           :                                 (get_params(undef, @_) // {});
+		my $row = $self->_joined_query($params)->[0];
+		return $row ? $row->{$col} : undef;
+	}
+
 	return $db->$col(@_);
 }
 
@@ -968,11 +981,13 @@ sub _partition_criteria {
 	return \@per_db;
 }
 
-# _fetch_indexed( $db_idx, \%criteria ) -> \%join_val_to_row
-# Queries one component database and returns a hashref indexed by the
-# join_column value.  When a key appears more than once only the last
-# row is kept (Database::Abstraction guarantees a unique primary key in
-# slurp mode, but DBI backends may not).
+# _fetch_indexed( $db_idx, \%criteria ) -> \%join_val_to_\@rows
+# Queries one component database and returns a hashref where each key maps
+# to an arrayref of all rows sharing that join-column value.  Multiple rows
+# per key are preserved so that the primary database can contribute more than
+# one merged result row for a given join-key value (e.g. two cities in the
+# same state).  Secondary databases are treated as lookup tables: the caller
+# uses the last element of the array for each key.
 sub _fetch_indexed {
 	my ($self, $db_idx, $criteria) = @_;
 
@@ -986,7 +1001,7 @@ sub _fetch_indexed {
 	for my $row (@{$rows}) {
 		my $key = $row->{$local_jc};
 		next unless defined $key;
-		$indexed{$key} = $row;
+		push @{ $indexed{$key} }, $row;
 	}
 
 	return \%indexed;
@@ -1044,26 +1059,35 @@ sub _joined_query {
 		# left + no criteria: key_set unchanged (primary defines the set).
 	}
 
-	# Merge rows for each qualifying key, then strip hidden columns.
+	# Build one merged result row for every primary-database row that qualifies.
+	# Secondary databases act as lookup tables: when a key maps to multiple
+	# secondary rows, the last one wins (consistent with construction-time
+	# last-database-wins column routing).
 	my @result;
 	my @removed = keys %{ $self->{_removed_cols} };
 	for my $key (sort keys %key_set) {
-		my %merged;
-		for my $i (0 .. $n - 1) {
-			my $row = $indexed[$i]{$key};
-			next unless $row;
-			my $local_jc = $self->{_join_map}{$i};
-			if ($local_jc && $local_jc ne $join_col) {
-				# Rename the local join-key column to the canonical name
-				my %row_copy = %{$row};
-				$row_copy{$join_col} = delete $row_copy{$local_jc};
+		# All qualifying rows from the primary database for this key.
+		# Use [{}] so that outer-join keys absent from the primary still
+		# produce one merged row filled from secondary databases.
+		my @base_rows = @{ $indexed[0]{$key} // [{}] };
+
+		for my $prow (@base_rows) {
+			my %merged = %{$prow};
+
+			for my $i (1 .. $n - 1) {
+				my $sec_arr = $indexed[$i]{$key};
+				next unless $sec_arr && @{$sec_arr};
+				my %row_copy = %{ $sec_arr->[-1] };  # last wins for secondaries
+				my $local_jc = $self->{_join_map}{$i};
+				if ($local_jc && $local_jc ne $join_col) {
+					$row_copy{$join_col} = delete $row_copy{$local_jc};
+				}
 				%merged = (%merged, %row_copy);
-			} else {
-				%merged = (%merged, %{$row});
 			}
+
+			delete @merged{@removed} if @removed;
+			push @result, \%merged;
 		}
-		delete @merged{@removed} if @removed;
-		push @result, \%merged;
 	}
 
 	carp _msg($self->{_i18n}, 'warn_empty_result')
