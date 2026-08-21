@@ -2,9 +2,18 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
+my $dist = {
+	COMPRESS => 'gzip -9f',	# Compress tarball using gzip
+	SUFFIX => 'gz',	# File suffix for tarball
+};
+
+if($^O eq 'darwin') {
+	$dist->{'TAR'} = 'gtar';
+}
+
 WriteMakefile(
 	NAME             => 'Database::Join',
-	AUTHOR           => 'Nigel Horne <nigel.horne@gmail.com>',
+	AUTHOR           => 'Nigel Horne <njh@nigelhorne.com>',
 	VERSION_FROM     => 'lib/Database/Join.pm',
 	ABSTRACT_FROM    => 'lib/Database/Join.pm',
 	LICENSE          => 'perl',
@@ -36,7 +45,6 @@ WriteMakefile(
 				web => 'https://github.com/nigelhorne/Database-Join/issues',
 			},
 		},
-	},
-	dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz' },
+	}, dist => $dist,
 	clean => { FILES    => 'Database-Join-*' },
 );

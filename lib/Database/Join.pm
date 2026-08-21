@@ -56,6 +56,15 @@ Version 0.01
         remove_columns => [ 'email', 'notes' ], # columns to hide (optional)
     );
 
+    # When the join key has different names in each database, use join_map.
+    # Here 'statecode' in the primary database corresponds to 'entry' in the second.
+    my $join2 = Database::Join->new(
+        databases   => [ $states, $capitals ],
+        join_column => 'statecode',
+        join_map    => { 1 => 'entry' },
+    );
+    my $rows = $join2->selectall_arrayref();  # rows use 'statecode' throughout
+
     # Same API as Database::Abstraction ---------------------------------
 
     # All rows from both databases merged on the join_column
@@ -141,7 +150,9 @@ The C<query()> chained builder and C<execute()> raw SQL are not supported.
 
 =item *
 
-Only equi-joins on a single shared column are implemented.
+Only equi-joins on a single shared key column are implemented.  When the join
+key has different names across databases, use C<join_map> to declare the
+per-database column name.
 
 =item *
 
@@ -160,6 +171,7 @@ from the caller is not propagated.
         databases      => [ $db1, $db2 ],          # required
         join_column    => 'entry',                  # optional, default 'entry'
         join_type      => 'left',                   # optional, default 'left'
+        join_map       => { 1 => 'local_col' },    # optional, per-db key aliases
         remove_columns => [ 'email', 'internal_id' ], # optional
         logger         => $log,                     # optional
         i18n           => $locale,                  # optional
@@ -184,6 +196,7 @@ to calling C<remove_column> once per name after construction.
     join_column    => { type => 'string',   optional => 1, default => 'entry' }
     join_type      => { type => 'string',   optional => 1, default => 'left',
                         enum => ['inner','left','outer'] }
+    join_map       => { type => 'hashref',  optional => 1 }
     remove_columns => { type => 'arrayref', optional => 1 }
     logger         => { type => 'object',   optional => 1 }
     i18n           => { type => 'object',   optional => 1 }
@@ -216,6 +229,7 @@ sub new {
 			join_column	=> { type => 'string',   optional => 1, default => 'entry' },
 			join_type	=> { type => 'string',   optional => 1, default => 'left',
 			                  enum => ['inner', 'left', 'outer'] },
+			join_map	=> { type => 'hashref',  optional => 1 },
 			remove_columns	=> { type => 'arrayref', optional => 1 },
 			logger		=> { type => 'object',   optional => 1 },
 			i18n		=> { type => 'object',   optional => 1 },
@@ -236,6 +250,7 @@ sub new {
 		_dbs          => $p->{databases},
 		_join_col     => $p->{join_column},
 		_join_type    => $p->{join_type},
+		_join_map     => $p->{join_map} // {},	# db_index => local join col name
 		_logger       => $p->{logger},
 		_i18n         => $p->{i18n},
 		_col_db       => {},	# column_name => db_index
@@ -258,6 +273,31 @@ sub new {
 # ---------------------------------------------------------------------------
 # Public API (mirrors Database::Abstraction)
 # ---------------------------------------------------------------------------
+
+=head2 join_map — joining on differently-named columns
+
+When the join key column has a different name in each database, pass a
+C<join_map> hashref to C<new> (or a C<join_column> argument to
+C<add_database>).  Keys are zero-based database indices; values are the
+local column name for that database.  The canonical name used throughout
+the merged view is always C<join_column>.
+
+    # 'statecode' in $states corresponds to 'entry' in $capitals
+    my $join = Database::Join->new(
+        databases   => [ $states, $capitals ],
+        join_column => 'statecode',
+        join_map    => { 1 => 'entry' },
+    );
+
+    # All rows use 'statecode' — 'entry' is never exposed
+    my $rows  = $join->selectall_arrayref();
+    my $row   = $join->fetchrow_hashref(statecode => 'CA');
+
+    # add_database equivalent: pass join_column for the incoming database
+    my $join2 = Database::Join->new(databases => [$states], join_column => 'statecode');
+    $join2->add_database($capitals, join_column => 'entry');
+
+Databases not mentioned in C<join_map> use C<join_column> directly.
 
 =head2 selectall_arrayref
 
@@ -461,11 +501,16 @@ sub columns {
 
 	my %seen;
 	my @cols;
+	my $join_col = $self->{_join_col};
 
-	for my $db (@{ $self->{_dbs} }) {
-		for my $col (@{ $db->columns() }) {
+	for my $i (0 .. $#{ $self->{_dbs} }) {
+		my $local_jc = $self->{_join_map}{$i};
+		for my $col (@{ $self->{_dbs}[$i]->columns() }) {
 			next if $seen{$col}++;
 			next if $self->{_removed_cols}{$col};
+			# The local join-key alias is not a data column; the canonical name
+			# is already contributed by the database that owns it under that name.
+			next if $local_jc && $col eq $local_jc && $col ne $join_col;
 			push @cols, $col;
 		}
 	}
@@ -508,9 +553,16 @@ sub schema {
 	return $self->{_schema_cache} if $self->{_schema_cache};
 
 	my %merged;
-	for my $db (@{ $self->{_dbs} }) {
-		my $s = $db->schema();
-		%merged = (%merged, %{$s});
+	for my $i (0 .. $#{ $self->{_dbs} }) {
+		my $s        = $self->{_dbs}[$i]->schema();
+		my $local_jc = $self->{_join_map}{$i};
+		if ($local_jc && $local_jc ne $self->{_join_col}) {
+			my %s_copy = %{$s};
+			delete $s_copy{$local_jc};
+			%merged = (%merged, %s_copy);
+		} else {
+			%merged = (%merged, %{$s});
+		}
 	}
 
 	delete $merged{$_} for keys %{ $self->{_removed_cols} };
@@ -621,6 +673,12 @@ The method mirrors the parameter conventions of C<new>:
 An optional C<remove_columns> list hides specific columns from the newly
 added database in exactly the same way as calling C<remove_column> for each.
 
+When the join key has a different name in the new database, pass
+C<< join_column => 'local_name' >> to declare that alias:
+
+    # 'statecode' is the canonical join key; the new database calls it 'entry'
+    $join->add_database($capitals, join_column => 'entry');
+
 The logger is propagated to the new database if one was set on the join.
 
 =head3 API SPECIFICATION
@@ -628,6 +686,7 @@ The logger is propagated to the new database if one was set on the join.
 =head4 Input
 
     database       => { type => 'object',   required => 1 }
+    join_column    => { type => 'string',   optional => 1 }
     remove_columns => { type => 'arrayref', optional => 1 }
 
 =head4 Output
@@ -657,15 +716,18 @@ sub add_database {
 		# get_params does not choke on the mixed positional+named-pairs pattern.
 		$db = shift @args;
 	} elsif (@args && !ref($args[0])) {
-		# First arg is a plain string. Only 'database' and 'remove_columns'
-		# are valid named-pair keys here; anything else is a bad positional arg.
+		# First arg is a plain string. Only known named-pair keys are valid here;
+		# anything else is treated as an invalid positional database arg.
 		croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
-			unless $args[0] eq 'database' || $args[0] eq 'remove_columns';
+			unless $args[0] eq 'database'
+			    || $args[0] eq 'remove_columns'
+			    || $args[0] eq 'join_column';
 	}
 
 	my $p = validate_strict(
 		schema => {
 			database       => { type => 'object',   optional => 1 },
+			join_column    => { type => 'string',   optional => 1 },
 			remove_columns => { type => 'arrayref', optional => 1 },
 		},
 		input => (@args ? get_params(undef, @args) : {}) // {},
@@ -676,20 +738,26 @@ sub add_database {
 	croak _msg($self->{_i18n}, 'error_invalid_db', $idx)
 		unless blessed($db) && $db->isa('Database::Abstraction');
 
+	# Determine and register the local join column name for this database
+	my $local_jc = $p->{join_column} // $self->{_join_col};
+	$self->{_join_map}{$idx} = $local_jc if $p->{join_column};
+
 	my $cols         = $db->columns();
 	my %col_presence = map { $_ => 1 } @{$cols};
 
 	croak _msg($self->{_i18n}, 'error_join_col_missing',
-	           $self->{_join_col}, $idx, ref($db))
-		unless $col_presence{ $self->{_join_col} };
+	           $local_jc, $idx, ref($db))
+		unless $col_presence{$local_jc};
 
 	# Register the new database
 	push @{ $self->{_dbs} },     $db;
 	push @{ $self->{_db_cols} }, \%col_presence;
 
-	# Update column routing: last-database-wins for duplicate column names
+	# Update column routing: last-database-wins for duplicate column names;
+	# skip the local join-key alias (it is not a data column).
 	for my $col (@{$cols}) {
 		next if $self->{_removed_cols}{$col};
+		next if $local_jc ne $self->{_join_col} && $col eq $local_jc;
 		$self->{_col_db}{$col} = $idx;
 	}
 
@@ -849,15 +917,18 @@ sub _build_col_index {
 	my @db_cols;
 
 	for my $i (0 .. $#{ $self->{_dbs} }) {
-		my $db   = $self->{_dbs}[$i];
-		my $cols = $db->columns();
-		$db_cols[$i] = { map { $_ => 1 } @{$cols} };
+		my $db        = $self->{_dbs}[$i];
+		my $local_jc  = $self->{_join_map}{$i} // $join_col;
+		my $cols      = $db->columns();
+		$db_cols[$i]  = { map { $_ => 1 } @{$cols} };
 
 		croak _msg($self->{_i18n}, 'error_join_col_missing',
-		           $join_col, $i, ref($db))
-			unless $db_cols[$i]{$join_col};
+		           $local_jc, $i, ref($db))
+			unless $db_cols[$i]{$local_jc};
 
 		for my $col (@{$cols}) {
+			# Skip the local alias for the join key — it is not a data column
+			next if $local_jc ne $join_col && $col eq $local_jc;
 			# Last database wins for duplicate non-join columns
 			$col_db{$col} = $i;
 		}
@@ -882,8 +953,11 @@ sub _partition_criteria {
 
 	for my $col (keys %{$params}) {
 		if ($col eq $join_col) {
-			# Broadcast so every database fetches only the matching keys
-			$_->{$col} = $params->{$col} for @per_db;
+			# Broadcast to every database using each one's local key column name
+			for my $i (0 .. $n - 1) {
+				my $local = $self->{_join_map}{$i} // $join_col;
+				$per_db[$i]{$local} = $params->{$col};
+			}
 		} elsif (defined(my $idx = $self->{_col_db}{$col})) {
 			$per_db[$idx]{$col} = $params->{$col};
 		} else {
@@ -902,15 +976,15 @@ sub _partition_criteria {
 sub _fetch_indexed {
 	my ($self, $db_idx, $criteria) = @_;
 
-	my $db       = $self->{_dbs}[$db_idx];
-	my $join_col = $self->{_join_col};
+	my $db        = $self->{_dbs}[$db_idx];
+	my $local_jc  = $self->{_join_map}{$db_idx} // $self->{_join_col};
 
 	my $rows = $db->selectall_arrayref($criteria);
 	$rows //= [];
 
 	my %indexed;
 	for my $row (@{$rows}) {
-		my $key = $row->{$join_col};
+		my $key = $row->{$local_jc};
 		next unless defined $key;
 		$indexed{$key} = $row;
 	}
@@ -978,7 +1052,15 @@ sub _joined_query {
 		for my $i (0 .. $n - 1) {
 			my $row = $indexed[$i]{$key};
 			next unless $row;
-			%merged = (%merged, %{$row});
+			my $local_jc = $self->{_join_map}{$i};
+			if ($local_jc && $local_jc ne $join_col) {
+				# Rename the local join-key column to the canonical name
+				my %row_copy = %{$row};
+				$row_copy{$join_col} = delete $row_copy{$local_jc};
+				%merged = (%merged, %row_copy);
+			} else {
+				%merged = (%merged, %{$row});
+			}
 		}
 		delete @merged{@removed} if @removed;
 		push @result, \%merged;
@@ -1027,7 +1109,7 @@ All messages that the module can croak or carp, and how to resolve them.
 
 =head1 AUTHOR
 
-Nigel Horne, C<< <nigel.horne@gmail.com> >>
+Nigel Horne, C<< <njh@nigelhorne.com> >>
 
 =head1 LICENSE AND COPYRIGHT
 
