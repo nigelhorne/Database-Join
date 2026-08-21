@@ -334,23 +334,6 @@ architectural guarantees, not run-time checks.
         type: \w+ (enforced by Perl regex /::(\w+)$/)
         validation: must not start with '_'; must be in _col_db
 
-### FORMAL SPECIFICATION (security invariants)
-
-    ─── PartitionIsolation ─────────────────────────────────────────────
-    -- For every query call with criteria C and column col ≠ join_col:
-    ∀ i : 0 ‥ #dbs-1 •
-        i ≠ _col_db(col)  ⟹  col ∉ dom(per_db(i))
-
-    -- Unknown column is dropped before any database sees it:
-    col ∉ dom(_col_db) ∧ col ≠ join_col  ⟹
-        (∀ i : 0 ‥ #dbs-1 • col ∉ dom(per_db(i)))
-
-    ─── NoCodeExecution ────────────────────────────────────────────────
-    -- DJ contains no call to system(), exec(), open(PIPE), or eval().
-    -- Hostile criterion values therefore cannot achieve code execution
-    -- within the Database::Join layer.
-    ∀ v : VALUE • _joined_query({col ↦ v}) ≠ ⊥ due to code injection
-
 # METHODS
 
 ## new
@@ -515,23 +498,6 @@ If you build the join incrementally with `add_database`, pass
 
 This is exactly equivalent to the `join_map` form above.
 
-### FORMAL SPECIFICATION
-
-    ─── JoinMap ───────────────────────────────────────────────────────
-    join_map : ℕ ⇸ NAME
-    dbs      : seq DATABASE_ABSTRACTION
-    join_col : NAME
-    ───────────────────────────────────────────────────────────────────
-    dom join_map ⊆ 0 ‥ (#dbs - 1)
-    ∀ i : dom join_map • (join_map i) ∈ ran(dbs i).columns
-    ∀ i : 0 ‥ (#dbs - 1) \ dom join_map •
-        join_col ∈ ran(dbs i).columns
-
-    -- Resolution of the local join-key name for database i:
-    local_jc(i) == if i ∈ dom join_map then join_map(i) else join_col
-
-    -- The canonical name is always join_col; local_jc is never exposed.
-
 ## filters - permanent per-database row filters
 
 `filters` lets you restrict a component database to a subset of its rows
@@ -587,29 +553,6 @@ When using `add_database`, pass `filter` (singular) to set the base
 criteria for the new database:
 
     $join->add_database($orders, filter => { age_days => { '>' => 60 } });
-
-### FORMAL SPECIFICATION
-
-    ─── Filters ─────────────────────────────────────────────────────
-    filters  : ℕ ⇸ CRITERIA
-    dbs      : seq DATABASE_ABSTRACTION
-    ─────────────────────────────────────────────────────────────────
-    dom filters ⊆ 0 ‥ (#dbs - 1)
-
-    -- A filtered database i always contributes to key-set intersection.
-    -- For each query with criteria C:
-    effective_criteria(i, C) ==
-        if i ∈ dom filters
-        then merge_criteria(filters(i), partition(C, i))
-        else partition(C, i)
-
-    -- Criteria merging (AND semantics for operator hashrefs):
-    merge_criteria(base, extra) ==
-        { col : dom base ∪ dom extra •
-            if col ∈ dom base ∩ dom extra
-               ∧ base(col) ∈ HASHREF ∧ extra(col) ∈ HASHREF
-            then col ↦ base(col) ∪ extra(col)   -- operator union
-            else col ↦ (if col ∈ dom extra then extra(col) else base(col)) }
 
 ## selectall\_arrayref
 
@@ -671,13 +614,6 @@ A single plain scalar argument is interpreted as the `join_column` value
             $row->{entry}, $row->{tier}, $row->{score} // 0;
     }
 
-### FORMAL SPECIFICATION
-
-    selectall_arrayref : CRITERIA → seq MERGED_ROW
-    pre:  ∀ col : dom criteria • col ∈ dom self._col_db ∪ {self._join_col}
-    post: result = _joined_query(criteria)
-          result is sorted ascending by join_col value
-
 ## selectall\_array
 
 ### SYNOPSIS
@@ -716,13 +652,6 @@ nothing matches).
     my $first_vip = $join->selectall_array(tier => 'gold');
     print $first_vip->{name}, "\n" if defined $first_vip;
 
-### FORMAL SPECIFICATION
-
-    selectall_array : CRITERIA → seq MERGED_ROW | MERGED_ROW?
-    pre:  same as selectall_arrayref
-    post: wantarray  => result = @{ selectall_arrayref(criteria) }
-          !wantarray => result = selectall_arrayref(criteria)[0]  (or undef)
-
 ## fetchrow\_hashref
 
 ### SYNOPSIS
@@ -760,11 +689,6 @@ All the same criteria conventions apply.
     # Positional: works when join_column is 'entry'
     my $row2 = $join->fetchrow_hashref('C001');
 
-### FORMAL SPECIFICATION
-
-    fetchrow_hashref : CRITERIA → MERGED_ROW?
-    post: result = selectall_arrayref(criteria)[0]  (or undef if empty)
-
 ## count
 
 ### SYNOPSIS
@@ -798,11 +722,6 @@ The full join is performed and the resulting rows are counted in Perl; no
     printf "%d total, %d gold-tier, %d high-scorers\n",
         $total, $gold, $high;
 
-### FORMAL SPECIFICATION
-
-    count : CRITERIA → ℕ
-    post: result = #selectall_arrayref(criteria)
-
 ## columns
 
 ### SYNOPSIS
@@ -835,15 +754,6 @@ The result is memoised: repeated calls are cheap.
     my $cols = $join->columns();
     print join(', ', @{$cols}), "\n";
     # e.g. "entry, name, score, tier"
-
-### FORMAL SPECIFICATION
-
-    columns : → seq NAME
-    post: result = sort(
-              (⋃ { i : 0 ‥ #dbs-1 • ran(dbs(i).columns) }
-               \ dom removed_cols
-               \ { local_jc(i) | i ∈ dom join_map ∧ local_jc(i) ≠ join_col })
-          )
 
 ## schema
 
@@ -883,13 +793,6 @@ The result is memoised.
             $col, $info->{type}, $info->{nullable} ? 'yes' : 'no';
     }
 
-### FORMAL SPECIFICATION
-
-    schema : → NAME ⇸ SCHEMA_INFO
-    post: dom(result) = ran(columns())
-          ∀ col : dom(result) •
-              result(col) = (last database containing col).schema()(col)
-
 ## updated
 
 ### SYNOPSIS
@@ -922,11 +825,6 @@ has advanced since your last snapshot, re-query.
         $my_cache = $join->selectall_arrayref();
         $my_cache_timestamp = $last_modified;
     }
-
-### FORMAL SPECIFICATION
-
-    updated : → ℕ
-    post: result = max { i : 0 ‥ #dbs-1 • dbs(i).updated() }
 
 ## set\_logger
 
@@ -1114,15 +1012,6 @@ memoisation caches are cleared automatically.
 
     error_remove_join_col -- attempt to remove the join_column itself
 
-### FORMAL SPECIFICATION
-
-    remove_column : NAME → Database_Join
-    pre:  col ≠ self._join_col
-    post: self'._removed_cols = self._removed_cols ∪ {col}
-          self'._col_db       = self._col_db \ {col}
-          self'._col_cache    = undef
-          self'._schema_cache = undef
-
 ## query
 
 Not supported.  `Database::Join` does not implement the chained query
@@ -1204,15 +1093,6 @@ will `croak` with a clear error message rather than being silently ignored.
     else:
         delegate directly to the owning database
 
-### FORMAL SPECIFICATION
-
-    AUTOLOAD : NAME × CRITERIA → VALUE | seq VALUE
-    pre:  col ∈ dom self._col_db
-          col does not begin with '_'
-    post: let rows = _joined_query(criteria)
-          wantarray  => result = { r : rows • r(col) }
-          !wantarray => result = rows(0)(col)  (or undef if rows is empty)
-
 # MESSAGES
 
 The following messages can be produced by `Database::Join`.  All messages
@@ -1269,6 +1149,19 @@ can be localised by supplying an `i18n` object to `new`.
 
     **Fix:** Use the Perl-level query methods instead.  Raw SQL cannot span
     heterogeneous database backends.
+
+# REPOSITORY
+
+[https://github.com/nigelhorne/Database-Join](https://github.com/nigelhorne/Database-Join)
+
+# SUPPORT
+
+This module is provided as-is without any warranty.
+
+# SEE ALSO
+
+- [Configure an Object at Runtime](https://metacpan.org/pod/Object%3A%3AConfigure)
+- [Test Dashboard](https://nigelhorne.github.io/Database-Join/coverage/)
 
 # FORMAL SPECIFICATION
 
@@ -1349,18 +1242,125 @@ Unicode is used throughout this section as required by Z notation.
     filters'  = filters
     dbs'      = dbs
 
-# REPOSITORY
+## join\_map
 
-[https://github.com/nigelhorne/Database-Join](https://github.com/nigelhorne/Database-Join)
+    ─── JoinMap ───────────────────────────────────────────────────────
+    join_map : ℕ ⇸ NAME
+    dbs      : seq DATABASE_ABSTRACTION
+    join_col : NAME
+    ───────────────────────────────────────────────────────────────────
+    dom join_map ⊆ 0 ‥ (#dbs - 1)
+    ∀ i : dom join_map • (join_map i) ∈ ran(dbs i).columns
+    ∀ i : 0 ‥ (#dbs - 1) \ dom join_map •
+        join_col ∈ ran(dbs i).columns
 
-# SUPPORT
+    -- Resolution of the local join-key name for database i:
+    local_jc(i) == if i ∈ dom join_map then join_map(i) else join_col
 
-This module is provided as-is without any warranty.
+    -- The canonical name is always join_col; local_jc is never exposed.
 
-# SEE ALSO
+## SECURITY INVARIANTS
 
-- [Configure an Object at Runtime](https://metacpan.org/pod/Object%3A%3AConfigure)
-- [Test Dashboard](https://nigelhorne.github.io/Database-Join/coverage/)
+    ─── PartitionIsolation ─────────────────────────────────────────────
+    -- For every query call with criteria C and column col ≠ join_col:
+    ∀ i : 0 ‥ #dbs-1 •
+        i ≠ _col_db(col)  ⟹  col ∉ dom(per_db(i))
+
+    -- Unknown column is dropped before any database sees it:
+    col ∉ dom(_col_db) ∧ col ≠ join_col  ⟹
+        (∀ i : 0 ‥ #dbs-1 • col ∉ dom(per_db(i)))
+
+    ─── NoCodeExecution ────────────────────────────────────────────────
+    -- DJ contains no call to system(), exec(), open(PIPE), or eval().
+    -- Hostile criterion values therefore cannot achieve code execution
+    -- within the Database::Join layer.
+    ∀ v : VALUE • _joined_query({col ↦ v}) ≠ ⊥ due to code injection
+
+## filters
+
+    ─── Filters ─────────────────────────────────────────────────────
+    filters  : ℕ ⇸ CRITERIA
+    dbs      : seq DATABASE_ABSTRACTION
+    ─────────────────────────────────────────────────────────────────
+    dom filters ⊆ 0 ‥ (#dbs - 1)
+
+    -- A filtered database i always contributes to key-set intersection.
+    -- For each query with criteria C:
+    effective_criteria(i, C) ==
+        if i ∈ dom filters
+        then merge_criteria(filters(i), partition(C, i))
+        else partition(C, i)
+
+    -- Criteria merging (AND semantics for operator hashrefs):
+    merge_criteria(base, extra) ==
+        { col : dom base ∪ dom extra •
+            if col ∈ dom base ∩ dom extra
+               ∧ base(col) ∈ HASHREF ∧ extra(col) ∈ HASHREF
+            then col ↦ base(col) ∪ extra(col)   -- operator union
+            else col ↦ (if col ∈ dom extra then extra(col) else base(col)) }
+
+## selectall\_arrayref
+
+    selectall_arrayref : CRITERIA → seq MERGED_ROW
+    pre:  ∀ col : dom criteria • col ∈ dom self._col_db ∪ {self._join_col}
+    post: result = _joined_query(criteria)
+          result is sorted ascending by join_col value
+
+## selectall\_array
+
+    selectall_array : CRITERIA → seq MERGED_ROW | MERGED_ROW?
+    pre:  same as selectall_arrayref
+    post: wantarray  => result = @{ selectall_arrayref(criteria) }
+          !wantarray => result = selectall_arrayref(criteria)[0]  (or undef)
+
+## fetchrow\_hashref
+
+    fetchrow_hashref : CRITERIA → MERGED_ROW?
+    post: result = selectall_arrayref(criteria)[0]  (or undef if empty)
+
+## count
+
+    count : CRITERIA → ℕ
+    post: result = #selectall_arrayref(criteria)
+
+## columns
+
+    columns : → seq NAME
+    post: result = sort(
+              (⋃ { i : 0 ‥ #dbs-1 • ran(dbs(i).columns) }
+               \ dom removed_cols
+               \ { local_jc(i) | i ∈ dom join_map ∧ local_jc(i) ≠ join_col })
+          )
+
+## schema
+
+    schema : → NAME ⇸ SCHEMA_INFO
+    post: dom(result) = ran(columns())
+          ∀ col : dom(result) •
+              result(col) = (last database containing col).schema()(col)
+
+## updated
+
+    updated : → ℕ
+    post: result = max { i : 0 ‥ #dbs-1 • dbs(i).updated() }
+
+## remove\_column
+
+    remove_column : NAME → Database_Join
+    pre:  col ≠ self._join_col
+    post: self'._removed_cols = self._removed_cols ∪ {col}
+          self'._col_db       = self._col_db \ {col}
+          self'._col_cache    = undef
+          self'._schema_cache = undef
+
+## AUTOLOAD
+
+    AUTOLOAD : NAME × CRITERIA → VALUE | seq VALUE
+    pre:  col ∈ dom self._col_db
+          col does not begin with '_'
+    post: let rows = _joined_query(criteria)
+          wantarray  => result = { r : rows • r(col) }
+          !wantarray => result = rows(0)(col)  (or undef if rows is empty)
 
 # AUTHOR
 
@@ -1372,11 +1372,3 @@ Copyright (C) 2026 Nigel Horne.
 
 Usage is subject to the GPL2 licence terms.
 If you use it, please let me know.
-
-# POD ERRORS
-
-Hey! **The above document had some coding errors, which are explained below:**
-
-- Around line 399:
-
-    Non-ASCII character seen before =encoding in '───'. Assuming UTF-8

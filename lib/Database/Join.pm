@@ -394,23 +394,6 @@ columns and validates their values.
         type: \w+ (enforced by Perl regex /::(\w+)$/)
         validation: must not start with '_'; must be in _col_db
 
-=head3 FORMAL SPECIFICATION (security invariants)
-
-    ─── PartitionIsolation ─────────────────────────────────────────────
-    -- For every query call with criteria C and column col ≠ join_col:
-    ∀ i : 0 ‥ #dbs-1 •
-        i ≠ _col_db(col)  ⟹  col ∉ dom(per_db(i))
-
-    -- Unknown column is dropped before any database sees it:
-    col ∉ dom(_col_db) ∧ col ≠ join_col  ⟹
-        (∀ i : 0 ‥ #dbs-1 • col ∉ dom(per_db(i)))
-
-    ─── NoCodeExecution ────────────────────────────────────────────────
-    -- DJ contains no call to system(), exec(), open(PIPE), or eval().
-    -- Hostile criterion values therefore cannot achieve code execution
-    -- within the Database::Join layer.
-    ∀ v : VALUE • _joined_query({col ↦ v}) ≠ ⊥ due to code injection
-
 =head1 METHODS
 
 =head2 new
@@ -633,23 +616,6 @@ C<join_column> directly to that call instead of using C<join_map>:
 
 This is exactly equivalent to the C<join_map> form above.
 
-=head3 FORMAL SPECIFICATION
-
-    ─── JoinMap ───────────────────────────────────────────────────────
-    join_map : ℕ ⇸ NAME
-    dbs      : seq DATABASE_ABSTRACTION
-    join_col : NAME
-    ───────────────────────────────────────────────────────────────────
-    dom join_map ⊆ 0 ‥ (#dbs - 1)
-    ∀ i : dom join_map • (join_map i) ∈ ran(dbs i).columns
-    ∀ i : 0 ‥ (#dbs - 1) \ dom join_map •
-        join_col ∈ ran(dbs i).columns
-
-    -- Resolution of the local join-key name for database i:
-    local_jc(i) == if i ∈ dom join_map then join_map(i) else join_col
-
-    -- The canonical name is always join_col; local_jc is never exposed.
-
 =head2 filters - permanent per-database row filters
 
 C<filters> lets you restrict a component database to a subset of its rows
@@ -715,29 +681,6 @@ criteria for the new database:
 
     $join->add_database($orders, filter => { age_days => { '>' => 60 } });
 
-=head3 FORMAL SPECIFICATION
-
-    ─── Filters ─────────────────────────────────────────────────────
-    filters  : ℕ ⇸ CRITERIA
-    dbs      : seq DATABASE_ABSTRACTION
-    ─────────────────────────────────────────────────────────────────
-    dom filters ⊆ 0 ‥ (#dbs - 1)
-
-    -- A filtered database i always contributes to key-set intersection.
-    -- For each query with criteria C:
-    effective_criteria(i, C) ==
-        if i ∈ dom filters
-        then merge_criteria(filters(i), partition(C, i))
-        else partition(C, i)
-
-    -- Criteria merging (AND semantics for operator hashrefs):
-    merge_criteria(base, extra) ==
-        { col : dom base ∪ dom extra •
-            if col ∈ dom base ∩ dom extra
-               ∧ base(col) ∈ HASHREF ∧ extra(col) ∈ HASHREF
-            then col ↦ base(col) ∪ extra(col)   -- operator union
-            else col ↦ (if col ∈ dom extra then extra(col) else base(col)) }
-
 =head2 selectall_arrayref
 
 =head3 SYNOPSIS
@@ -798,13 +741,6 @@ A single plain scalar argument is interpreted as the C<join_column> value
             $row->{entry}, $row->{tier}, $row->{score} // 0;
     }
 
-=head3 FORMAL SPECIFICATION
-
-    selectall_arrayref : CRITERIA → seq MERGED_ROW
-    pre:  ∀ col : dom criteria • col ∈ dom self._col_db ∪ {self._join_col}
-    post: result = _joined_query(criteria)
-          result is sorted ascending by join_col value
-
 =cut
 
 sub selectall_arrayref {
@@ -849,13 +785,6 @@ nothing matches).
     # First gold-tier customer only
     my $first_vip = $join->selectall_array(tier => 'gold');
     print $first_vip->{name}, "\n" if defined $first_vip;
-
-=head3 FORMAL SPECIFICATION
-
-    selectall_array : CRITERIA → seq MERGED_ROW | MERGED_ROW?
-    pre:  same as selectall_arrayref
-    post: wantarray  => result = @{ selectall_arrayref(criteria) }
-          !wantarray => result = selectall_arrayref(criteria)[0]  (or undef)
 
 =cut
 
@@ -902,11 +831,6 @@ All the same criteria conventions apply.
     # Positional: works when join_column is 'entry'
     my $row2 = $join->fetchrow_hashref('C001');
 
-=head3 FORMAL SPECIFICATION
-
-    fetchrow_hashref : CRITERIA → MERGED_ROW?
-    post: result = selectall_arrayref(criteria)[0]  (or undef if empty)
-
 =cut
 
 sub fetchrow_hashref {
@@ -948,11 +872,6 @@ C<COUNT(*)> is pushed down to the component databases.
     printf "%d total, %d gold-tier, %d high-scorers\n",
         $total, $gold, $high;
 
-=head3 FORMAL SPECIFICATION
-
-    count : CRITERIA → ℕ
-    post: result = #selectall_arrayref(criteria)
-
 =cut
 
 sub count {
@@ -993,15 +912,6 @@ The result is memoised: repeated calls are cheap.
     my $cols = $join->columns();
     print join(', ', @{$cols}), "\n";
     # e.g. "entry, name, score, tier"
-
-=head3 FORMAL SPECIFICATION
-
-    columns : → seq NAME
-    post: result = sort(
-              (⋃ { i : 0 ‥ #dbs-1 • ran(dbs(i).columns) }
-               \ dom removed_cols
-               \ { local_jc(i) | i ∈ dom join_map ∧ local_jc(i) ≠ join_col })
-          )
 
 =cut
 
@@ -1068,13 +978,6 @@ The result is memoised.
             $col, $info->{type}, $info->{nullable} ? 'yes' : 'no';
     }
 
-=head3 FORMAL SPECIFICATION
-
-    schema : → NAME ⇸ SCHEMA_INFO
-    post: dom(result) = ran(columns())
-          ∀ col : dom(result) •
-              result(col) = (last database containing col).schema()(col)
-
 =cut
 
 sub schema {
@@ -1082,20 +985,24 @@ sub schema {
 
 	return $self->{_schema_cache} if $self->{_schema_cache};
 
+	# Hash slice assignment (@merged{keys} = values) is O(M) per database;
+	# the previous (%merged = (%merged, %s)) pattern was O(N×M) per iteration,
+	# totalling O(N²×M) over all databases for the same result.
 	my %merged;
 	for my $i (0 .. $#{ $self->{_dbs} }) {
 		my $s        = $self->{_dbs}[$i]->schema();
 		my $local_jc = $self->{_join_map}{$i};
 		if ($local_jc && $local_jc ne $self->{_join_col}) {
-			my %s_copy = %{$s};
-			delete $s_copy{$local_jc};
-			%merged = (%merged, %s_copy);
+			for my $col (keys %{$s}) {
+				$merged{$col} = $s->{$col} unless $col eq $local_jc;
+			}
 		} else {
-			%merged = (%merged, %{$s});
+			@merged{keys %{$s}} = values %{$s};
 		}
 	}
 
-	delete $merged{$_} for keys %{ $self->{_removed_cols} };
+	delete @merged{keys %{ $self->{_removed_cols} }}
+		if %{ $self->{_removed_cols} };
 
 	$self->{_schema_cache} = \%merged;
 	return $self->{_schema_cache};
@@ -1134,18 +1041,11 @@ has advanced since your last snapshot, re-query.
         $my_cache_timestamp = $last_modified;
     }
 
-=head3 FORMAL SPECIFICATION
-
-    updated : → ℕ
-    post: result = max { i : 0 ‥ #dbs-1 • dbs(i).updated() }
-
 =cut
 
 sub updated {
 	my ($self) = @_;
-
-	my @times = map { $_->updated() } @{ $self->{_dbs} };
-	return max(@times);
+	return max(map { $_->updated() } @{ $self->{_dbs} });
 }
 
 =head2 set_logger
@@ -1435,15 +1335,6 @@ memoisation caches are cleared automatically.
 
     error_remove_join_col -- attempt to remove the join_column itself
 
-=head3 FORMAL SPECIFICATION
-
-    remove_column : NAME → Database_Join
-    pre:  col ≠ self._join_col
-    post: self'._removed_cols = self._removed_cols ∪ {col}
-          self'._col_db       = self._col_db \ {col}
-          self'._col_cache    = undef
-          self'._schema_cache = undef
-
 =cut
 
 sub remove_column {
@@ -1565,15 +1456,6 @@ will C<croak> with a clear error message rather than being silently ignored.
         return $rows[0]{col}            in scalar context
     else:
         delegate directly to the owning database
-
-=head3 FORMAL SPECIFICATION
-
-    AUTOLOAD : NAME × CRITERIA → VALUE | seq VALUE
-    pre:  col ∈ dom self._col_db
-          col does not begin with '_'
-    post: let rows = _joined_query(criteria)
-          wantarray  => result = { r : rows • r(col) }
-          !wantarray => result = rows(0)(col)  (or undef if rows is empty)
 
 =cut
 
@@ -1789,13 +1671,15 @@ sub _joined_query :Protected {
 	# Conclusion: the three branches below are exhaustive and mutually exclusive.
 	for my $i (1 .. $n - 1) {
 		if ($had_criteria[$i] || $join_type eq 'inner') {
-			# Intersect: delete keys absent from secondary in-place.
-			# In-place delete avoids allocating an intermediate result hash
-			# (O(1) extra memory vs O(n) for a map-based rebuild).
-			delete $key_set{$_} for grep { !exists $indexed[$i]{$_} } keys %key_set;
+			# Intersect: single-pass delete for keys absent from this secondary.
+			# A single loop avoids the intermediate list that grep would allocate
+			# before the delete loop could iterate it (saves O(K) allocations).
+			for my $k (keys %key_set) {
+				delete $key_set{$k} unless exists $indexed[$i]{$k};
+			}
 		} elsif ($join_type eq 'outer') {
-			# Union: add every key from secondary not yet in the set.
-			$key_set{$_} = 1 for keys %{ $indexed[$i] };
+			# Union: hash slice assignment is a single Perl op, not a per-key loop.
+			@key_set{ keys %{ $indexed[$i] } } = ();
 		}
 		# left + no criteria: key_set unchanged (primary defines the set).
 	}
@@ -1818,12 +1702,23 @@ sub _joined_query :Protected {
 			for my $i (1 .. $n - 1) {
 				my $sec_arr = $indexed[$i]{$key};
 				next unless $sec_arr && @{$sec_arr};
-				my %row_copy = %{ $sec_arr->[-1] };  # last wins for secondaries
+
+				# Write secondary columns directly into %merged without copying
+				# the source row into a temporary hash first.
+				# Before: %row_copy = %{$src}   then %merged = (%merged,%row_copy)
+				#   → 2 full hash copies per secondary per row: O(C) + O(|merged|+C)
+				# After: per-key loop writes straight into %merged
+				#   → O(C) key assignments only; no intermediate allocation
+				my $src      = $sec_arr->[-1];
 				my $local_jc = $self->{_join_map}{$i};
-				if ($local_jc && $local_jc ne $join_col) {
-					$row_copy{$join_col} = delete $row_copy{$local_jc};
+				my $rename   = $local_jc && $local_jc ne $join_col;
+				for my $k (keys %{$src}) {
+					if ($rename && $k eq $local_jc) {
+						$merged{$join_col} = $src->{$k};
+					} else {
+						$merged{$k} = $src->{$k};
+					}
 				}
-				%merged = (%merged, %row_copy);
 			}
 
 			delete @merged{@removed} if @removed;
@@ -1940,6 +1835,26 @@ heterogeneous database backends.
 
 =back
 
+=head1 REPOSITORY
+
+L<https://github.com/nigelhorne/Database-Join>
+
+=head1 SUPPORT
+
+This module is provided as-is without any warranty.
+
+=head1 SEE ALSO
+
+=over 4
+
+=item * L<Configure an Object at Runtime|Object::Configure>
+
+=item * L<Test Dashboard|https://nigelhorne.github.io/Database-Join/coverage/>
+
+=back
+
+=encoding UTF-8
+
 =head1 FORMAL SPECIFICATION
 
 Z calculus schemas for the key invariants and operations.
@@ -2019,23 +1934,125 @@ Unicode is used throughout this section as required by Z notation.
     filters'  = filters
     dbs'      = dbs
 
-=head1 REPOSITORY
+=head2 join_map
 
-L<https://github.com/nigelhorne/Database-Join>
+    ─── JoinMap ───────────────────────────────────────────────────────
+    join_map : ℕ ⇸ NAME
+    dbs      : seq DATABASE_ABSTRACTION
+    join_col : NAME
+    ───────────────────────────────────────────────────────────────────
+    dom join_map ⊆ 0 ‥ (#dbs - 1)
+    ∀ i : dom join_map • (join_map i) ∈ ran(dbs i).columns
+    ∀ i : 0 ‥ (#dbs - 1) \ dom join_map •
+        join_col ∈ ran(dbs i).columns
 
-=head1 SUPPORT
+    -- Resolution of the local join-key name for database i:
+    local_jc(i) == if i ∈ dom join_map then join_map(i) else join_col
 
-This module is provided as-is without any warranty.
+    -- The canonical name is always join_col; local_jc is never exposed.
 
-=head1 SEE ALSO
+=head2 SECURITY INVARIANTS
 
-=over 4
+    ─── PartitionIsolation ─────────────────────────────────────────────
+    -- For every query call with criteria C and column col ≠ join_col:
+    ∀ i : 0 ‥ #dbs-1 •
+        i ≠ _col_db(col)  ⟹  col ∉ dom(per_db(i))
 
-=item * L<Configure an Object at Runtime|Object::Configure>
+    -- Unknown column is dropped before any database sees it:
+    col ∉ dom(_col_db) ∧ col ≠ join_col  ⟹
+        (∀ i : 0 ‥ #dbs-1 • col ∉ dom(per_db(i)))
 
-=item * L<Test Dashboard|https://nigelhorne.github.io/Database-Join/coverage/>
+    ─── NoCodeExecution ────────────────────────────────────────────────
+    -- DJ contains no call to system(), exec(), open(PIPE), or eval().
+    -- Hostile criterion values therefore cannot achieve code execution
+    -- within the Database::Join layer.
+    ∀ v : VALUE • _joined_query({col ↦ v}) ≠ ⊥ due to code injection
 
-=back
+=head2 filters
+
+    ─── Filters ─────────────────────────────────────────────────────
+    filters  : ℕ ⇸ CRITERIA
+    dbs      : seq DATABASE_ABSTRACTION
+    ─────────────────────────────────────────────────────────────────
+    dom filters ⊆ 0 ‥ (#dbs - 1)
+
+    -- A filtered database i always contributes to key-set intersection.
+    -- For each query with criteria C:
+    effective_criteria(i, C) ==
+        if i ∈ dom filters
+        then merge_criteria(filters(i), partition(C, i))
+        else partition(C, i)
+
+    -- Criteria merging (AND semantics for operator hashrefs):
+    merge_criteria(base, extra) ==
+        { col : dom base ∪ dom extra •
+            if col ∈ dom base ∩ dom extra
+               ∧ base(col) ∈ HASHREF ∧ extra(col) ∈ HASHREF
+            then col ↦ base(col) ∪ extra(col)   -- operator union
+            else col ↦ (if col ∈ dom extra then extra(col) else base(col)) }
+
+=head2 selectall_arrayref
+
+    selectall_arrayref : CRITERIA → seq MERGED_ROW
+    pre:  ∀ col : dom criteria • col ∈ dom self._col_db ∪ {self._join_col}
+    post: result = _joined_query(criteria)
+          result is sorted ascending by join_col value
+
+=head2 selectall_array
+
+    selectall_array : CRITERIA → seq MERGED_ROW | MERGED_ROW?
+    pre:  same as selectall_arrayref
+    post: wantarray  => result = @{ selectall_arrayref(criteria) }
+          !wantarray => result = selectall_arrayref(criteria)[0]  (or undef)
+
+=head2 fetchrow_hashref
+
+    fetchrow_hashref : CRITERIA → MERGED_ROW?
+    post: result = selectall_arrayref(criteria)[0]  (or undef if empty)
+
+=head2 count
+
+    count : CRITERIA → ℕ
+    post: result = #selectall_arrayref(criteria)
+
+=head2 columns
+
+    columns : → seq NAME
+    post: result = sort(
+              (⋃ { i : 0 ‥ #dbs-1 • ran(dbs(i).columns) }
+               \ dom removed_cols
+               \ { local_jc(i) | i ∈ dom join_map ∧ local_jc(i) ≠ join_col })
+          )
+
+=head2 schema
+
+    schema : → NAME ⇸ SCHEMA_INFO
+    post: dom(result) = ran(columns())
+          ∀ col : dom(result) •
+              result(col) = (last database containing col).schema()(col)
+
+=head2 updated
+
+    updated : → ℕ
+    post: result = max { i : 0 ‥ #dbs-1 • dbs(i).updated() }
+
+=head2 remove_column
+
+    remove_column : NAME → Database_Join
+    pre:  col ≠ self._join_col
+    post: self'._removed_cols = self._removed_cols ∪ {col}
+          self'._col_db       = self._col_db \ {col}
+          self'._col_cache    = undef
+          self'._schema_cache = undef
+
+=head2 AUTOLOAD
+
+    AUTOLOAD : NAME × CRITERIA → VALUE | seq VALUE
+    pre:  col ∈ dom self._col_db
+          col does not begin with '_'
+    post: let rows = _joined_query(criteria)
+          wantarray  => result = { r : rows • r(col) }
+          !wantarray => result = rows(0)(col)  (or undef if rows is empty)
 
 =head1 AUTHOR
 
