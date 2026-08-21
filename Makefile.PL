@@ -29,8 +29,9 @@ WriteMakefile(
 		'Scalar::Util'            => 0,
 	}, TEST_REQUIRES => {
 		'IPC::System::Simple' => 0,
-		'Test::Most'      => 0,
 		'Test::Exception' => '0.43',
+		'Test::Most'      => 0,
+		'Test::NoWarnings' => 0,
 		'DBD::SQLite'     => '1.70',
 		'File::Temp'      => 0,
 	}, META_MERGE => {

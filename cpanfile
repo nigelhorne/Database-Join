@@ -17,6 +17,7 @@ on 'test' => sub {
 	requires 'IPC::System::Simple';
 	requires 'Test::Exception', '0.43';
 	requires 'Test::Most';
+	requires 'Test::NoWarnings';
 };
 
 on 'develop' => sub {
