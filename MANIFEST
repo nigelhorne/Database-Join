@@ -32,4 +32,5 @@ t/lib/Database/test1.pm
 t/lib/Database/test2.pm
 t/path.t
 t/test1_2.t
+t/transaction.t
 t/unit.t

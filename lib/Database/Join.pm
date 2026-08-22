@@ -1853,6 +1853,8 @@ This module is provided as-is without any warranty.
 
 =item * L<Test Dashboard|https://nigelhorne.github.io/Database-Join/coverage/>
 
+=item * L<Database::Abstraction>
+
 =back
 
 =head1 SECURITY CONSIDERATIONS

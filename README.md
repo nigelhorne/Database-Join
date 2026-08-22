@@ -285,18 +285,40 @@ to calling `remove_column` once per name after construction.
 
     databases      => { type => 'arrayref', required => 1 }
                       # One or more Database::Abstraction subclass objects.
+                      #
+                      # DOMAIN -- EP valid:   non-empty arrayref of blessed DA subclasses.
+                      # DOMAIN -- EP invalid: scalar, hashref, or absent => croak.
+                      # DOMAIN -- BVA size:   minimum 1 element; no documented upper bound.
+                      # DOMAIN -- BVA elem:   each element must pass isa('Database::Abstraction').
 
     join_column    => { type => 'string',   optional => 1, default => 'entry' }
                       # The column name shared by all databases (the join key).
+                      #
+                      # DOMAIN -- EP valid:   any non-empty string present in every component DA.
+                      # DOMAIN -- EP invalid: column absent from any DA => croak join_col_missing.
+                      # DOMAIN -- BVA:        empty string '' is treated as a column name and
+                      #                       will croak if (as expected) it is absent from every DA.
+                      # DOMAIN -- NOTE:       matching is case-sensitive and exact.
 
     join_type      => { type => 'string',   optional => 1, default => 'left',
                         enum => ['inner', 'left', 'outer'] }
                       # Controls which keys appear in the result when not all
                       # databases share the same key values.
+                      #
+                      # DOMAIN -- EP valid:   exactly 'inner', 'left', or 'outer'.
+                      # DOMAIN -- EP invalid: any other string including 'INNER', 'LEFT',
+                      #                       'OUTER' (enum check is case-sensitive), 'cross',
+                      #                       or '' => croak from validate_strict.
 
     join_map       => { type => 'hashref',  optional => 1 }
                       # Zero-based database index => local column name.
                       # See the join_map section for full details.
+                      #
+                      # DOMAIN -- EP valid:   hashref values must be plain strings.
+                      # DOMAIN -- EP invalid: reference value (hashref, arrayref, coderef, etc.)
+                      #                       => croak; the guard prevents heap-address leakage.
+                      # DOMAIN -- BVA:        out-of-range keys (beyond the databases array) are
+                      #                       silently ignored.
 
     filters        => { type => 'hashref',  optional => 1 }
                       # Zero-based database index => criteria hashref.
@@ -305,6 +327,11 @@ to calling `remove_column` once per name after construction.
 
     remove_columns => { type => 'arrayref', optional => 1 }
                       # Column names to hide from the merged view.
+                      #
+                      # DOMAIN -- EP valid:   arrayref of any strings; non-existent columns
+                      #                       are silently ignored (idempotent).
+                      # DOMAIN -- EP invalid: join_column itself => croak remove_join_col.
+                      # DOMAIN -- BVA:        [] empty arrayref is a safe no-op.
 
     logger         => { type => 'object',   optional => 1 }
                       # Logger object propagated to all component databases.
@@ -816,10 +843,22 @@ equivalent to a `filters` entry.
 
     database       => { type => 'object',   required => 1 }
                       # A Database::Abstraction subclass instance.
+                      #
+                      # DOMAIN -- EP valid:   blessed object that passes
+                      #                       isa('Database::Abstraction').
+                      # DOMAIN -- EP invalid: non-reference, unblessed ref, wrong class,
+                      #                       or non-reference non-key scalar (the guard at
+                      #                       the top of add_database rejects it with
+                      #                       error_invalid_db before validate_strict runs).
 
     join_column    => { type => 'string',   optional => 1 }
                       # The name of the join key in THIS new database,
                       # when it differs from the canonical join_column.
+                      #
+                      # DOMAIN -- EP valid:   any string that exists as a column in the
+                      #                       new database.
+                      # DOMAIN -- EP invalid: string absent from the new database's columns()
+                      #                       => croak error_join_col_missing.
 
     filter         => { type => 'hashref',  optional => 1 }
                       # Permanent criteria for this database only.
@@ -904,7 +943,14 @@ memoisation caches are cleared automatically.
 
 #### Input
 
-    $col    Positional string: the column name to remove (required).
+    $col    Positional string: the column name to remove.
+
+            DOMAIN -- EP valid:   any string; non-existent columns are silently
+                                  ignored (idempotent call, returns $self).
+            DOMAIN -- EP invalid: join_column value => croak error_remove_join_col.
+            DOMAIN -- BVA:        undef and '' are explicit no-ops (returns $self).
+                                  These are below the minimum meaningful string
+                                  length and are handled without any warning.
 
 #### Output
 
@@ -1077,6 +1123,7 @@ This module is provided as-is without any warranty.
 
 - [Configure an Object at Runtime](https://metacpan.org/pod/Object%3A%3AConfigure)
 - [Test Dashboard](https://nigelhorne.github.io/Database-Join/coverage/)
+- [Database::Abstraction](https://metacpan.org/pod/Database%3A%3AAbstraction)
 
 # SECURITY CONSIDERATIONS
 
