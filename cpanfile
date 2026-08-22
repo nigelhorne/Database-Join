@@ -1,6 +1,4 @@
-# Generated from Makefile.PL using makefilepl2cpanfile
-
-requires 'perl', '5.010';
+requires 'perl', '5.010001';
 
 requires 'Carp';
 requires 'Database::Abstraction', '0.37';
@@ -16,8 +14,10 @@ requires 'autodie';
 on 'test' => sub {
 	requires 'DBD::CSV';
 	requires 'DBD::SQLite', '1.70';
+	requires 'DBI';
 	requires 'File::Temp';
 	requires 'IPC::System::Simple';
+	requires 'Test::Exception';
 	requires 'Test::Memory::Cycle';
 	requires 'Test::Mockingbird', '0.13';
 	requires 'Test::Most';

@@ -19,7 +19,7 @@ use Sub::Protected;
 # validate_strict schema cannot silently diverge.
 Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_columns);
 
-our $VERSION = '0.01';
+our $VERSION = '0.001.0';
 
 # ---------------------------------------------------------------------------
 # All user-facing strings route through this dictionary.  Supply an i18n
@@ -29,12 +29,10 @@ Readonly::Hash my %MESSAGES => (
 	error_no_databases	=> 'At least one Database::Abstraction object is required',
 	error_invalid_db	=> 'databases[%d] is not a Database::Abstraction object',
 	error_join_col_missing	=> 'join_column "%s" is absent from databases[%d] (%s)',
-	error_col_conflict	=> 'Column "%s" exists in multiple databases; '
-	                         . 'use the owning database directly or rename the column',
+	error_col_conflict	=> 'Column "%s" exists in multiple databases; use the owning database directly or rename the column',
 	error_remove_join_col	=> 'Cannot remove join_column "%s"; it is required for the join',
 	warn_unknown_column	=> 'Column "%s" is not present in any configured database; criterion ignored',
-	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join; '
-	                            . 'call selectall_arrayref / fetchrow_hashref directly',
+	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join; call selectall_arrayref / fetchrow_hashref directly',
 	error_execute_unsupported => 'execute() raw SQL is not supported on Database::Join',
 	error_unknown_message	=> 'Unknown message key "%s"',
 );
@@ -45,7 +43,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 =head1 VERSION
 
-Version 0.01
+Version 0.001.0
 
 =head1 SYNOPSIS
 
@@ -1037,6 +1035,9 @@ database.  The logger is used for diagnostic output by all component databases.
 
 =head3 EXAMPLE
 
+    # Log::Any is used here as an example; any object that implements
+    # debug() and info() (or whichever methods your component databases
+    # call internally) works equally well.
     use Log::Any qw($log);
 
     my $join = Database::Join->new(databases => [$db1, $db2], join_column => 'entry');

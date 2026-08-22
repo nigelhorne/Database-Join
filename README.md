@@ -4,7 +4,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 # VERSION
 
-Version 0.01
+Version 0.001.0
 
 # SYNOPSIS
 
@@ -792,6 +792,9 @@ database.  The logger is used for diagnostic output by all component databases.
 
 ### EXAMPLE
 
+    # Log::Any is used here as an example; any object that implements
+    # debug() and info() (or whichever methods your component databases
+    # call internally) works equally well.
     use Log::Any qw($log);
 
     my $join = Database::Join->new(databases => [$db1, $db2], join_column => 'entry');
