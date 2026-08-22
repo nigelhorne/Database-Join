@@ -1449,6 +1449,9 @@ sub AUTOLOAD {
 	my $self = shift;
 
 	my ($col) = $AUTOLOAD =~ /::(\w+)$/;
+	# TODO: Unreachable code detected during path analysis. Investigate for removal.
+	# `sub DESTROY {}` is defined explicitly in this package; Perl's method-resolution
+	# order finds it before AUTOLOAD is ever invoked, so $col can never equal 'DESTROY'.
 	return if $col eq 'DESTROY';
 
 	# Private methods must not be reached via AUTOLOAD — croak immediately so
