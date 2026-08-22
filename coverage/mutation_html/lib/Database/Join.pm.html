@@ -2194,323 +2194,325 @@ Approximate LCSAJ segments: 107<br>
 </span><span class=""> 1853: 
 </span><span class=""> 1854: =item * L&lt;Test Dashboard|https://nigelhorne.github.io/Database-Join/coverage/&gt;
 </span><span class=""> 1855: 
-</span><span class=""> 1856: =back
+</span><span class=""> 1856: =item * L&lt;Database::Abstraction&gt;
 </span><span class=""> 1857: 
-</span><span class=""> 1858: =head1 SECURITY CONSIDERATIONS
+</span><span class=""> 1858: =back
 </span><span class=""> 1859: 
-</span><span class=""> 1860: C&lt;Database::Join&gt; is a pure in-memory routing and merge layer.  It never
-</span><span class=""> 1861: generates SQL strings, never opens files, and never calls C&lt;system()&gt;,
-</span><span class=""> 1862: C&lt;exec()&gt;, or C&lt;eval()&gt;.  The security properties described below are
-</span><span class=""> 1863: architectural guarantees, not run-time checks.
-</span><span class=""> 1864: 
-</span><span class=""> 1865: =head2 What Database::Join guarantees
+</span><span class=""> 1860: =head1 SECURITY CONSIDERATIONS
+</span><span class=""> 1861: 
+</span><span class=""> 1862: C&lt;Database::Join&gt; is a pure in-memory routing and merge layer.  It never
+</span><span class=""> 1863: generates SQL strings, never opens files, and never calls C&lt;system()&gt;,
+</span><span class=""> 1864: C&lt;exec()&gt;, or C&lt;eval()&gt;.  The security properties described below are
+</span><span class=""> 1865: architectural guarantees, not run-time checks.
 </span><span class=""> 1866: 
-</span><span class=""> 1867: =over 4
+</span><span class=""> 1867: =head2 What Database::Join guarantees
 </span><span class=""> 1868: 
-</span><span class=""> 1869: =item Criteria partition isolation
+</span><span class=""> 1869: =over 4
 </span><span class=""> 1870: 
-</span><span class=""> 1871: Every criterion you pass to a query method is routed to I&lt;exactly one&gt;
-</span><span class=""> 1872: component database (the one that owns that column), or to I&lt;all&gt; databases
-</span><span class=""> 1873: when the criterion is on the join key column.  A hostile value in a criterion
-</span><span class=""> 1874: for column C&lt;name&gt; (owned by database A) will never reach database B.
-</span><span class=""> 1875: 
-</span><span class=""> 1876: =item Unknown columns are rejected before reaching any database
+</span><span class=""> 1871: =item Criteria partition isolation
+</span><span class=""> 1872: 
+</span><span class=""> 1873: Every criterion you pass to a query method is routed to I&lt;exactly one&gt;
+</span><span class=""> 1874: component database (the one that owns that column), or to I&lt;all&gt; databases
+</span><span class=""> 1875: when the criterion is on the join key column.  A hostile value in a criterion
+</span><span class=""> 1876: for column C&lt;name&gt; (owned by database A) will never reach database B.
 </span><span class=""> 1877: 
-</span><span class=""> 1878: If a criterion column name is not present in any component database (or has
-</span><span class=""> 1879: been hidden with C&lt;remove_column&gt;), C&lt;Database::Join&gt; logs a C&lt;carp&gt; warning
-</span><span class=""> 1880: and silently drops the criterion.  No database receives the hostile key.
-</span><span class=""> 1881: 
-</span><span class=""> 1882: =item AUTOLOAD only accepts word-character column names
+</span><span class=""> 1878: =item Unknown columns are rejected before reaching any database
+</span><span class=""> 1879: 
+</span><span class=""> 1880: If a criterion column name is not present in any component database (or has
+</span><span class=""> 1881: been hidden with C&lt;remove_column&gt;), C&lt;Database::Join&gt; logs a C&lt;carp&gt; warning
+</span><span class=""> 1882: and silently drops the criterion.  No database receives the hostile key.
 </span><span class=""> 1883: 
-</span><span class=""> 1884: Perl&#39;s method dispatch extracts the column name via C&lt;\w+&gt;, which matches only
-</span><span class=""> 1885: C&lt;[A-Za-z0-9_]&gt;.  Hostile method names with shell metacharacters, quotes, or
-</span><span class=""> 1886: spaces cannot reach the AUTOLOAD dispatch path.  Private names (starting with
-</span><span class=""> 1887: C&lt;_&gt;) are additionally blocked with an explicit C&lt;croak&gt;.
-</span><span class=""> 1888: 
-</span><span class=""> 1889: =item No value sanitisation (by design)
+</span><span class=""> 1884: =item AUTOLOAD only accepts word-character column names
+</span><span class=""> 1885: 
+</span><span class=""> 1886: Perl&#39;s method dispatch extracts the column name via C&lt;\w+&gt;, which matches only
+</span><span class=""> 1887: C&lt;[A-Za-z0-9_]&gt;.  Hostile method names with shell metacharacters, quotes, or
+</span><span class=""> 1888: spaces cannot reach the AUTOLOAD dispatch path.  Private names (starting with
+</span><span class=""> 1889: C&lt;_&gt;) are additionally blocked with an explicit C&lt;croak&gt;.
 </span><span class=""> 1890: 
-</span><span class=""> 1891: C&lt;Database::Join&gt; does I&lt;not&gt; sanitise, HTML-encode, or validate the
-</span><span class=""> 1892: I&lt;values&gt; in criteria hashrefs.  Preventing SQL injection is the
-</span><span class=""> 1893: responsibility of the underlying C&lt;Database::Abstraction&gt; objects (which use
-</span><span class=""> 1894: parameterised queries).  Preventing XSS or header injection is the
-</span><span class=""> 1895: responsibility of the CGI or web layer that renders the output.
-</span><span class=""> 1896: 
-</span><span class=""> 1897: =item Taint-mode compatible
+</span><span class=""> 1891: =item No value sanitisation (by design)
+</span><span class=""> 1892: 
+</span><span class=""> 1893: C&lt;Database::Join&gt; does I&lt;not&gt; sanitise, HTML-encode, or validate the
+</span><span class=""> 1894: I&lt;values&gt; in criteria hashrefs.  Preventing SQL injection is the
+</span><span class=""> 1895: responsibility of the underlying C&lt;Database::Abstraction&gt; objects (which use
+</span><span class=""> 1896: parameterised queries).  Preventing XSS or header injection is the
+</span><span class=""> 1897: responsibility of the CGI or web layer that renders the output.
 </span><span class=""> 1898: 
-</span><span class=""> 1899: C&lt;Database::Join&gt; contains no C&lt;system()&gt;, C&lt;exec()&gt;, backtick, C&lt;open(PIPE)&gt;,
-</span><span class=""> 1900: or C&lt;eval STRING&gt; calls.  It neither opens files nor constructs shell commands.
-</span><span class=""> 1901: The AUTOLOAD regex C&lt;/::(\w+)$/&gt;  produces an I&lt;untainted&gt; capture, so the
-</span><span class=""> 1902: column name used for dispatch is clean under C&lt;-T&gt;.  Criteria values are
-</span><span class=""> 1903: passed verbatim to component C&lt;Database::Abstraction&gt; objects; those objects
-</span><span class=""> 1904: are responsible for handling tainted values at the SQL parameterisation layer.
-</span><span class=""> 1905: 
-</span><span class=""> 1906: =item Operator hashref aliasing
+</span><span class=""> 1899: =item Taint-mode compatible
+</span><span class=""> 1900: 
+</span><span class=""> 1901: C&lt;Database::Join&gt; contains no C&lt;system()&gt;, C&lt;exec()&gt;, backtick, C&lt;open(PIPE)&gt;,
+</span><span class=""> 1902: or C&lt;eval STRING&gt; calls.  It neither opens files nor constructs shell commands.
+</span><span class=""> 1903: The AUTOLOAD regex C&lt;/::(\w+)$/&gt;  produces an I&lt;untainted&gt; capture, so the
+</span><span class=""> 1904: column name used for dispatch is clean under C&lt;-T&gt;.  Criteria values are
+</span><span class=""> 1905: passed verbatim to component C&lt;Database::Abstraction&gt; objects; those objects
+</span><span class=""> 1906: are responsible for handling tainted values at the SQL parameterisation layer.
 </span><span class=""> 1907: 
-</span><span class=""> 1908: When the same join-key criterion (an operator hashref such as
-</span><span class=""> 1909: C&lt;&lt; { &#39;&gt;&#39; =&gt; &#39;A&#39; } &gt;&gt;) is broadcast to multiple component databases, all of
-</span><span class=""> 1910: them receive a reference to the I&lt;same&gt; hashref.  A malicious component
-</span><span class=""> 1911: database that mutates the hashref&#39;s contents could affect what subsequent
-</span><span class=""> 1912: databases receive.  Component databases are assumed to be trusted.
-</span><span class=""> 1913: 
-</span><span class=""> 1914: =back
+</span><span class=""> 1908: =item Operator hashref aliasing
+</span><span class=""> 1909: 
+</span><span class=""> 1910: When the same join-key criterion (an operator hashref such as
+</span><span class=""> 1911: C&lt;&lt; { &#39;&gt;&#39; =&gt; &#39;A&#39; } &gt;&gt;) is broadcast to multiple component databases, all of
+</span><span class=""> 1912: them receive a reference to the I&lt;same&gt; hashref.  A malicious component
+</span><span class=""> 1913: database that mutates the hashref&#39;s contents could affect what subsequent
+</span><span class=""> 1914: databases receive.  Component databases are assumed to be trusted.
 </span><span class=""> 1915: 
-</span><span class=""> 1916: =head2 What the caller is responsible for
+</span><span class=""> 1916: =back
 </span><span class=""> 1917: 
-</span><span class=""> 1918: =over 4
+</span><span class=""> 1918: =head2 What the caller is responsible for
 </span><span class=""> 1919: 
-</span><span class=""> 1920: =item Sanitise values before building criteria
+</span><span class=""> 1920: =over 4
 </span><span class=""> 1921: 
-</span><span class=""> 1922: DJ passes criterion values verbatim to component databases.  If your
-</span><span class=""> 1923: application accepts user-supplied filter values (e.g. from a CGI query
-</span><span class=""> 1924: string), those values I&lt;must&gt; be validated or sanitised by your application
-</span><span class=""> 1925: before being passed to DJ.
-</span><span class=""> 1926: 
-</span><span class=""> 1927: =item Restrict which columns the caller can filter on
+</span><span class=""> 1922: =item Sanitise values before building criteria
+</span><span class=""> 1923: 
+</span><span class=""> 1924: DJ passes criterion values verbatim to component databases.  If your
+</span><span class=""> 1925: application accepts user-supplied filter values (e.g. from a CGI query
+</span><span class=""> 1926: string), those values I&lt;must&gt; be validated or sanitised by your application
+</span><span class=""> 1927: before being passed to DJ.
 </span><span class=""> 1928: 
-</span><span class=""> 1929: Any column in C&lt;columns()&gt; can be used as a filter criterion.  If a column
-</span><span class=""> 1930: should not be filterable by end users (e.g. an internal status flag), hide it
-</span><span class=""> 1931: with C&lt;remove_column&gt; so that queries on it are silently dropped.
-</span><span class=""> 1932: 
-</span><span class=""> 1933: =item Do not expose the joined view directly to user-supplied criteria
+</span><span class=""> 1929: =item Restrict which columns the caller can filter on
+</span><span class=""> 1930: 
+</span><span class=""> 1931: Any column in C&lt;columns()&gt; can be used as a filter criterion.  If a column
+</span><span class=""> 1932: should not be filterable by end users (e.g. an internal status flag), hide it
+</span><span class=""> 1933: with C&lt;remove_column&gt; so that queries on it are silently dropped.
 </span><span class=""> 1934: 
-</span><span class=""> 1935: DJ is not a firewall.  It faithfully routes user input to component databases.
-</span><span class=""> 1936: Wrap DJ calls in a thin service layer that whitelists the permitted criterion
-</span><span class=""> 1937: columns and validates their values.
-</span><span class=""> 1938: 
-</span><span class=""> 1939: =back
+</span><span class=""> 1935: =item Do not expose the joined view directly to user-supplied criteria
+</span><span class=""> 1936: 
+</span><span class=""> 1937: DJ is not a firewall.  It faithfully routes user input to component databases.
+</span><span class=""> 1938: Wrap DJ calls in a thin service layer that whitelists the permitted criterion
+</span><span class=""> 1939: columns and validates their values.
 </span><span class=""> 1940: 
-</span><span class=""> 1941: =head3 API SPECIFICATION (security surface)
+</span><span class=""> 1941: =back
 </span><span class=""> 1942: 
-</span><span class=""> 1943:     Input accepted by all query methods and passed through DJ to component databases:
+</span><span class=""> 1943: =head3 API SPECIFICATION (security surface)
 </span><span class=""> 1944: 
-</span><span class=""> 1945:     Criterion values:
-</span><span class=""> 1946:         type: scalar string | operator hashref { OP =&gt; scalar }
-</span><span class=""> 1947:         validation: NONE (DJ trusts the caller; component DA is responsible)
-</span><span class=""> 1948:         max size: unconstrained (OOM risk on very large values)
-</span><span class=""> 1949: 
-</span><span class=""> 1950:     Column name keys in criteria:
-</span><span class=""> 1951:         type: string
-</span><span class=""> 1952:         validation: must be present in _col_db (else carp + drop)
-</span><span class=""> 1953:         character set: any Perl string (including control chars); DJ does
-</span><span class=""> 1954:                        not impose a character-set restriction on criteria KEYS
-</span><span class=""> 1955: 
-</span><span class=""> 1956:     AUTOLOAD method-name-as-column:
-</span><span class=""> 1957:         type: \w+ (enforced by Perl regex /::(\w+)$/)
-</span><span class=""> 1958:         validation: must not start with &#39;_&#39;; must be in _col_db
-</span><span class=""> 1959: 
-</span><span class=""> 1960: =encoding UTF-8
+</span><span class=""> 1945:     Input accepted by all query methods and passed through DJ to component databases:
+</span><span class=""> 1946: 
+</span><span class=""> 1947:     Criterion values:
+</span><span class=""> 1948:         type: scalar string | operator hashref { OP =&gt; scalar }
+</span><span class=""> 1949:         validation: NONE (DJ trusts the caller; component DA is responsible)
+</span><span class=""> 1950:         max size: unconstrained (OOM risk on very large values)
+</span><span class=""> 1951: 
+</span><span class=""> 1952:     Column name keys in criteria:
+</span><span class=""> 1953:         type: string
+</span><span class=""> 1954:         validation: must be present in _col_db (else carp + drop)
+</span><span class=""> 1955:         character set: any Perl string (including control chars); DJ does
+</span><span class=""> 1956:                        not impose a character-set restriction on criteria KEYS
+</span><span class=""> 1957: 
+</span><span class=""> 1958:     AUTOLOAD method-name-as-column:
+</span><span class=""> 1959:         type: \w+ (enforced by Perl regex /::(\w+)$/)
+</span><span class=""> 1960:         validation: must not start with &#39;_&#39;; must be in _col_db
 </span><span class=""> 1961: 
-</span><span class=""> 1962: =head1 FORMAL SPECIFICATION
+</span><span class=""> 1962: =encoding UTF-8
 </span><span class=""> 1963: 
-</span><span class=""> 1964: Z calculus schemas for the key invariants and operations.
-</span><span class=""> 1965: Unicode is used throughout this section as required by Z notation.
-</span><span class=""> 1966: 
-</span><span class=""> 1967:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Database_Join &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1968:     dbs        : seq DATABASE_ABSTRACTION
-</span><span class=""> 1969:     join_col   : NAME
-</span><span class=""> 1970:     join_type  : {left, inner, outer}
-</span><span class=""> 1971:     join_map   : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
-</span><span class=""> 1972:     filters    : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
-</span><span class=""> 1973:     col_db     : NAME &acirc;&#135;&cedil; &acirc;&#132;&#149;
-</span><span class=""> 1974:     removed    : &acirc;&#132;&#153; NAME
-</span><span class=""> 1975:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1976:     #dbs &acirc;&#137;&yen; 1
-</span><span class=""> 1977:     dom join_map &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
-</span><span class=""> 1978:     dom filters  &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
-</span><span class=""> 1979:     dom col_db   = (&acirc;&#139;&#131; { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; ran((dbs i).columns) }) \ removed
-</span><span class=""> 1980:     join_col &acirc;&#136;&#137; removed
-</span><span class=""> 1981:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
-</span><span class=""> 1982:         local_jc(i) = if i &acirc;&#136;&#136; dom join_map then join_map(i) else join_col
+</span><span class=""> 1964: =head1 FORMAL SPECIFICATION
+</span><span class=""> 1965: 
+</span><span class=""> 1966: Z calculus schemas for the key invariants and operations.
+</span><span class=""> 1967: Unicode is used throughout this section as required by Z notation.
+</span><span class=""> 1968: 
+</span><span class=""> 1969:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Database_Join &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1970:     dbs        : seq DATABASE_ABSTRACTION
+</span><span class=""> 1971:     join_col   : NAME
+</span><span class=""> 1972:     join_type  : {left, inner, outer}
+</span><span class=""> 1973:     join_map   : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
+</span><span class=""> 1974:     filters    : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
+</span><span class=""> 1975:     col_db     : NAME &acirc;&#135;&cedil; &acirc;&#132;&#149;
+</span><span class=""> 1976:     removed    : &acirc;&#132;&#153; NAME
+</span><span class=""> 1977:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1978:     #dbs &acirc;&#137;&yen; 1
+</span><span class=""> 1979:     dom join_map &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
+</span><span class=""> 1980:     dom filters  &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
+</span><span class=""> 1981:     dom col_db   = (&acirc;&#139;&#131; { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; ran((dbs i).columns) }) \ removed
+</span><span class=""> 1982:     join_col &acirc;&#136;&#137; removed
 </span><span class=""> 1983:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
-</span><span class=""> 1984:         local_jc(i) &acirc;&#136;&#136; ran((dbs i).columns)
-</span><span class=""> 1985: 
-</span><span class=""> 1986:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Init &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1987:     &Icirc;&#148;Database_Join
-</span><span class=""> 1988:     dbs?       : seq DATABASE_ABSTRACTION
-</span><span class=""> 1989:     join_col?  : NAME
-</span><span class=""> 1990:     join_type? : {left, inner, outer}
-</span><span class=""> 1991:     join_map?  : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
-</span><span class=""> 1992:     filters?   : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
-</span><span class=""> 1993:     removed?   : &acirc;&#132;&#153; NAME
-</span><span class=""> 1994:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 1995:     #dbs? &acirc;&#137;&yen; 1
-</span><span class=""> 1996:     dbs&#39;      = dbs?
-</span><span class=""> 1997:     join_col&#39; = join_col?
-</span><span class=""> 1998:     join_type&#39;= join_type?
-</span><span class=""> 1999:     join_map&#39; = join_map?
-</span><span class=""> 2000:     filters&#39;  = filters?
-</span><span class=""> 2001:     col_db&#39;   = buildColIndex(dbs?, join_col?, join_map?)
-</span><span class=""> 2002:     removed&#39;  = removed?
-</span><span class=""> 2003: 
-</span><span class=""> 2004:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; SelectAllArrayref &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2005:     &Icirc;&#158;Database_Join        -- state unchanged
-</span><span class=""> 2006:     criteria? : CRITERIA
-</span><span class=""> 2007:     result!   : seq MERGED_ROW
-</span><span class=""> 2008:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2009:     &acirc;&#136;&#128; c : dom criteria? &acirc;&#128;&cent; c &acirc;&#136;&#136; dom col_db &acirc;&#136;&ordf; {join_col}
-</span><span class=""> 2010:     result! = joinedQuery(criteria?)
-</span><span class=""> 2011:     result! is sorted ascending by join_col value
-</span><span class=""> 2012: 
-</span><span class=""> 2013:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; AddDatabase &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2014:     &Icirc;&#148;Database_Join
-</span><span class=""> 2015:     db?         : DATABASE_ABSTRACTION
-</span><span class=""> 2016:     local_jc?   : NAME   -- optional; defaults to join_col
-</span><span class=""> 2017:     filter?     : CRITERIA   -- optional
-</span><span class=""> 2018:     remove?     : &acirc;&#132;&#153; NAME     -- optional
-</span><span class=""> 2019:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2020:     db?.isa(&#39;Database::Abstraction&#39;)
-</span><span class=""> 2021:     local_jc? &acirc;&#136;&#136; ran(db?.columns)
-</span><span class=""> 2022:     dbs&#39;      = dbs ^ &acirc;&#159;&uml;db?&acirc;&#159;&copy;
-</span><span class=""> 2023:     col_db&#39;   = col_db &acirc;&#138;&#149; { c &acirc;&#134;&brvbar; #dbs | c &acirc;&#136;&#136; ran(db?.columns) \ {local_jc?} \ removed }
-</span><span class=""> 2024:     filters&#39;  = if filter? &acirc;&#137;&nbsp; &acirc;&#136;&#133; then filters &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; filter?} else filters
-</span><span class=""> 2025:     join_map&#39; = if local_jc? &acirc;&#137;&nbsp; join_col
-</span><span class=""> 2026:                 then join_map &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; local_jc?}
-</span><span class=""> 2027:                 else join_map
-</span><span class=""> 2028:     removed&#39;  = removed &acirc;&#136;&ordf; remove?
-</span><span class=""> 2029: 
-</span><span class=""> 2030:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; RemoveColumn &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2031:     &Icirc;&#148;Database_Join
-</span><span class=""> 2032:     col? : NAME
-</span><span class=""> 2033:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2034:     col? &acirc;&#137;&nbsp; join_col
-</span><span class=""> 2035:     removed&#39;  = removed &acirc;&#136;&ordf; {col?}
-</span><span class=""> 2036:     col_db&#39;   = col_db \ {col?}
-</span><span class=""> 2037:     join_map&#39; = join_map
-</span><span class=""> 2038:     filters&#39;  = filters
-</span><span class=""> 2039:     dbs&#39;      = dbs
-</span><span class=""> 2040: 
-</span><span class=""> 2041: =head2 join_map
+</span><span class=""> 1984:         local_jc(i) = if i &acirc;&#136;&#136; dom join_map then join_map(i) else join_col
+</span><span class=""> 1985:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
+</span><span class=""> 1986:         local_jc(i) &acirc;&#136;&#136; ran((dbs i).columns)
+</span><span class=""> 1987: 
+</span><span class=""> 1988:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Init &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1989:     &Icirc;&#148;Database_Join
+</span><span class=""> 1990:     dbs?       : seq DATABASE_ABSTRACTION
+</span><span class=""> 1991:     join_col?  : NAME
+</span><span class=""> 1992:     join_type? : {left, inner, outer}
+</span><span class=""> 1993:     join_map?  : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
+</span><span class=""> 1994:     filters?   : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
+</span><span class=""> 1995:     removed?   : &acirc;&#132;&#153; NAME
+</span><span class=""> 1996:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 1997:     #dbs? &acirc;&#137;&yen; 1
+</span><span class=""> 1998:     dbs&#39;      = dbs?
+</span><span class=""> 1999:     join_col&#39; = join_col?
+</span><span class=""> 2000:     join_type&#39;= join_type?
+</span><span class=""> 2001:     join_map&#39; = join_map?
+</span><span class=""> 2002:     filters&#39;  = filters?
+</span><span class=""> 2003:     col_db&#39;   = buildColIndex(dbs?, join_col?, join_map?)
+</span><span class=""> 2004:     removed&#39;  = removed?
+</span><span class=""> 2005: 
+</span><span class=""> 2006:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; SelectAllArrayref &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2007:     &Icirc;&#158;Database_Join        -- state unchanged
+</span><span class=""> 2008:     criteria? : CRITERIA
+</span><span class=""> 2009:     result!   : seq MERGED_ROW
+</span><span class=""> 2010:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2011:     &acirc;&#136;&#128; c : dom criteria? &acirc;&#128;&cent; c &acirc;&#136;&#136; dom col_db &acirc;&#136;&ordf; {join_col}
+</span><span class=""> 2012:     result! = joinedQuery(criteria?)
+</span><span class=""> 2013:     result! is sorted ascending by join_col value
+</span><span class=""> 2014: 
+</span><span class=""> 2015:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; AddDatabase &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2016:     &Icirc;&#148;Database_Join
+</span><span class=""> 2017:     db?         : DATABASE_ABSTRACTION
+</span><span class=""> 2018:     local_jc?   : NAME   -- optional; defaults to join_col
+</span><span class=""> 2019:     filter?     : CRITERIA   -- optional
+</span><span class=""> 2020:     remove?     : &acirc;&#132;&#153; NAME     -- optional
+</span><span class=""> 2021:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2022:     db?.isa(&#39;Database::Abstraction&#39;)
+</span><span class=""> 2023:     local_jc? &acirc;&#136;&#136; ran(db?.columns)
+</span><span class=""> 2024:     dbs&#39;      = dbs ^ &acirc;&#159;&uml;db?&acirc;&#159;&copy;
+</span><span class=""> 2025:     col_db&#39;   = col_db &acirc;&#138;&#149; { c &acirc;&#134;&brvbar; #dbs | c &acirc;&#136;&#136; ran(db?.columns) \ {local_jc?} \ removed }
+</span><span class=""> 2026:     filters&#39;  = if filter? &acirc;&#137;&nbsp; &acirc;&#136;&#133; then filters &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; filter?} else filters
+</span><span class=""> 2027:     join_map&#39; = if local_jc? &acirc;&#137;&nbsp; join_col
+</span><span class=""> 2028:                 then join_map &acirc;&#138;&#149; {#dbs &acirc;&#134;&brvbar; local_jc?}
+</span><span class=""> 2029:                 else join_map
+</span><span class=""> 2030:     removed&#39;  = removed &acirc;&#136;&ordf; remove?
+</span><span class=""> 2031: 
+</span><span class=""> 2032:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; RemoveColumn &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2033:     &Icirc;&#148;Database_Join
+</span><span class=""> 2034:     col? : NAME
+</span><span class=""> 2035:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2036:     col? &acirc;&#137;&nbsp; join_col
+</span><span class=""> 2037:     removed&#39;  = removed &acirc;&#136;&ordf; {col?}
+</span><span class=""> 2038:     col_db&#39;   = col_db \ {col?}
+</span><span class=""> 2039:     join_map&#39; = join_map
+</span><span class=""> 2040:     filters&#39;  = filters
+</span><span class=""> 2041:     dbs&#39;      = dbs
 </span><span class=""> 2042: 
-</span><span class=""> 2043:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; JoinMap &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2044:     join_map : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
-</span><span class=""> 2045:     dbs      : seq DATABASE_ABSTRACTION
-</span><span class=""> 2046:     join_col : NAME
-</span><span class=""> 2047:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2048:     dom join_map &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
-</span><span class=""> 2049:     &acirc;&#136;&#128; i : dom join_map &acirc;&#128;&cent; (join_map i) &acirc;&#136;&#136; ran(dbs i).columns
-</span><span class=""> 2050:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; (#dbs - 1) \ dom join_map &acirc;&#128;&cent;
-</span><span class=""> 2051:         join_col &acirc;&#136;&#136; ran(dbs i).columns
-</span><span class=""> 2052: 
-</span><span class=""> 2053:     -- Resolution of the local join-key name for database i:
-</span><span class=""> 2054:     local_jc(i) == if i &acirc;&#136;&#136; dom join_map then join_map(i) else join_col
-</span><span class=""> 2055: 
-</span><span class=""> 2056:     -- The canonical name is always join_col; local_jc is never exposed.
+</span><span class=""> 2043: =head2 join_map
+</span><span class=""> 2044: 
+</span><span class=""> 2045:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; JoinMap &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2046:     join_map : &acirc;&#132;&#149; &acirc;&#135;&cedil; NAME
+</span><span class=""> 2047:     dbs      : seq DATABASE_ABSTRACTION
+</span><span class=""> 2048:     join_col : NAME
+</span><span class=""> 2049:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2050:     dom join_map &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
+</span><span class=""> 2051:     &acirc;&#136;&#128; i : dom join_map &acirc;&#128;&cent; (join_map i) &acirc;&#136;&#136; ran(dbs i).columns
+</span><span class=""> 2052:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; (#dbs - 1) \ dom join_map &acirc;&#128;&cent;
+</span><span class=""> 2053:         join_col &acirc;&#136;&#136; ran(dbs i).columns
+</span><span class=""> 2054: 
+</span><span class=""> 2055:     -- Resolution of the local join-key name for database i:
+</span><span class=""> 2056:     local_jc(i) == if i &acirc;&#136;&#136; dom join_map then join_map(i) else join_col
 </span><span class=""> 2057: 
-</span><span class=""> 2058: =head2 SECURITY INVARIANTS
+</span><span class=""> 2058:     -- The canonical name is always join_col; local_jc is never exposed.
 </span><span class=""> 2059: 
-</span><span class=""> 2060:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; PartitionIsolation &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2061:     -- For every query call with criteria C and column col &acirc;&#137;&nbsp; join_col:
-</span><span class=""> 2062:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
-</span><span class=""> 2063:         i &acirc;&#137;&nbsp; _col_db(col)  &acirc;&#159;&sup1;  col &acirc;&#136;&#137; dom(per_db(i))
-</span><span class=""> 2064: 
-</span><span class=""> 2065:     -- Unknown column is dropped before any database sees it:
-</span><span class=""> 2066:     col &acirc;&#136;&#137; dom(_col_db) &acirc;&#136;&sect; col &acirc;&#137;&nbsp; join_col  &acirc;&#159;&sup1;
-</span><span class=""> 2067:         (&acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; col &acirc;&#136;&#137; dom(per_db(i)))
-</span><span class=""> 2068: 
-</span><span class=""> 2069:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; NoCodeExecution &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2070:     -- DJ contains no call to system(), exec(), open(PIPE), or eval().
-</span><span class=""> 2071:     -- Hostile criterion values therefore cannot achieve code execution
-</span><span class=""> 2072:     -- within the Database::Join layer.
-</span><span class=""> 2073:     &acirc;&#136;&#128; v : VALUE &acirc;&#128;&cent; _joined_query({col &acirc;&#134;&brvbar; v}) &acirc;&#137;&nbsp; &acirc;&#138;&yen; due to code injection
-</span><span class=""> 2074: 
-</span><span class=""> 2075: =head2 filters
+</span><span class=""> 2060: =head2 SECURITY INVARIANTS
+</span><span class=""> 2061: 
+</span><span class=""> 2062:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; PartitionIsolation &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2063:     -- For every query call with criteria C and column col &acirc;&#137;&nbsp; join_col:
+</span><span class=""> 2064:     &acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent;
+</span><span class=""> 2065:         i &acirc;&#137;&nbsp; _col_db(col)  &acirc;&#159;&sup1;  col &acirc;&#136;&#137; dom(per_db(i))
+</span><span class=""> 2066: 
+</span><span class=""> 2067:     -- Unknown column is dropped before any database sees it:
+</span><span class=""> 2068:     col &acirc;&#136;&#137; dom(_col_db) &acirc;&#136;&sect; col &acirc;&#137;&nbsp; join_col  &acirc;&#159;&sup1;
+</span><span class=""> 2069:         (&acirc;&#136;&#128; i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; col &acirc;&#136;&#137; dom(per_db(i)))
+</span><span class=""> 2070: 
+</span><span class=""> 2071:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; NoCodeExecution &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2072:     -- DJ contains no call to system(), exec(), open(PIPE), or eval().
+</span><span class=""> 2073:     -- Hostile criterion values therefore cannot achieve code execution
+</span><span class=""> 2074:     -- within the Database::Join layer.
+</span><span class=""> 2075:     &acirc;&#136;&#128; v : VALUE &acirc;&#128;&cent; _joined_query({col &acirc;&#134;&brvbar; v}) &acirc;&#137;&nbsp; &acirc;&#138;&yen; due to code injection
 </span><span class=""> 2076: 
-</span><span class=""> 2077:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Filters &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2078:     filters  : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
-</span><span class=""> 2079:     dbs      : seq DATABASE_ABSTRACTION
-</span><span class=""> 2080:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
-</span><span class=""> 2081:     dom filters &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
-</span><span class=""> 2082: 
-</span><span class=""> 2083:     -- A filtered database i always contributes to key-set intersection.
-</span><span class=""> 2084:     -- For each query with criteria C:
-</span><span class=""> 2085:     effective_criteria(i, C) ==
-</span><span class=""> 2086:         if i &acirc;&#136;&#136; dom filters
-</span><span class=""> 2087:         then merge_criteria(filters(i), partition(C, i))
-</span><span class=""> 2088:         else partition(C, i)
-</span><span class=""> 2089: 
-</span><span class=""> 2090:     -- Criteria merging (AND semantics for operator hashrefs):
-</span><span class=""> 2091:     merge_criteria(base, extra) ==
-</span><span class=""> 2092:         { col : dom base &acirc;&#136;&ordf; dom extra &acirc;&#128;&cent;
-</span><span class=""> 2093:             if col &acirc;&#136;&#136; dom base &acirc;&#136;&copy; dom extra
-</span><span class=""> 2094:                &acirc;&#136;&sect; base(col) &acirc;&#136;&#136; HASHREF &acirc;&#136;&sect; extra(col) &acirc;&#136;&#136; HASHREF
-</span><span class=""> 2095:             then col &acirc;&#134;&brvbar; base(col) &acirc;&#136;&ordf; extra(col)   -- operator union
-</span><span class=""> 2096:             else col &acirc;&#134;&brvbar; (if col &acirc;&#136;&#136; dom extra then extra(col) else base(col)) }
-</span><span class=""> 2097: 
-</span><span class=""> 2098: =head2 selectall_arrayref
+</span><span class=""> 2077: =head2 filters
+</span><span class=""> 2078: 
+</span><span class=""> 2079:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128; Filters &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2080:     filters  : &acirc;&#132;&#149; &acirc;&#135;&cedil; CRITERIA
+</span><span class=""> 2081:     dbs      : seq DATABASE_ABSTRACTION
+</span><span class=""> 2082:     &acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;&acirc;&#148;&#128;
+</span><span class=""> 2083:     dom filters &acirc;&#138;&#134; 0 &acirc;&#128;&yen; (#dbs - 1)
+</span><span class=""> 2084: 
+</span><span class=""> 2085:     -- A filtered database i always contributes to key-set intersection.
+</span><span class=""> 2086:     -- For each query with criteria C:
+</span><span class=""> 2087:     effective_criteria(i, C) ==
+</span><span class=""> 2088:         if i &acirc;&#136;&#136; dom filters
+</span><span class=""> 2089:         then merge_criteria(filters(i), partition(C, i))
+</span><span class=""> 2090:         else partition(C, i)
+</span><span class=""> 2091: 
+</span><span class=""> 2092:     -- Criteria merging (AND semantics for operator hashrefs):
+</span><span class=""> 2093:     merge_criteria(base, extra) ==
+</span><span class=""> 2094:         { col : dom base &acirc;&#136;&ordf; dom extra &acirc;&#128;&cent;
+</span><span class=""> 2095:             if col &acirc;&#136;&#136; dom base &acirc;&#136;&copy; dom extra
+</span><span class=""> 2096:                &acirc;&#136;&sect; base(col) &acirc;&#136;&#136; HASHREF &acirc;&#136;&sect; extra(col) &acirc;&#136;&#136; HASHREF
+</span><span class=""> 2097:             then col &acirc;&#134;&brvbar; base(col) &acirc;&#136;&ordf; extra(col)   -- operator union
+</span><span class=""> 2098:             else col &acirc;&#134;&brvbar; (if col &acirc;&#136;&#136; dom extra then extra(col) else base(col)) }
 </span><span class=""> 2099: 
-</span><span class=""> 2100:     selectall_arrayref : CRITERIA &acirc;&#134;&#146; seq MERGED_ROW
-</span><span class=""> 2101:     pre:  &acirc;&#136;&#128; col : dom criteria &acirc;&#128;&cent; col &acirc;&#136;&#136; dom self._col_db &acirc;&#136;&ordf; {self._join_col}
-</span><span class=""> 2102:     post: result = _joined_query(criteria)
-</span><span class=""> 2103:           result is sorted ascending by join_col value
-</span><span class=""> 2104: 
-</span><span class=""> 2105: =head2 selectall_array
+</span><span class=""> 2100: =head2 selectall_arrayref
+</span><span class=""> 2101: 
+</span><span class=""> 2102:     selectall_arrayref : CRITERIA &acirc;&#134;&#146; seq MERGED_ROW
+</span><span class=""> 2103:     pre:  &acirc;&#136;&#128; col : dom criteria &acirc;&#128;&cent; col &acirc;&#136;&#136; dom self._col_db &acirc;&#136;&ordf; {self._join_col}
+</span><span class=""> 2104:     post: result = _joined_query(criteria)
+</span><span class=""> 2105:           result is sorted ascending by join_col value
 </span><span class=""> 2106: 
-</span><span class=""> 2107:     selectall_array : CRITERIA &acirc;&#134;&#146; seq MERGED_ROW | MERGED_ROW?
-</span><span class=""> 2108:     pre:  same as selectall_arrayref
-</span><span class=""> 2109:     post: wantarray  =&gt; result = @{ selectall_arrayref(criteria) }
-</span><span class=""> 2110:           !wantarray =&gt; result = selectall_arrayref(criteria)[0]  (or undef)
-</span><span class=""> 2111: 
-</span><span class=""> 2112: =head2 fetchrow_hashref
+</span><span class=""> 2107: =head2 selectall_array
+</span><span class=""> 2108: 
+</span><span class=""> 2109:     selectall_array : CRITERIA &acirc;&#134;&#146; seq MERGED_ROW | MERGED_ROW?
+</span><span class=""> 2110:     pre:  same as selectall_arrayref
+</span><span class=""> 2111:     post: wantarray  =&gt; result = @{ selectall_arrayref(criteria) }
+</span><span class=""> 2112:           !wantarray =&gt; result = selectall_arrayref(criteria)[0]  (or undef)
 </span><span class=""> 2113: 
-</span><span class=""> 2114:     fetchrow_hashref : CRITERIA &acirc;&#134;&#146; MERGED_ROW?
-</span><span class=""> 2115:     post: result = selectall_arrayref(criteria)[0]  (or undef if empty)
-</span><span class=""> 2116: 
-</span><span class=""> 2117: =head2 count
+</span><span class=""> 2114: =head2 fetchrow_hashref
+</span><span class=""> 2115: 
+</span><span class=""> 2116:     fetchrow_hashref : CRITERIA &acirc;&#134;&#146; MERGED_ROW?
+</span><span class=""> 2117:     post: result = selectall_arrayref(criteria)[0]  (or undef if empty)
 </span><span class=""> 2118: 
-</span><span class=""> 2119:     count : CRITERIA &acirc;&#134;&#146; &acirc;&#132;&#149;
-</span><span class=""> 2120:     post: result = #selectall_arrayref(criteria)
-</span><span class=""> 2121: 
-</span><span class=""> 2122: =head2 columns
+</span><span class=""> 2119: =head2 count
+</span><span class=""> 2120: 
+</span><span class=""> 2121:     count : CRITERIA &acirc;&#134;&#146; &acirc;&#132;&#149;
+</span><span class=""> 2122:     post: result = #selectall_arrayref(criteria)
 </span><span class=""> 2123: 
-</span><span class=""> 2124:     columns : &acirc;&#134;&#146; seq NAME
-</span><span class=""> 2125:     post: result = sort(
-</span><span class=""> 2126:               (&acirc;&#139;&#131; { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; ran(dbs(i).columns) }
-</span><span class=""> 2127:                \ dom removed_cols
-</span><span class=""> 2128:                \ { local_jc(i) | i &acirc;&#136;&#136; dom join_map &acirc;&#136;&sect; local_jc(i) &acirc;&#137;&nbsp; join_col })
-</span><span class=""> 2129:           )
-</span><span class=""> 2130: 
-</span><span class=""> 2131: =head2 schema
+</span><span class=""> 2124: =head2 columns
+</span><span class=""> 2125: 
+</span><span class=""> 2126:     columns : &acirc;&#134;&#146; seq NAME
+</span><span class=""> 2127:     post: result = sort(
+</span><span class=""> 2128:               (&acirc;&#139;&#131; { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; ran(dbs(i).columns) }
+</span><span class=""> 2129:                \ dom removed_cols
+</span><span class=""> 2130:                \ { local_jc(i) | i &acirc;&#136;&#136; dom join_map &acirc;&#136;&sect; local_jc(i) &acirc;&#137;&nbsp; join_col })
+</span><span class=""> 2131:           )
 </span><span class=""> 2132: 
-</span><span class=""> 2133:     schema : &acirc;&#134;&#146; NAME &acirc;&#135;&cedil; SCHEMA_INFO
-</span><span class=""> 2134:     post: dom(result) = ran(columns())
-</span><span class=""> 2135:           &acirc;&#136;&#128; col : dom(result) &acirc;&#128;&cent;
-</span><span class=""> 2136:               result(col) = (last database containing col).schema()(col)
-</span><span class=""> 2137: 
-</span><span class=""> 2138: =head2 updated
+</span><span class=""> 2133: =head2 schema
+</span><span class=""> 2134: 
+</span><span class=""> 2135:     schema : &acirc;&#134;&#146; NAME &acirc;&#135;&cedil; SCHEMA_INFO
+</span><span class=""> 2136:     post: dom(result) = ran(columns())
+</span><span class=""> 2137:           &acirc;&#136;&#128; col : dom(result) &acirc;&#128;&cent;
+</span><span class=""> 2138:               result(col) = (last database containing col).schema()(col)
 </span><span class=""> 2139: 
-</span><span class=""> 2140:     updated : &acirc;&#134;&#146; &acirc;&#132;&#149;
-</span><span class=""> 2141:     post: result = max { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; dbs(i).updated() }
-</span><span class=""> 2142: 
-</span><span class=""> 2143: =head2 remove_column
+</span><span class=""> 2140: =head2 updated
+</span><span class=""> 2141: 
+</span><span class=""> 2142:     updated : &acirc;&#134;&#146; &acirc;&#132;&#149;
+</span><span class=""> 2143:     post: result = max { i : 0 &acirc;&#128;&yen; #dbs-1 &acirc;&#128;&cent; dbs(i).updated() }
 </span><span class=""> 2144: 
-</span><span class=""> 2145:     remove_column : NAME &acirc;&#134;&#146; Database_Join
-</span><span class=""> 2146:     pre:  col &acirc;&#137;&nbsp; self._join_col
-</span><span class=""> 2147:     post: self&#39;._removed_cols = self._removed_cols &acirc;&#136;&ordf; {col}
-</span><span class=""> 2148:           self&#39;._col_db       = self._col_db \ {col}
-</span><span class=""> 2149:           self&#39;._col_cache    = undef
-</span><span class=""> 2150:           self&#39;._schema_cache = undef
-</span><span class=""> 2151: 
-</span><span class=""> 2152: =head2 AUTOLOAD
+</span><span class=""> 2145: =head2 remove_column
+</span><span class=""> 2146: 
+</span><span class=""> 2147:     remove_column : NAME &acirc;&#134;&#146; Database_Join
+</span><span class=""> 2148:     pre:  col &acirc;&#137;&nbsp; self._join_col
+</span><span class=""> 2149:     post: self&#39;._removed_cols = self._removed_cols &acirc;&#136;&ordf; {col}
+</span><span class=""> 2150:           self&#39;._col_db       = self._col_db \ {col}
+</span><span class=""> 2151:           self&#39;._col_cache    = undef
+</span><span class=""> 2152:           self&#39;._schema_cache = undef
 </span><span class=""> 2153: 
-</span><span class=""> 2154:     AUTOLOAD : NAME &Atilde;&#151; CRITERIA &acirc;&#134;&#146; VALUE | seq VALUE
-</span><span class=""> 2155:     pre:  col &acirc;&#136;&#136; dom self._col_db
-</span><span class=""> 2156:           col does not begin with &#39;_&#39;
-</span><span class=""> 2157:     post: let rows = _joined_query(criteria)
-</span><span class=""> 2158:           wantarray  =&gt; result = { r : rows &acirc;&#128;&cent; r(col) }
-</span><span class=""> 2159:           !wantarray =&gt; result = rows(0)(col)  (or undef if rows is empty)
-</span><span class=""> 2160: 
-</span><span class=""> 2161: =head1 AUTHOR
+</span><span class=""> 2154: =head2 AUTOLOAD
+</span><span class=""> 2155: 
+</span><span class=""> 2156:     AUTOLOAD : NAME &Atilde;&#151; CRITERIA &acirc;&#134;&#146; VALUE | seq VALUE
+</span><span class=""> 2157:     pre:  col &acirc;&#136;&#136; dom self._col_db
+</span><span class=""> 2158:           col does not begin with &#39;_&#39;
+</span><span class=""> 2159:     post: let rows = _joined_query(criteria)
+</span><span class=""> 2160:           wantarray  =&gt; result = { r : rows &acirc;&#128;&cent; r(col) }
+</span><span class=""> 2161:           !wantarray =&gt; result = rows(0)(col)  (or undef if rows is empty)
 </span><span class=""> 2162: 
-</span><span class=""> 2163: Nigel Horne, C&lt;&lt; &lt;njh@nigelhorne.com&gt; &gt;&gt;
+</span><span class=""> 2163: =head1 AUTHOR
 </span><span class=""> 2164: 
-</span><span class=""> 2165: =head1 LICENSE AND COPYRIGHT
+</span><span class=""> 2165: Nigel Horne, C&lt;&lt; &lt;njh@nigelhorne.com&gt; &gt;&gt;
 </span><span class=""> 2166: 
-</span><span class=""> 2167: Copyright (C) 2026 Nigel Horne.
+</span><span class=""> 2167: =head1 LICENSE AND COPYRIGHT
 </span><span class=""> 2168: 
-</span><span class=""> 2169: Usage is subject to the GPL2 licence terms.
-</span><span class=""> 2170: If you use it, please let me know.
-</span><span class=""> 2171: 
-</span><span class=""> 2172: =cut
+</span><span class=""> 2169: Copyright (C) 2026 Nigel Horne.
+</span><span class=""> 2170: 
+</span><span class=""> 2171: Usage is subject to the GPL2 licence terms.
+</span><span class=""> 2172: If you use it, please let me know.
+</span><span class=""> 2173: 
+</span><span class=""> 2174: =cut
 </span></pre>
 
 <script>
