@@ -1,0 +1,281 @@
+{
+   "runs" : [
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357737.00023,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "-e",
+         "start" : 1787357724.24293,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357724.39612,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "-e",
+         "start" : 1787357724.39588,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357724.79737,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/00-load.t",
+         "start" : 1787357724.7958,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357725.34394,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/01-new.t",
+         "start" : 1787357725.322,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357725.91711,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/10-select.t",
+         "start" : 1787357725.88261,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357726.49354,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/20-remove-column.t",
+         "start" : 1787357726.467,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357727.09602,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/30-add-database.t",
+         "start" : 1787357727.04943,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357727.70631,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/40-filters.t",
+         "start" : 1787357727.64677,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357728.32344,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/50-logic-proofs.t",
+         "start" : 1787357728.26393,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357728.95541,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/cgi_security.t",
+         "start" : 1787357728.85385,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357729.61072,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/cities.t",
+         "start" : 1787357729.52364,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357730.32855,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/data-flow.t",
+         "start" : 1787357730.15442,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357731.08327,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/domain.t",
+         "start" : 1787357730.8231,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357732.02774,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/edge_cases.t",
+         "start" : 1787357731.73304,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357733.11288,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/function.t",
+         "start" : 1787357732.73141,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357734.21577,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/integration.t",
+         "start" : 1787357733.91983,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357735.02845,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/path.t",
+         "start" : 1787357734.75624,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357735.75823,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/test1_2.t",
+         "start" : 1787357735.7155,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Read-only combined view across two or more Database::Abstraction objects",
+         "dir" : "/home/runner/work/Database-Join/Database-Join",
+         "finish" : 1787357736.65208,
+         "name" : "Database-Join",
+         "perl" : "5.40.5",
+         "run" : "t/unit.t",
+         "start" : 1787357736.30141,
+         "version" : "0.01"
+      }
+   ],
+   "summary" : {
+      "Total" : {
+         "branch" : {
+            "covered" : 103,
+            "error" : 3,
+            "percentage" : 97.1698113207547,
+            "total" : 106,
+            "uncoverable" : 0
+         },
+         "condition" : {
+            "covered" : 81,
+            "error" : 18,
+            "percentage" : 81.8181818181818,
+            "total" : 99,
+            "uncoverable" : 0
+         },
+         "statement" : {
+            "covered" : 322,
+            "percentage" : 100,
+            "total" : 322
+         },
+         "subroutine" : {
+            "covered" : 42,
+            "percentage" : 100,
+            "total" : 42
+         },
+         "total" : {
+            "covered" : 548,
+            "error" : 21,
+            "percentage" : 96.3093145869947,
+            "total" : 569,
+            "uncoverable" : 0
+         }
+      },
+      "blib/lib/Database/Join.pm" : {
+         "branch" : {
+            "covered" : 103,
+            "error" : 3,
+            "percentage" : 97.1698113207547,
+            "total" : 106,
+            "uncoverable" : 0
+         },
+         "condition" : {
+            "covered" : 81,
+            "error" : 18,
+            "percentage" : 81.8181818181818,
+            "total" : 99,
+            "uncoverable" : 0
+         },
+         "statement" : {
+            "covered" : 322,
+            "percentage" : 100,
+            "total" : 322
+         },
+         "subroutine" : {
+            "covered" : 42,
+            "percentage" : 100,
+            "total" : 42
+         },
+         "total" : {
+            "covered" : 548,
+            "error" : 21,
+            "percentage" : 96.3093145869947,
+            "total" : 569,
+            "uncoverable" : 0
+         }
+      }
+   }
+}
