@@ -158,7 +158,7 @@
 
 <tbody>
 
-<tr class="high"><td><a href="blib-lib-Database-Join-pm.html" title="View coverage line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/fc073d595076187019892a8c161d8f9490f04e53/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a><canvas class="sparkline" width="80" height="20" data-points="84.8,85.4,94.2,95.0,96.2,96.2,96.6,96.6,96.3,96.3"></canvas></td><td>100.0</td><td>97.2</td><td>81.8</td><td>100.0</td><td><span class="coverage-badge badge-good" title="Excellent coverage">96.3%</span></td><td class="neutral" title="Previous: 96.3%">&#9679; 0.0%</td></tr>
+<tr class="high"><td><a href="blib-lib-Database-Join-pm.html" title="View coverage line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/c3cd4e38bae7055331dbfa8da1549280fa448f2a/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a><canvas class="sparkline" width="80" height="20" data-points="85.4,94.2,95.0,96.2,96.2,96.6,96.6,96.3,96.3,96.3"></canvas></td><td>100.0</td><td>97.2</td><td>81.8</td><td>100.0</td><td><span class="coverage-badge badge-good" title="Excellent coverage">96.3%</span></td><td class="neutral" title="Previous: 96.3%">&#9679; 0.0%</td></tr>
 <tr class="summary-row nosort"><td colspan="2"><strong>Summary</strong></td><td colspan="2">1 files</td><td colspan="3">Avg: 96%, Low: 0</td></tr>
 <tr class="high nosort"><td><strong>Total</strong></td><td>100.0</td><td>97.2</td><td>81.8</td><td>100.0</td><td colspan="2"><strong>96.3</strong></td></tr>
 </tbody></table>
@@ -216,8 +216,8 @@ const dataPoints = [ { x: "2026-08-21T11:27:26-04:00", y: 84.8214285714286, delt
 { x: "2026-08-21T17:06:18-04:00", y: 96.5811965811966, delta: 0.4, url: "https://github.com/nigelhorne/Database-Join/commit/cc76ab5ee9f2429dbdb709b16f91d805f38475fc", label: "2026-08-21T17:06:18-04:00", pointBackgroundColor: "green", comment: "Added data flow tests" },
 { x: "2026-08-21T18:49:09-04:00", y: 96.5811965811966, delta: 0.0, url: "https://github.com/nigelhorne/Database-Join/commit/a97842c3fb79baa152004fe506dc2da334b7af05", label: "2026-08-21T18:49:09-04:00", pointBackgroundColor: "gray", comment: "Added domain testing" },
 { x: "2026-08-21T20:12:32-04:00", y: 96.3093145869947, delta: -0.3, url: "https://github.com/nigelhorne/Database-Join/commit/ca881401baeb5a770fa1135b64ea8c0e231b6dbc", label: "2026-08-21T20:12:32-04:00", pointBackgroundColor: "red", comment: "Added path testing" },
-{ x: "2026-08-21T20:32:42-04:00", y: 48.1546572934974, delta: -48.2, url: "https://github.com/nigelhorne/Database-Join/commit/6862b4450ffb9de037fe8e238fa2fbf10813a829", label: "2026-08-21T20:32:42-04:00", pointBackgroundColor: "red", comment: "Added transaction tests" },
-{ x: "2026-08-22T00:49:39+00:00", y: 96.3093145869947, delta: 48.2, url: "https://github.com/nigelhorne/Database-Join/commit/fc073d595076187019892a8c161d8f9490f04e53", label: "2026-08-22T00:49:39+00:00", pointBackgroundColor: "green", comment: "Current run" } ];
+{ x: "2026-08-21T20:32:42-04:00", y: 96.3093145869947, delta: 0.0, url: "https://github.com/nigelhorne/Database-Join/commit/6862b4450ffb9de037fe8e238fa2fbf10813a829", label: "2026-08-21T20:32:42-04:00", pointBackgroundColor: "gray", comment: "Added transaction tests" },
+{ x: "2026-08-23T19:20:42+00:00", y: 96.3093145869947, delta: 0.0, url: "https://github.com/nigelhorne/Database-Join/commit/c3cd4e38bae7055331dbfa8da1549280fa448f2a", label: "2026-08-23T19:20:42+00:00", pointBackgroundColor: "gray", comment: "Fix https://matrix.perl-magpie.org/results/def96e6c-9e2e-11f1-af92-fa432959d47e" } ];
 const regressionPoints = linearRegression(dataPoints);
 // Try to register the zoom plugin (handles different UMD builds)
 (function registerZoomPlugin(){
@@ -688,8 +688,95 @@ function refresh(){
 
 <p><center>Use mouse wheel or pinch to zoom; drag to pan</center></p>
 <p>No issues active on <a href="https://rt.cpan.org/Public/Dist/Display.html?Name=Database-Join">RT</a></p>
-<p><a href="https://api.cpantesters.org/v3/summary/Database-Join">https://api.cpantesters.org/v3/summary/Database-Join</a>: 404 Not Found</p>
-<p>No CPAN Testers failures reported for Database-Join unknown.</p>
+<h2>CPAN Testers Failures for Database-Join 0.001.0</h2>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+	const toggleFail = document.getElementById('toggleFail');
+	const toggleUnknown = document.getElementById('toggleUnknown');
+	const toggleNA = document.getElementById('toggleNA');
+	const toggleNew = document.getElementById('toggleNew');
+
+	function update() {
+		document.querySelectorAll('tr').forEach(row => {
+			// Skip header rows
+			if(row.querySelector('th')) return;
+
+			// Determine row status
+			const isFail = row.classList.contains('cpan-fail');
+			const isUnknown = row.classList.contains('cpan-unknown');
+			const isNA = row.classList.contains('cpan-na');
+			const isNew = !!row.querySelector('.new-failure');
+
+			// Decide whether to show the row
+			let show = true;
+
+			if(toggleFail && !toggleFail.checked && isFail) show = false;
+			if(toggleUnknown && !toggleUnknown.checked && isUnknown) show = false;
+			if(toggleNA && !toggleNA.checked && isNA) show = false;
+			if(toggleNew && toggleNew.checked && !isNew) show = false;
+
+			row.style.display = show ? '' : 'none';
+		});
+	}
+
+	[toggleFail, toggleUnknown, toggleNA, toggleNew].forEach(cb => {
+		if(cb) cb.addEventListener('change', update);
+	});
+
+	update();
+});
+</script>
+
+
+<p><em>Showing one failure per OS/Perl combination.</em></p>
+<div style="margin-bottom: 0.5em;">
+	<label>
+		<input type="checkbox" id="toggleFail" checked>
+		FAIL
+	</label>
+	<label style="margin-left: 1em;">
+		<input type="checkbox" id="toggleUnknown">
+		UNKNOWN
+	</label>
+	<label style="margin-left: 1em;">
+		<input type="checkbox" id="toggleNA">
+		NA
+	</label>
+	<label style="margin-left: 1em;">
+		<input type="checkbox" id="toggleNew">
+		NEW only
+	</label>
+</div>
+
+<table class="sortable-table" data-sort-col="0" data-sort-order="asc" data-table-id="cpan">
+<thead>
+<tr>
+	<th class="sortable" onclick="sortTable(this, 0)" data-sort-type="date">
+		<span class="label">Date</span> <span class="arrow">&#x25B2;</span>
+	</th>
+	<th class="sortable" onclick="sortTable(this, 1)">
+		<span class="label">OS</span> <span class="arrow">&#x25B2;</span>
+	</th>
+	<th class="sortable" onclick="sortTable(this, 2)">
+		<span class="label">Perl</span> <span class="arrow">&#x25B2;</span>
+	</th>
+	<th class="sortable" onclick="sortTable(this, 3)">
+		<span class="label">Reporter</span> <span class="arrow">&#x25B2;</span>
+	</th>
+	<th class="sortable" onclick="sortTable(this, 4)" title="Marks failures that did not occur in the previous release. The same OS, Perl version, architecture, and platform were passing before.">
+		<span class="label">New</span> <span class="arrow">&#x25B2;</span>
+	</th>
+	<th>Report</th>
+	<th>Repro</th>
+</tr>
+</thead>
+<tbody>
+
+<tr class="cpan-fail"><td>2026-08-22T13:35:00Z</td><td>linux</td><td>5.38.4</td><td>Andreas J. K&ouml;nig (ANDK)</td><td></td>
+				<td><a href="https://www.cpantesters.org/cpan/report/66b799c4-9e2e-11f1-8c80-fc08710a292f" target="_blank">View</a></td><td></td></tr>
+<tr class="cpan-fail"><td>2026-08-22T13:39:00Z</td><td>linux</td><td>5.40.0</td><td>Andreas J. K&ouml;nig (ANDK)</td><td></td>
+				<td><a href="https://www.cpantesters.org/cpan/report/def96e6c-9e2e-11f1-af92-fa432959d47e" target="_blank">View</a></td><td></td></tr>
+</tbody></table>
 <h2>Mutation Report</h2>
 <h3>Mutation Summary</h3>
 <ul>
@@ -722,7 +809,7 @@ function refresh(){
 </thead>
 <tbody>
 
-<tr class="high"><td><a href="mutation_html/lib/Database/Join.pm.html" title="View mutation line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/fc073d595076187019892a8c161d8f9490f04e53/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a></td><td>62</td><td>62</td><td>0</td><td>0</td><td><span class="coverage-badge badge-good" title="Excellent">100.0%</span></td><td><span class="coverage-badge badge-bad" title="Needs improvement">97</span></td><td><span class="coverage-badge badge-good" title="Excellent">100.0%</span> / <span class="coverage-badge badge-good" title="Excellent">97.2%</span> / <span class="coverage-badge badge-good" title="Excellent">100.0%</span></td><td><span class="coverage-badge badge-good" title="Low duplication">0.0%</span></td></tr>
+<tr class="high"><td><a href="mutation_html/lib/Database/Join.pm.html" title="View mutation line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/c3cd4e38bae7055331dbfa8da1549280fa448f2a/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a></td><td>62</td><td>62</td><td>0</td><td>0</td><td><span class="coverage-badge badge-good" title="Excellent">100.0%</span></td><td><span class="coverage-badge badge-bad" title="Needs improvement">97</span></td><td><span class="coverage-badge badge-good" title="Excellent">100.0%</span> / <span class="coverage-badge badge-good" title="Excellent">97.2%</span> / <span class="coverage-badge badge-good" title="Excellent">100.0%</span></td><td><span class="coverage-badge badge-good" title="Low duplication">0.0%</span></td></tr>
 </tbody></table>
 
 <h2>Structural Coverage (Approximate)</h2>
@@ -737,7 +824,7 @@ Tests execute 100.00% of the code and detect 100.00% of injected faults.
 </div>
 <footer>
 	<p>Project: <a href="https://github.com/nigelhorne/Database-Join">Database-Join</a></p>
-	<p><em>Last updated: 2026-08-22 00:49:27 - <a href="https://github.com/nigelhorne/Database-Join/commit/fc073d595076187019892a8c161d8f9490f04e53">commit <code>fc073d5</code></a></em></p>
+	<p><em>Last updated: 2026-08-23 19:20:31 - <a href="https://github.com/nigelhorne/Database-Join/commit/c3cd4e38bae7055331dbfa8da1549280fa448f2a">commit <code>c3cd4e3</code></a></em></p>
 	<p style="float: right; font-size: 0.85em; color: #999;">Powered by <a href="https://metacpan.org/dist/App-Test-Generator">App::Test::Generator 0.46</a></p>
 </footer>
 </body>
