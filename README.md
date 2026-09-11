@@ -339,6 +339,14 @@ to calling `remove_column` once per name after construction.
                       # Omitting this parameter preserves the original
                       # last-database-wins behaviour.
                       # See the collision_prefix section for full details.
+                      #
+                      # DOMAIN -- EP valid:   absent or {} => last-database-wins (no change).
+                      # DOMAIN -- EP valid:   { N => 'prefix' } where N > 0 => colliding
+                      #                       columns from DB[N] published as "$prefix.$col";
+                      #                       non-colliding columns from the same DB added plain.
+                      # DOMAIN -- EP note:    index-0 entries are silently ignored.
+                      # DOMAIN -- Invariant:  join_column is never prefixed regardless of
+                      #                       collision_prefix configuration.
 
     remove_columns => { type => 'arrayref', optional => 1 }
                       # Column names to hide from the merged view.
@@ -939,9 +947,18 @@ equivalent to a `filters` entry.
     filter         => { type => 'hashref',  optional => 1 }
                       # Permanent criteria for this database only.
                       # Same format as selectall_arrayref.
+                      #
+                      # DOMAIN -- EP valid:   hashref of criteria (may be {} for no-op).
+                      # DOMAIN -- EP absent:  no permanent filter applied; all rows visible.
+                      # DOMAIN -- Key-set:    a non-empty filter makes this DB an inner-join
+                      #                       partner regardless of the outer join_type.
 
     remove_columns => { type => 'arrayref', optional => 1 }
                       # Column names from this database to hide.
+                      #
+                      # DOMAIN -- EP valid:   arrayref of strings; non-existent columns silently
+                      #                       ignored; empty [] is a safe no-op.
+                      # DOMAIN -- EP invalid: join_column itself => croak error_remove_join_col.
 
 #### Output
 
