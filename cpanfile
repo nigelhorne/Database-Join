@@ -19,6 +19,7 @@ on 'test' => sub {
 	requires 'DBI';
 	requires 'File::Temp';
 	requires 'IPC::System::Simple';
+	requires 'Test::DescribeMe';
 	requires 'Test::Exception';
 	requires 'Test::Memory::Cycle';
 	requires 'Test::Mockingbird', '0.13';
