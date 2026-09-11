@@ -21,7 +21,7 @@ WriteMakefile(
 	PREREQ_PM      => {
 		'autodie'                => 0,
 		'Carp'                     => 0,
-		'Database::Abstraction'    => '0.37',
+		'Database::Abstraction' => '0.41',
 		'List::Util'               => '1.33',
 		'Object::Configure'        => 0,
 		'Params::Get'              => '0.13',

@@ -3,11 +3,11 @@
 requires 'perl', '5.010001';
 
 requires 'Carp';
-requires 'Database::Abstraction', '0.37';
+requires 'Database::Abstraction', '0.41';
 requires 'List::Util', '1.33';
 requires 'Object::Configure';
 requires 'Params::Get', '0.13';
-requires 'Params::Validate::Strict', '0.38';
+requires 'Params::Validate::Strict', '0.39';
 requires 'Readonly', '2.00';
 requires 'Scalar::Util';
 requires 'Sub::Protected';
