@@ -19,7 +19,7 @@ use Sub::Protected;
 # validate_strict schema cannot silently diverge.
 Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_columns);
 
-our $VERSION = '0.003.0';
+our $VERSION = '0.002.0';
 
 # ---------------------------------------------------------------------------
 # All user-facing strings route through this dictionary.  Supply an i18n
@@ -466,8 +466,12 @@ sub new {
 			# databases	=> { type => 'arrayref', element_type => 'object' },
 			databases	=> { type => 'arrayref' },
 			join_column	=> { type => 'string',   optional => 1, default => 'entry' },
-			join_type	=> { type => 'string',   optional => 1, default => 'left',
-			                  enum => ['inner', 'left', 'outer'] },
+			join_type	=> {
+				type => 'string',
+				optional => 1,
+				default => 'left',
+				enum => ['inner', 'left', 'outer']
+			},
 			join_map	      => { type => 'hashref',  optional => 1 },
 			filters		      => { type => 'hashref',  optional => 1 },
 			collision_prefix  => { type => 'hashref',  optional => 1 },
@@ -1307,7 +1311,11 @@ sub add_database {
 
 	my $p = validate_strict(
 		schema => {
-			database       => { type => 'object',   optional => 1 },
+			database  => {
+				type => 'object',
+				optional => 1,
+				can => ['selectall_arrayref', 'columns']
+			},
 			join_column    => { type => 'string',   optional => 1 },
 			filter         => { type => 'hashref',  optional => 1 },
 			remove_columns => { type => 'arrayref', optional => 1 },
