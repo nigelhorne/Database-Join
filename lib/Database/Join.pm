@@ -1322,7 +1322,8 @@ sub add_database {
 		next if $local_jc ne $self->{_join_col} && $col eq $local_jc;
 
 		my $pub;
-		if (defined $prefix && exists $self->{_col_db}{$col}) {
+		if (defined $prefix && exists $self->{_col_db}{$col} && $col ne $self->{_join_col}) {
+			# Same guard as _build_col_index: never prefix the join_column itself.
 			$pub = "$prefix.$col";
 			$self->{_col_rename}[$idx]{$col}   = $pub;
 			$self->{_col_unrename}[$idx]{$pub} = $col;
@@ -1651,10 +1652,12 @@ sub _build_col_index :Protected {
 			# Skip the local alias for the join key — it is not a data column
 			next if $local_jc ne $join_col && $col eq $local_jc;
 
-			if (defined $prefix && exists $col_db{$col}) {
+			if (defined $prefix && exists $col_db{$col} && $col ne $join_col) {
 				# Column already claimed by an earlier database AND a prefix is
 				# configured: publish the collision as "$prefix.$col" so both
 				# values survive in the merged row rather than one silently winning.
+				# The join_column itself is never prefixed — it is the shared merge
+				# key and is always broadcast by name; renaming it would break routing.
 				my $pub = "$prefix.$col";
 				$col_rename[$i]{$col}   = $pub;
 				$col_unrename[$i]{$pub} = $col;

@@ -15,6 +15,7 @@ t/40-filters.t
 t/50-logic-proofs.t
 t/cgi_security.t
 t/cities.t
+t/collision-prefix.t
 t/data-flow.t
 t/data/cities.csv
 t/data/states.csv

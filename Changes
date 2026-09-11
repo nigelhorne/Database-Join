@@ -9,7 +9,11 @@ Revision history for Database::Join
 	  merged row.  Omitting collision_prefix preserves the previous
 	  last-database-wins behaviour unchanged.  Criteria on prefixed column
 	  names are correctly translated back to the database's own column name
-	  before the query is issued.
+	  before the query is issued.  The join_column is never prefixed.
+	- Add t/collision-prefix.t: 12 subtests covering columns(), schema(),
+	  row merge, criteria routing by prefixed name, fetchrow_hashref,
+	  backward compat, index-0 ignore, non-colliding pass-through,
+	  remove_column, three-database chaining, and add_database.
 
 0.001.1	Sun Aug 23 03:29:39 PM EDT 2026
 	[ Bug fixes ]
