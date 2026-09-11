@@ -26,7 +26,7 @@ use Scalar::Util qw(blessed looks_like_number refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 70;
+	plan tests => 73;
 	use_ok('Database::Join');
 }
 
@@ -1103,4 +1103,62 @@ subtest 'outer join: three DBs all different key sets returns union' => sub {
 	is $by_key{x1}{a}, 1, 'x1 row has column a';
 	is $by_key{x2}{b}, 2, 'x2 row has column b';
 	is $by_key{x3}{c}, 3, 'x3 row has column c';
+};
+
+# ===========================================================================
+# Section 12: Zero-byte / empty-file simulation
+#
+# Database::Abstraction opens a backing file and derives column metadata from
+# its header row.  A 0-byte file has no header, so the DA's columns() returns
+# [].  Database::Join must detect this at construction time (or add_database
+# time) and croak with a clear error rather than silently mis-routing queries.
+#
+# These tests use MockEdgeDA->new(cols => []) to simulate a 0-byte backing
+# file.  Contrast with rows => [] (a file that has a header but no data rows),
+# which is valid and produces an empty but functional join.
+# ===========================================================================
+
+subtest 'zero-byte secondary: construction croaks (secondary lacks join_column)' => sub {
+	# Scenario: primary file is normal; secondary file is 0 bytes.
+	# The secondary DA has no columns, so the join_column is absent from it.
+	my $good = MockEdgeDA->new(
+		cols => ['entry', 'name'],
+		rows => [{ entry => $K_ALPHA, name => 'Alice' }],
+	);
+	my $empty = MockEdgeDA->new(cols => []);   # 0-byte secondary — no columns
+	throws_ok {
+		Database::Join->new(
+			databases   => [$good, $empty],
+			join_column => $JC,
+		)
+	} $ERR_MISSING_JC, 'zero-byte secondary (cols=[]) croaks join_col_missing';
+};
+
+subtest 'zero-byte all databases: construction croaks (primary also lacks join_column)' => sub {
+	# Scenario: every backing file is 0 bytes.  The primary DA also lacks all
+	# columns, so the first check (against the primary) fires immediately.
+	my $empty1 = MockEdgeDA->new(cols => []);
+	my $empty2 = MockEdgeDA->new(cols => []);
+	throws_ok {
+		Database::Join->new(
+			databases   => [$empty1, $empty2],
+			join_column => $JC,
+		)
+	} $ERR_MISSING_JC, 'all zero-byte databases croaks join_col_missing';
+};
+
+subtest 'zero-byte add_database: croaks (new DA lacks join_column)' => sub {
+	# Scenario: the join is constructed successfully, but add_database is called
+	# with a DA backed by a 0-byte file (no columns at all).
+	my $good = MockEdgeDA->new(
+		cols => ['entry', 'score'],
+		rows => [{ entry => $K_ALPHA, score => 42 }],
+	);
+	my $j = Database::Join->new(
+		databases   => [$good],
+		join_column => $JC,
+	);
+	my $empty = MockEdgeDA->new(cols => []);   # 0-byte file added at runtime
+	throws_ok { $j->add_database($empty) }
+		$ERR_MISSING_JC, 'add_database with zero-byte DA croaks join_col_missing';
 };

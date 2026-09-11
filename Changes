@@ -14,6 +14,11 @@ Revision history for Database::Join
 	  row merge, criteria routing by prefixed name, fetchrow_hashref,
 	  backward compat, index-0 ignore, non-colliding pass-through,
 	  remove_column, three-database chaining, and add_database.
+	- Add t/xlsx.t: end-to-end tests with XLSX-backed component databases
+	  (requires DBD::Excel + Spreadsheet::WriteExcel; skipped otherwise).
+	  Exercises left/inner/outer join, criteria routing, fetchrow_hashref,
+	  columns(), collision_prefix, and add_database against real .xlsx files.
+	  Documents that DBD::Excel returns empty schema() for XLSX databases.
 
 0.001.1	Sun Aug 23 03:29:39 PM EDT 2026
 	[ Bug fixes ]
