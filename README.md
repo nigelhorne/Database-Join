@@ -256,6 +256,15 @@ preserve both values under distinct names instead.
     `notes` as `right.notes` so both values survive, or use `remove_columns`
     (or `remove_column`) to drop the unwanted duplicate entirely.
 
+- Mutating the filters hashref after construction has no effect
+
+    `Database::Join` deep-copies the `filters` hashref (and any `filter`
+    passed to `add_database`) at the moment of construction.  The original hashref
+    you passed in is never stored.  If you later modify it -- for example, to
+    tighten or loosen a filter criterion -- the joined view is _not_ affected.
+    Construct a new `Database::Join` object, or use a component
+    `Database::Abstraction` that supports dynamic filter modification.
+
 # METHODS
 
 ## new
@@ -1273,18 +1282,35 @@ architectural guarantees, not run-time checks.
 
     `Database::Join` contains no `system()`, `exec()`, backtick, `open(PIPE)`,
     or `eval STRING` calls.  It neither opens files nor constructs shell commands.
-    The AUTOLOAD regex `/::(\w+)$/`  produces an _untainted_ capture, so the
-    column name used for dispatch is clean under `-T`.  Criteria values are
-    passed verbatim to component `Database::Abstraction` objects; those objects
-    are responsible for handling tainted values at the SQL parameterisation layer.
+    The AUTOLOAD regex `/ :: (\w++) \z /x` uses a possessive quantifier
+    (`\w++`) and a strict end-of-string anchor (`\z`) and produces an _untainted_
+    capture, so the column name used for dispatch is clean under `-T`.  Criteria
+    values are passed verbatim to component `Database::Abstraction` objects; those
+    objects are responsible for handling tainted values at the SQL parameterisation
+    layer.
 
-- Operator hashref aliasing
+- Operator hashref broadcast copy
 
     When the same join-key criterion (an operator hashref such as
-    `{ '>' => 'A' }`) is broadcast to multiple component databases, all of
-    them receive a reference to the _same_ hashref.  A malicious component
-    database that mutates the hashref's contents could affect what subsequent
-    databases receive.  Component databases are assumed to be trusted.
+    `{ '>' => 'A' }`) is broadcast to multiple component databases, each
+    database receives its own _shallow copy_ of the hashref.  A component database
+    that mutates the hashref's contents at the top level cannot affect what
+    subsequent databases receive.
+
+- collision\_prefix value type guard
+
+    `_build_col_index` rejects any `collision_prefix` value that is a reference
+    (hashref, arrayref, coderef, etc.) with an immediate `croak`.  A reference
+    value would stringify to `"HASH(0x...)"`, leaking a heap address into every
+    column name, `columns()` listing, and merged row returned to the caller.  The
+    guard fires before any column name is constructed.
+
+- Filter deep-copy isolation
+
+    The `filters` constructor parameter and the `filter` option of
+    `add_database()` are _deep-copied_ at the point of use.  The caller's
+    original hashrefs are never stored; post-construction mutation of those
+    hashrefs cannot widen or bypass the configured row-security constraints.
 
 ## What the caller is responsible for
 
