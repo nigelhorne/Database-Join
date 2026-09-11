@@ -35,6 +35,7 @@ Readonly::Hash my %MESSAGES => (
 	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join; call selectall_arrayref / fetchrow_hashref directly',
 	error_execute_unsupported => 'execute() raw SQL is not supported on Database::Join',
 	error_unknown_message	=> 'Unknown message key "%s"',
+	error_invalid_prefix	=> 'collision_prefix[%d] must be a plain string, not a reference; passing a reference would leak a heap address into column names',
 );
 
 =head1 NAME
@@ -505,11 +506,12 @@ sub new {
 		_join_col     => $p->{join_column},
 		_join_type    => $p->{join_type},
 		_join_map     => $p->{join_map} // {},	# db_index => local join col name
-		# TODO: Data Flow Anomaly (filter reference aliasing) - _filters stores
-		# the caller's hashref directly.  External mutation of the caller's hash
-		# after construction will silently change query behaviour.  A deep copy
-		# (e.g. Storable::dclone) would bound the lifetime but adds a dependency.
-		_filters          => $p->{filters}          // {},	# db_index => criteria hashref
+		# Security: deep-copy filters so post-construction mutation of the caller's
+		# hashref cannot silently bypass the inner-join row-security guarantee.
+		# Two-level copy mirrors the broadcast-copy idiom in _partition_criteria:
+		# outer keys are db indices (integers); inner values are criteria hashrefs
+		# whose operator sub-hashrefs are also shallow-copied one level deeper.
+		_filters          => _copy_filters($p->{filters}),	# db_index => criteria hashref
 		_collision_prefix => $p->{collision_prefix} // {},	# db_index => prefix string
 		_logger           => $caller_logger,
 		_i18n             => $caller_i18n,
@@ -1316,7 +1318,8 @@ sub add_database {
 	# Determine and register the local join column name for this database
 	my $local_jc = $p->{join_column} // $self->{_join_col};
 	$self->{_join_map}{$idx} = $local_jc if $p->{join_column};
-	$self->{_filters}{$idx}  = $p->{filter} if $p->{filter};
+	# Security: deep-copy the filter; same rationale as the constructor's _copy_filters call.
+	$self->{_filters}{$idx}  = _copy_criteria($p->{filter}) if $p->{filter};
 
 	my $cols         = $db->columns();
 	my %col_presence = map { $_ => 1 } @{$cols};
@@ -1677,6 +1680,14 @@ sub _build_col_index :Protected {
 		# an index-0 entry is meaningless and silently ignored.
 		my $prefix = ($i > 0) ? $cp->{$i} : undef;
 
+		# Guard: a collision_prefix value that is a reference would stringify
+		# to "HASH(0x...)" or "ARRAY(0x...)" when interpolated into "$prefix.$col",
+		# leaking a heap address into every column name, columns(), schema(), and
+		# merged row hashref.  This is the same class of leak as the join_map guard
+		# above; reject early with a clear message before any column name is built.
+		croak $self->_err('error_invalid_prefix', $i)
+			if defined $prefix && ref $prefix;
+
 		for my $col (@{$cols}) {
 			# Skip the local alias for the join key — it is not a data column
 			next if $local_jc ne $join_col && $col eq $local_jc;
@@ -1949,6 +1960,38 @@ sub _merge_criteria :Protected {
 	return \%merged;
 }
 
+# _copy_criteria( \%criteria ) -> \%copy
+# Purpose: Return a two-level deep copy of a single criteria hashref so that
+#          post-construction mutation of the caller's hash cannot change the
+#          stored filter.  Operator sub-hashrefs (e.g. { '>' => 80 }) are
+#          shallow-copied one additional level, matching the broadcast-copy
+#          idiom used in _partition_criteria for join-column criteria.
+# Entry:   $criteria is a hashref (may be undef).
+# Exit:    Returns a new hashref; never returns the input reference itself.
+sub _copy_criteria {
+	my ($criteria) = @_;
+	return {} unless $criteria && %{$criteria};
+	return {
+		map {
+			$_ => ref($criteria->{$_}) eq 'HASH'
+				? { %{ $criteria->{$_} } }  # shallow-copy operator sub-hashref
+				: $criteria->{$_}
+		} keys %{$criteria}
+	};
+}
+
+# _copy_filters( \%filters ) -> \%copy
+# Purpose: Deep-copy the filters hashref (db_index => criteria_hashref) so
+#          that post-construction mutation of the caller's hash cannot silently
+#          bypass the inner-join row-security guarantee.
+# Entry:   $filters may be undef.
+# Exit:    Returns a new hashref; never returns the input reference itself.
+sub _copy_filters {
+	my ($filters) = @_;
+	return {} unless $filters && %{$filters};
+	return { map { $_ => _copy_criteria($filters->{$_}) } keys %{$filters} };
+}
+
 # _msg( $i18n, $key, @sprintf_args ) -> $string
 # Purpose: Format a user-facing message, routing through the i18n object when
 #          one is provided.  Falls back to the built-in %MESSAGES dictionary.
@@ -2008,6 +2051,16 @@ B<When:> C<remove_column> is called with the name of the join key column.
 
 B<Fix:> The join key is required for the merge to work and cannot be hidden.
 Remove a different column.
+
+=item C<error_invalid_prefix>
+
+B<When:> A value in the C<collision_prefix> hashref is a reference (e.g. a
+hashref or arrayref) rather than a plain string.
+
+B<Fix:> All C<collision_prefix> values must be plain strings.  A reference
+would be stringified to C<HASH(0x...)> or C<ARRAY(0x...)>, leaking a heap
+address into every column name returned by C<columns()>, C<schema()>, and all
+query results.  Pass a plain string such as C<'db2'> or C<'secondary'>.
 
 =item C<warn_unknown_column> (carp)
 

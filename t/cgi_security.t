@@ -26,7 +26,7 @@ use Readonly;
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 64;
+	plan tests => 76;
 }
 
 use_ok('Database::Join');
@@ -1010,6 +1010,157 @@ sub make_join {
 		'fetchrow_hashref() isolation: SQL injection in primary col reaches primary DB only');
 	ok(!exists $db_b->last_criteria->{name},
 		'fetchrow_hashref() isolation: SQL injection in primary col does NOT reach secondary DB');
+}
+
+# ===========================================================================
+# SECTION 14 -- collision_prefix Reference Type Guard (Heap Address Leakage)
+#
+# Exploit: passing a reference as a collision_prefix value causes string
+#   interpolation in "$prefix.$col" to produce "HASH(0x...)" or
+#   "ARRAY(0x...)", leaking a heap address into every column name, columns(),
+#   schema(), and all row hashrefs returned to the caller.
+# MP: _build_col_index must reject non-string collision_prefix values before
+#   any column name is constructed, matching the existing join_map guard.
+# C: croak fires with error_invalid_prefix; no column is ever built with a
+#   heap address embedded in its name.
+# ===========================================================================
+
+# Test 65
+# Exploit: hashref as collision_prefix value (HASH(0x...) would leak).
+{
+	my ($db_a, $db_b) = make_dbs();
+	local $@;
+	eval {
+		Database::Join->new(
+			databases        => [$db_a, $db_b],
+			join_column      => 'entry',
+			collision_prefix => { 1 => {} },   # hashref instead of string
+		);
+	};
+	my ($first_line) = split /\n/, ($@ // ''), 2;
+	ok(length($first_line), 'collision_prefix guard: hashref value causes croak');
+	unlike $first_line, qr/0x[0-9a-f]{4,}/i,
+		'collision_prefix guard: hashref value does not leak heap address in error';
+}
+
+# Test 67
+# Exploit: arrayref as collision_prefix value (ARRAY(0x...) would leak).
+{
+	my ($db_a, $db_b) = make_dbs();
+	local $@;
+	eval {
+		Database::Join->new(
+			databases        => [$db_a, $db_b],
+			join_column      => 'entry',
+			collision_prefix => { 1 => [] },   # arrayref instead of string
+		);
+	};
+	my ($first_line) = split /\n/, ($@ // ''), 2;
+	ok(length($first_line), 'collision_prefix guard: arrayref value causes croak');
+	unlike $first_line, qr/0x[0-9a-f]{4,}/i,
+		'collision_prefix guard: arrayref value does not leak heap address in error';
+}
+
+# ===========================================================================
+# SECTION 15 -- Filter Reference Aliasing: Post-Construction Mutation
+#
+# Exploit: the caller holds the same hashref passed as `filters =>`.  After
+#   construction, the caller mutates (empties) the filter.  Without defensive
+#   copying, the next query sees an empty filter and the inner-join row-security
+#   guarantee is silently bypassed.
+# MP: _copy_filters() must deep-copy the filters hashref at construction time
+#   so that the stored filter is independent of the caller's original hash.
+# C: post-construction mutation of the original hashref has no effect on query
+#   results; the filter continues to restrict rows as originally configured.
+# ===========================================================================
+
+# Test 69
+# Exploit: empty the filter hashref after construction hoping row-security fails.
+{
+	my ($db_a, $db_b) = make_dbs();
+	my %live_filter = (score => { '>' => 80 });  # Alice (95) passes; Bob (70) does not
+	my $join = Database::Join->new(
+		databases   => [$db_a, $db_b],
+		join_column => 'entry',
+		filters     => { 1 => \%live_filter },
+	);
+
+	# Attacker empties the caller's filter hash post-construction
+	%live_filter = ();
+
+	my $rows = $join->selectall_arrayref();
+	# If aliasing is present, %key_set would include Bob (filter gone → 2 rows).
+	# Defensive copy means the stored filter is unchanged → only Alice survives.
+	is(scalar @{$rows}, 1,
+		'filter alias: post-construction filter mutation cannot widen row set');
+	is($rows->[0]{name}, 'Alice',
+		'filter alias: Alice (score=95) still the only row after mutation');
+}
+
+# Test 71
+# Exploit: delete an entry from the filters hashref (coarser than emptying a sub-hash).
+{
+	my ($db_a, $db_b) = make_dbs();
+	my %outer_filter = (1 => { score => { '>' => 80 } });
+	my $join = Database::Join->new(
+		databases   => [$db_a, $db_b],
+		join_column => 'entry',
+		filters     => \%outer_filter,
+	);
+
+	# Attacker deletes the whole secondary-DB filter entry
+	delete $outer_filter{1};
+
+	my $rows = $join->selectall_arrayref();
+	is(scalar @{$rows}, 1,
+		'filter alias: deleting outer filter entry cannot bypass row-security');
+	is($rows->[0]{name}, 'Alice',
+		'filter alias: Alice still the only row after outer entry deletion');
+}
+
+# Test 73
+# Regression: add_database() filter parameter is also deep-copied.
+{
+	my ($db_a, $db_b) = make_dbs();
+	my $join = Database::Join->new(
+		databases   => [$db_a],
+		join_column => 'entry',
+	);
+	my %live_filter = (score => { '>' => 80 });
+	$join->add_database($db_b, filter => \%live_filter);
+
+	# Mutate the filter after add_database
+	%live_filter = ();
+
+	my $rows = $join->selectall_arrayref();
+	is(scalar @{$rows}, 1,
+		'add_database filter alias: post-add mutation cannot widen row set');
+	is($rows->[0]{name}, 'Alice',
+		'add_database filter alias: Alice still the only surviving row');
+}
+
+# Test 75
+# Confirm: a valid string collision_prefix does NOT croak.
+{
+	my $db_a_pfx = MockSecDB->new(
+		columns => [qw(entry name)],
+		rows    => [ { entry => 'A1', name => 'Alice' } ],
+	);
+	my $db_b_pfx = MockSecDB->new(
+		columns => [qw(entry name)],
+		rows    => [ { entry => 'A1', name => 'Bob'   } ],
+	);
+	my $join_ok;
+	lives_ok {
+		$join_ok = Database::Join->new(
+			databases        => [$db_a_pfx, $db_b_pfx],
+			join_column      => 'entry',
+			collision_prefix => { 1 => 'secondary' },  # valid plain string
+		);
+	} 'collision_prefix guard: plain string value does not croak';
+	my $cols = $join_ok->columns();
+	ok((grep { $_ eq 'secondary.name' } @{$cols}),
+		'collision_prefix guard: valid prefix produces correctly named collision column');
 }
 
 done_testing();
