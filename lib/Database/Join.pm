@@ -203,8 +203,9 @@ databases so that each database fetches only the relevant rows before the
 in-memory merge.
 
 When the same non-join column name exists in more than one database, the
-I<last> database in the C<databases> array wins: its value overwrites earlier
-ones in merged rows.
+I<last> database in the C<databases> array wins by default: its value
+overwrites earlier ones in merged rows.  Use C<collision_prefix> to
+preserve both values under distinct names instead.
 
 =head1 LIMITATIONS
 
@@ -292,11 +293,13 @@ delegating directly to the owning database.  This is necessary for correctness
 but means the result respects all active filters and join-key translations,
 which may differ from what the owning database would return on its own.
 
-=item Duplicate column names: last database wins
+=item Duplicate column names: last database wins (unless collision_prefix is set)
 
 When two component databases each have a column called C<notes>, the second
 database's value silently overwrites the first in every merged row.  Use
-C<remove_columns> (or C<remove_column>) to drop the unwanted duplicate.
+C<collision_prefix => { 1 => 'right' }> to publish the second database's
+C<notes> as C<right.notes> so both values survive, or use C<remove_columns>
+(or C<remove_column>) to drop the unwanted duplicate entirely.
 
 =back
 
@@ -307,14 +310,15 @@ C<remove_columns> (or C<remove_column>) to drop the unwanted duplicate.
 =head3 SYNOPSIS
 
     my $join = Database::Join->new(
-        databases      => [ $db1, $db2 ],
-        join_column    => 'entry',
-        join_type      => 'left',
-        join_map       => { 1 => 'local_col' },
-        filters        => { 1 => { score => { '>' => 60 } } },
-        remove_columns => [ 'email', 'internal_id' ],
-        logger         => $log,
-        i18n           => $locale,
+        databases        => [ $db1, $db2 ],
+        join_column      => 'entry',
+        join_type        => 'left',
+        join_map         => { 1 => 'local_col' },
+        filters          => { 1 => { score => { '>' => 60 } } },
+        collision_prefix => { 1 => 'right' },
+        remove_columns   => [ 'email', 'internal_id' ],
+        logger           => $log,
+        i18n             => $locale,
     );
 
 =head3 DESCRIPTION
@@ -375,6 +379,17 @@ to calling C<remove_column> once per name after construction.
                       # Zero-based database index => criteria hashref.
                       # Permanent row restrictions on individual databases.
                       # See the filters section for full details.
+
+    collision_prefix => { type => 'hashref', optional => 1 }
+                      # Zero-based database index (>0) => prefix string.
+                      # When a secondary database has a column that collides
+                      # with a column already present in the merged view, the
+                      # secondary column is published as "$prefix.$col" instead
+                      # of silently overwriting the earlier value.
+                      # Index 0 entries are silently ignored.
+                      # Omitting this parameter preserves the original
+                      # last-database-wins behaviour.
+                      # See the collision_prefix section for full details.
 
     remove_columns => { type => 'arrayref', optional => 1 }
                       # Column names to hide from the merged view.
@@ -440,9 +455,10 @@ sub new {
 			join_column	=> { type => 'string',   optional => 1, default => 'entry' },
 			join_type	=> { type => 'string',   optional => 1, default => 'left',
 			                  enum => ['inner', 'left', 'outer'] },
-			join_map	=> { type => 'hashref',  optional => 1 },
-			filters		=> { type => 'hashref',  optional => 1 },
-			remove_columns	=> { type => 'arrayref', optional => 1 },
+			join_map	      => { type => 'hashref',  optional => 1 },
+			filters		      => { type => 'hashref',  optional => 1 },
+			collision_prefix  => { type => 'hashref',  optional => 1 },
+			remove_columns	  => { type => 'arrayref', optional => 1 },
 			logger		=> { type => 'object',   optional => 1 },
 			i18n		=> { type => 'object',   optional => 1 },
 		},
@@ -485,15 +501,18 @@ sub new {
 		# the caller's hashref directly.  External mutation of the caller's hash
 		# after construction will silently change query behaviour.  A deep copy
 		# (e.g. Storable::dclone) would bound the lifetime but adds a dependency.
-		_filters      => $p->{filters}  // {},	# db_index => criteria hashref
-		_logger       => $caller_logger,
-		_i18n         => $caller_i18n,
-		_col_db       => {},	# column_name => db_index
-		_db_cols      => [],	# per-db column-presence hashref
-		_removed_cols => {},	# column_name => 1 (hidden from the view)
-		_col_cache    => undef,	# memoised columns() result
-		_schema_cache => undef,	# memoised schema() result
-		_autoload_pk  => $primary_pk,	# primary DB's key col; positional arg for AUTOLOAD
+		_filters          => $p->{filters}          // {},	# db_index => criteria hashref
+		_collision_prefix => $p->{collision_prefix} // {},	# db_index => prefix string
+		_logger           => $caller_logger,
+		_i18n             => $caller_i18n,
+		_col_db           => {},	# published_col_name => db_index
+		_db_cols          => [],	# per-db column-presence hashref
+		_removed_cols     => {},	# published_col_name => 1 (hidden from view)
+		_col_cache        => undef,	# memoised columns() result
+		_schema_cache     => undef,	# memoised schema() result
+		_col_rename       => [],	# per-db: { orig_col => published_col } for collisions
+		_col_unrename     => [],	# per-db: { published_col => orig_col } reverse map
+		_autoload_pk      => $primary_pk,	# primary DB's key col; positional arg for AUTOLOAD
 	}, $class;
 
 	$self->_build_col_index();
@@ -644,6 +663,64 @@ When using C<add_database>, pass C<filter> (singular) to set the base
 criteria for the new database:
 
     $join->add_database($orders, filter => { age_days => { '>' => 60 } });
+
+=head2 collision_prefix - preserve colliding columns from secondary databases
+
+By default, when a column name appears in more than one database the I<last>
+database wins: its value silently overwrites earlier ones in merged rows.
+This loses data and makes the origin invisible.
+
+C<collision_prefix> changes this for secondary databases you designate.
+When a secondary database at index N has a column that already exists in the
+merged view, and C<collision_prefix-E<gt>{N}> is set, the colliding column is
+published as C<"$prefix.$col"> instead of overwriting.  Both values are then
+visible: the original column keeps its name (from the earlier database), and
+the collision gets the prefixed name.
+
+C<collision_prefix> is a hashref.  Each B<key> is the B<zero-based index> of
+a secondary database in the C<databases> array (same numbering as C<join_map>).
+Each B<value> is the prefix string to prepend.  An index-0 entry is
+meaningless and silently ignored.  Omitting C<collision_prefix> entirely
+preserves the previous last-wins behaviour and changes nothing.
+
+Non-colliding columns from a secondary database are always added as-is with
+no prefix, whether or not C<collision_prefix> is configured.
+
+B<Example -- sales table and products table, both with a "product" column>
+
+    # $sales    columns: id, product, amount, date
+    # $products columns: sku, product, price, category
+    # join on 'product' (left key) matched against 'sku' (right key via join_map)
+
+    my $join = Database::Join->new(
+        databases        => [$sales, $products],
+        join_column      => 'product',
+        join_map         => { 1 => 'sku' },
+        collision_prefix => { 1 => 'products' },
+    );
+
+    $join->columns;
+    # => ['amount', 'category', 'date', 'id', 'price', 'product', 'products.product']
+    #                                                               ^-- prefixed collision
+
+    my $row = $join->fetchrow_hashref(product => 'widget');
+    # $row->{product}            -- value from $sales
+    # $row->{'products.product'} -- value from $products (different row, same column name)
+    # $row->{price}              -- from $products, no collision, kept as-is
+
+B<Querying on a prefixed column>
+
+Use the full published name as the criterion key:
+
+    my $rows = $join->selectall_arrayref('products.product' => 'widget');
+    # Internally routes as: product => 'widget' to $products
+
+B<Interaction with remove_column>
+
+C<remove_column> operates on published names.  To suppress a prefixed
+collision column entirely, pass the prefixed name:
+
+    $join->remove_column('products.product');
 
 =head2 selectall_arrayref
 
@@ -890,13 +967,16 @@ sub columns {
 
 	for my $i (0 .. $#{ $self->{_dbs} }) {
 		my $local_jc = $self->{_join_map}{$i};
+		my $renames  = $self->{_col_rename}[$i] // {};
 		for my $col (@{ $self->{_dbs}[$i]->columns() }) {
-			next if $seen{$col}++;
-			next if $self->{_removed_cols}{$col};
 			# The local join-key alias is not a data column; the canonical name
 			# is already contributed by the database that owns it under that name.
 			next if $local_jc && $col eq $local_jc && $col ne $join_col;
-			push @cols, $col;
+			# Use the published name (prefixed if this column was a collision rename)
+			my $pub = $renames->{$col} // $col;
+			next if $seen{$pub}++;
+			next if $self->{_removed_cols}{$pub};
+			push @cols, $pub;
 		}
 	}
 
@@ -956,12 +1036,16 @@ sub schema {
 	for my $i (0 .. $#{ $self->{_dbs} }) {
 		my $s        = $self->{_dbs}[$i]->schema() // {};
 		my $local_jc = $self->{_join_map}{$i};
-		if ($local_jc && $local_jc ne $self->{_join_col}) {
-			for my $col (keys %{$s}) {
-				$merged{$col} = $s->{$col} unless $col eq $local_jc;
-			}
-		} else {
+		my $renames  = $self->{_col_rename}[$i] // {};
+		my $skip_jc  = $local_jc && $local_jc ne $self->{_join_col};
+		if (!$skip_jc && !%{$renames}) {
+			# Fast path: no join-key alias to exclude and no collision renames
 			@merged{keys %{$s}} = values %{$s};
+		} else {
+			for my $col (keys %{$s}) {
+				next if $skip_jc && $col eq $local_jc;
+				$merged{ $renames->{$col} // $col } = $s->{$col};
+			}
 		}
 	}
 
@@ -1227,12 +1311,27 @@ sub add_database {
 	push @{ $self->{_dbs} },     $db;
 	push @{ $self->{_db_cols} }, \%col_presence;
 
-	# Update column routing: last-database-wins for duplicate column names;
-	# skip the local join-key alias (it is not a data column).
+	# Update column routing: last-database-wins for duplicates, unless a
+	# collision_prefix is configured for this index (in which case the
+	# duplicate is published under "$prefix.$col" instead of overwriting).
+	my $prefix = $self->{_collision_prefix}{$idx};
+	$self->{_col_rename}[$idx]   //= {};
+	$self->{_col_unrename}[$idx] //= {};
+
 	for my $col (@{$cols}) {
-		next if $self->{_removed_cols}{$col};
 		next if $local_jc ne $self->{_join_col} && $col eq $local_jc;
-		$self->{_col_db}{$col} = $idx;
+
+		my $pub;
+		if (defined $prefix && exists $self->{_col_db}{$col}) {
+			$pub = "$prefix.$col";
+			$self->{_col_rename}[$idx]{$col}   = $pub;
+			$self->{_col_unrename}[$idx]{$pub} = $col;
+		} else {
+			$pub = $col;
+		}
+
+		next if $self->{_removed_cols}{$pub};
+		$self->{_col_db}{$pub} = $idx;
 	}
 
 	# Invalidate memoisation caches
@@ -1521,14 +1620,19 @@ sub _build_col_index :Protected {
 	my ($self) = @_;
 
 	my $join_col = $self->{_join_col};
+	my $cp       = $self->{_collision_prefix} // {};
 	my %col_db;
 	my @db_cols;
+	my @col_rename;    # per-db: { orig_col => published_col } for renamed collisions
+	my @col_unrename;  # per-db: { published_col => orig_col } reverse map
 
 	for my $i (0 .. $#{ $self->{_dbs} }) {
 		my $db        = $self->{_dbs}[$i];
 		my $local_jc  = $self->{_join_map}{$i} // $join_col;
 		my $cols      = $db->columns();
-		$db_cols[$i]  = { map { $_ => 1 } @{$cols} };
+		$db_cols[$i]      = { map { $_ => 1 } @{$cols} };
+		$col_rename[$i]   = {};
+		$col_unrename[$i] = {};
 
 		# Guard: a join_map value that is a reference (e.g. a hashref) would
 		# stringify to "HASH(0x...)" when interpolated into an error message,
@@ -1539,16 +1643,34 @@ sub _build_col_index :Protected {
 		croak $self->_err('error_join_col_missing', $local_jc, $i, ref($db))
 			unless $db_cols[$i]{$local_jc};
 
+		# collision_prefix only applies to secondary databases (index > 0);
+		# an index-0 entry is meaningless and silently ignored.
+		my $prefix = ($i > 0) ? $cp->{$i} : undef;
+
 		for my $col (@{$cols}) {
 			# Skip the local alias for the join key — it is not a data column
 			next if $local_jc ne $join_col && $col eq $local_jc;
-			# Last database wins for duplicate non-join columns
-			$col_db{$col} = $i;
+
+			if (defined $prefix && exists $col_db{$col}) {
+				# Column already claimed by an earlier database AND a prefix is
+				# configured: publish the collision as "$prefix.$col" so both
+				# values survive in the merged row rather than one silently winning.
+				my $pub = "$prefix.$col";
+				$col_rename[$i]{$col}   = $pub;
+				$col_unrename[$i]{$pub} = $col;
+				$col_db{$pub} = $i;
+			} else {
+				# No collision, or no prefix configured: last database wins
+				# (preserved backward-compatible behaviour).
+				$col_db{$col} = $i;
+			}
 		}
 	}
 
-	$self->{_col_db}  = \%col_db;
-	$self->{_db_cols} = \@db_cols;
+	$self->{_col_db}       = \%col_db;
+	$self->{_db_cols}      = \@db_cols;
+	$self->{_col_rename}   = \@col_rename;
+	$self->{_col_unrename} = \@col_unrename;
 
 	return;
 }
@@ -1579,7 +1701,10 @@ sub _partition_criteria :Protected {
 				$per_db[$i]{$local} = ref($val) eq 'HASH' ? { %{$val} } : $val;
 			}
 		} elsif (defined(my $idx = $self->{_col_db}{$col})) {
-			$per_db[$idx]{$col} = $params->{$col};
+			# Translate the published column name back to the database's own name
+			# when the column was renamed for a collision (e.g. "pfx.col" -> "col").
+			my $db_col = ($self->{_col_unrename}[$idx] // {})->{$col} // $col;
+			$per_db[$idx]{$db_col} = $params->{$col};
 		} else {
 			carp $self->_err('warn_unknown_column', $col);
 		}
@@ -1716,9 +1841,14 @@ sub _joined_query :Protected {
 				my $src      = $sec_arr->[-1];
 				my $local_jc = $self->{_join_map}{$i};
 				my $rename   = $local_jc && $local_jc ne $join_col;
+				my $renames  = $self->{_col_rename}[$i] // {};
 				for my $k (keys %{$src}) {
 					if ($rename && $k eq $local_jc) {
+						# Translate local join-key alias to the canonical join_column name
 						$merged{$join_col} = $src->{$k};
+					} elsif (my $pub = $renames->{$k}) {
+						# Collision-renamed column: write under the published prefixed name
+						$merged{$pub} = $src->{$k};
 					} else {
 						$merged{$k} = $src->{$k};
 					}
@@ -2041,6 +2171,30 @@ Unicode is used throughout this section as required by Z notation.
     join_map' = join_map
     filters'  = filters
     dbs'      = dbs
+
+=head2 collision_prefix
+
+    ─── CollisionPrefix ───────────────────────────────────────────────
+    collision_prefix : ℕ ⇸ STRING
+    dbs              : seq DATABASE_ABSTRACTION
+    col_db           : NAME ⇸ ℕ
+    ───────────────────────────────────────────────────────────────────
+    -- Only secondary databases (index > 0) carry a meaningful prefix:
+    dom collision_prefix ⊆ 1 ‥ (#dbs - 1)
+
+    -- Published name for column col from database i:
+    published(i, col) ==
+        if i ∈ dom collision_prefix ∧ col ∈ dom col_db ∧ col_db(col) < i
+        then (collision_prefix i) ^ "." ^ col
+        else col
+
+    -- col_db routes the published name to the owning database:
+    col_db(published(i, col)) = i
+
+    -- The original column name is never removed from an earlier database:
+    ∀ i : 1 ‥ #dbs-1; col : columns(dbs i) •
+        published(i, col) ≠ col  ⟹
+            ∃ j : 0 ‥ i-1 • col ∈ dom col_db ∧ col_db(col) = j
 
 =head2 join_map
 

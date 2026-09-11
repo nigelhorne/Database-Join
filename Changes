@@ -1,5 +1,16 @@
 Revision history for Database::Join
 
+0.002.0
+	[ New features ]
+	- Add collision_prefix constructor parameter (HashRef[Str], keyed by
+	  zero-based database index).  When a secondary database has a column
+	  that collides with an existing column in the merged view, the secondary
+	  column is published as "$prefix.$col" so both values survive in every
+	  merged row.  Omitting collision_prefix preserves the previous
+	  last-database-wins behaviour unchanged.  Criteria on prefixed column
+	  names are correctly translated back to the database's own column name
+	  before the query is issued.
+
 0.001.1	Sun Aug 23 03:29:39 PM EDT 2026
 	[ Bug fixes ]
 	- Fix t/edge_cases.t false failures on CPAN Testers: heap-address guard tests
