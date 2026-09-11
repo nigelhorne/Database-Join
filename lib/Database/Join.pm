@@ -144,6 +144,10 @@ C<Database::Join> merges two or more L<Database::Abstraction> objects into a
 single logical, read-only view.  Each component database is queried
 independently through its own C<Database::Abstraction> interface.  The results
 are combined in Perl memory using a shared key column (C<join_column>).
+In effect,
+this means that you can view data from more than one database using an intuitive,
+non-SQL,
+interface.
 
 The module exposes the same read-only API as C<Database::Abstraction>:
 C<selectall_arrayref>, C<selectall_array>, C<fetchrow_hashref>, C<count>,
