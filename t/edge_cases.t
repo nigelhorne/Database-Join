@@ -40,7 +40,7 @@ Readonly::Scalar my $K_GAMMA     => 'k003';
 Readonly::Scalar my $KEY_ZERO    => '0';        # false-but-defined join key
 
 Readonly::Scalar my $ERR_NO_DBS      => qr/At least one Database::Abstraction/;
-Readonly::Scalar my $ERR_INVALID_DB  => qr/is not a Database::Abstraction/;
+Readonly::Scalar my $ERR_INVALID_DB  => qr/does not support the selectall_arrayref/;
 Readonly::Scalar my $ERR_MISSING_JC  => qr/is absent from databases/;
 Readonly::Scalar my $ERR_REMOVE_JC   => qr/Cannot remove join_column/;
 Readonly::Scalar my $ERR_PRIVATE     => qr/cannot call private method/;

@@ -95,7 +95,7 @@ throws_ok {
 # C:  new() must croak at index 0 with the invalid-db error.
 throws_ok {
 	Database::Join->new(databases => ['plain_string'], join_column => 'entry');
-} qr/not a Database::Abstraction/i, 'pre-condition: non-object in databases is rejected';
+} qr/does not support the selectall_arrayref/i, 'pre-condition: non-object in databases is rejected';
 
 # Test 3
 # MP: join_column must be present in every database's column list.
@@ -127,7 +127,7 @@ my $join_base = Database::Join->new(
 );
 throws_ok {
 	$join_base->add_database('not_an_object');
-} qr/not a Database::Abstraction/i, 'pre-condition: non-object to add_database is rejected';
+} qr/does not support the selectall_arrayref/i, 'pre-condition: non-object to add_database is rejected';
 
 # Test 6
 # MP: remove_column(join_col) would break the merge invariant.

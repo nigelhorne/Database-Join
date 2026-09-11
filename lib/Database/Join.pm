@@ -19,7 +19,7 @@ use Sub::Protected;
 # validate_strict schema cannot silently diverge.
 Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_columns);
 
-our $VERSION = '0.002.0';
+our $VERSION = '0.003.0';
 
 # ---------------------------------------------------------------------------
 # All user-facing strings route through this dictionary.  Supply an i18n
@@ -27,7 +27,7 @@ our $VERSION = '0.002.0';
 # ---------------------------------------------------------------------------
 Readonly::Hash my %MESSAGES => (
 	error_no_databases	=> 'At least one Database::Abstraction object is required',
-	error_invalid_db	=> 'databases[%d] is not a Database::Abstraction object',
+	error_invalid_db	=> 'databases[%d] does not support the selectall_arrayref/columns interface',
 	error_join_col_missing	=> 'join_column "%s" is absent from databases[%d] (%s)',
 	error_col_conflict	=> 'Column "%s" exists in multiple databases; use the owning database directly or rename the column',
 	error_remove_join_col	=> 'Cannot remove join_column "%s"; it is required for the join',
@@ -493,7 +493,8 @@ sub new {
 	for my $i (0 .. $#{ $p->{databases} }) {
 		croak _msg($p->{i18n}, 'error_invalid_db', $i)
 			unless blessed($p->{databases}[$i])
-			    && $p->{databases}[$i]->isa('Database::Abstraction');
+			    && $p->{databases}[$i]->can('selectall_arrayref')
+			    && $p->{databases}[$i]->can('columns');
 	}
 
 	# Cache the primary database's internal primary-key column name once at
@@ -1317,7 +1318,9 @@ sub add_database {
 	$db //= $p->{database};
 
 	croak $self->_err('error_invalid_db', $idx)
-		unless blessed($db) && $db->isa('Database::Abstraction');
+		unless blessed($db)
+		    && $db->can('selectall_arrayref')
+		    && $db->can('columns');
 
 	# Determine and register the local join column name for this database
 	my $local_jc = $p->{join_column} // $self->{_join_col};

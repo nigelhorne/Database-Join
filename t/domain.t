@@ -87,7 +87,7 @@ Readonly::Scalar my $LONG_COLNAME => 'x' x 255;	# 255-char boundary for join_col
 
 Readonly::Hash my %ERR => (
 	no_databases     => qr/At least one Database::Abstraction object is required/,
-	invalid_db       => qr/databases\[\d+\] is not a Database::Abstraction object/,
+	invalid_db       => qr/databases\[\d+\] does not support/,
 	join_col_missing => qr/join_column "[^"]*" is absent from databases\[\d+\]/,
 	join_col_refval  => qr/join_column "\(join_map\[\d+\] must be a string\)" is absent from databases\[\d+\]/,
 	remove_join_col  => qr/Cannot remove join_column/,

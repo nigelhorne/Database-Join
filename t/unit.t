@@ -311,7 +311,7 @@ subtest 'new: error_no_databases -- empty databases arrayref' => sub {
 subtest 'new: error_invalid_db -- non-DA object in databases' => sub {
 	plan tests => 1;
 	throws_ok { Database::Join->new(databases => [ bless {}, 'NotDA' ], join_column => $JC) }
-		qr/databases\[0\] is not a Database::Abstraction/,
+		qr/databases\[0\] does not support/,
 		'new() croaks with error_invalid_db for a non-DA element';
 	delete $LEDGER{'new:error_invalid_db'};
 };
@@ -726,7 +726,7 @@ subtest 'add_database: error_invalid_db for non-DA object' => sub {
 	plan tests => 1;
 	my $j = _two_db_join();
 	throws_ok { $j->add_database(bless {}, 'WrongClass') }
-		qr/is not a Database::Abstraction/,
+		qr/does not support the selectall_arrayref/,
 		'add_database() croaks with error_invalid_db for a non-DA argument';
 	delete $LEDGER{'adb:error_invalid_db'};
 };

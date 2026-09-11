@@ -1,5 +1,15 @@
 Revision history for Database::Join
 
+0.003.0
+	[ Enhancements ]
+	- Replace isa('Database::Abstraction') guard in new() and add_database()
+	  with duck-typing (can('selectall_arrayref') && can('columns')).
+	  Database::Join now accepts any object that exposes those two methods,
+	  including wrapper classes (e.g. Database::BI::Model::DataSource) and
+	  chained Database::Join instances, without requiring them to inherit
+	  from Database::Abstraction.  Existing callers passing genuine
+	  Database::Abstraction subclasses are unaffected.
+
 0.002.0	Fri Sep 11 02:07:01 PM EDT 2026
 	[ Enhancements ]
 	- Add collision_prefix constructor parameter (HashRef[Str], keyed by

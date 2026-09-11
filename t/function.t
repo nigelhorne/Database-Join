@@ -329,7 +329,7 @@ subtest 'new: empty databases arrayref croaks' => sub {
 subtest 'new: non-DA object in databases croaks with index' => sub {
 	plan tests => 1;
 	throws_ok { Database::Join->new(databases => [ bless({}, 'NotDA') ], join_column => $JC) }
-		qr/not a Database::Abstraction/i,
+		qr/does not support the selectall_arrayref/i,
 		'new() croaks when a databases element is not a DA subclass';
 };
 
@@ -655,7 +655,7 @@ subtest 'add_database: non-reference first arg that is not a key name croaks' =>
 	plan tests => 1;
 	my $j = _make_join();
 	throws_ok { $j->add_database('not_a_key') }
-		qr/not a Database::Abstraction/i,
+		qr/does not support the selectall_arrayref/i,
 		'add_database() croaks when an unrecognised string is the first argument';
 };
 
@@ -663,7 +663,7 @@ subtest 'add_database: non-DA blessed object croaks' => sub {
 	plan tests => 1;
 	my $j = _make_join();
 	throws_ok { $j->add_database(bless {}, 'WrongClass') }
-		qr/not a Database::Abstraction/i,
+		qr/does not support the selectall_arrayref/i,
 		'add_database() croaks when the database object is not a DA subclass';
 };
 

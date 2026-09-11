@@ -172,7 +172,7 @@ Readonly::Hash my %ERR => (
 	remove_join_col => qr/Cannot remove join_column/,
 	unknown_col_carp => qr/not present in any configured database/,
 	set_logger      => qr/Usage: set_logger/,
-	invalid_db      => qr/databases\[\d+\] is not a Database::Abstraction object/,
+	invalid_db      => qr/databases\[\d+\] does not support/,
 	join_col_miss   => qr/join_column "[^"]*" is absent from databases\[\d+\]/,
 );
 
@@ -762,12 +762,12 @@ note '--- Section 9: _msg() paths ---';
 }
 
 # PATH-msg-4: known key + sprintf args → formatted string
-# error_invalid_db = 'databases[%d] is not a Database::Abstraction object'
+# error_invalid_db = 'databases[%d] does not support the selectall_arrayref/columns interface'
 {
 	my $err;
 	eval { Database::Join->new(databases => [{}], join_column => $JC) };
 	$err = $@;
-	like($err, qr/databases\[0\] is not a Database::Abstraction object/,
+	like($err, qr/databases\[0\] does not support/,
 		'_msg PATH-4: known key + %d arg → sprintf formats correctly');
 }
 

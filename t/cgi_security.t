@@ -460,7 +460,7 @@ sub make_join {
 			databases   => [ bless({}, 'NotDA') ],
 			join_column => 'entry',
 		);
-	} qr/not a Database::Abstraction/i,
+	} qr/does not support the selectall_arrayref/i,
 		'pre-condition: non-DA blessed object in databases is rejected';
 }
 
@@ -744,7 +744,7 @@ sub make_join {
 	my $join = make_join($db_a, $db_b);
 	throws_ok {
 		$join->add_database($SHELL_META);
-	} qr/not a Database::Abstraction/i,
+	} qr/does not support the selectall_arrayref/i,
 		'guard: hostile string to add_database is rejected by fail-fast guard';
 }
 
