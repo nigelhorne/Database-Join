@@ -1572,7 +1572,13 @@ our $AUTOLOAD;
 sub AUTOLOAD {
 	my $self = shift;
 
-	my ($col) = $AUTOLOAD =~ /::(\w+)$/;
+	my ($col) = $AUTOLOAD =~ /
+		::      # package separator — skip the fully-qualified prefix
+		(\w++)  # method name: possessive quantifier commits immediately;
+		        # no backtrack possible because \w chars cannot match \z
+		\z      # strict end-of-string (\z never matches a trailing newline,
+		        # unlike $ which can — important if $AUTOLOAD ever embeds \n)
+	/x;
 	# TODO: Unreachable code detected during path analysis. Investigate for removal.
 	# `sub DESTROY {}` is defined explicitly in this package; Perl's method-resolution
 	# order finds it before AUTOLOAD is ever invoked, so $col can never equal 'DESTROY'.
@@ -1580,8 +1586,9 @@ sub AUTOLOAD {
 
 	# Private methods must not be reached via AUTOLOAD — croak immediately so
 	# typos like $join->_join_col are not silently swallowed.
+	# substr() avoids regex-engine overhead for this single-character prefix check.
 	croak ref($self), ": cannot call private method '$col' via AUTOLOAD"
-		if $col =~ /^_/;
+		if substr($col, 0, 1) eq '_';
 
 	my $db_idx = $self->{_col_db}{$col};
 	croak ref($self), ": unknown column '$col'" unless defined $db_idx;
