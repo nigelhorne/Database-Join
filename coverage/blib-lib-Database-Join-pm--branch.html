@@ -20,7 +20,7 @@ https://pjcj.net
 <h1>Branch Coverage</h1>
 <table>
 <tr><td class="h" align="right">File:</td><td align="left">blib/lib/Database/Join.pm</td></tr>
-<tr><td class="h" align="right">Coverage:</td><td align="left" class="c2">94.7%</td></tr>
+<tr><td class="h" align="right">Coverage:</td><td align="left" class="c2">97.4%</td></tr>
 </table>
 <div><br/></div>
 <table>
@@ -48,40 +48,40 @@ https://pjcj.net
 <tr><td class="h"><a id="L1302">1302</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $p-&gt;{&#39;filter&#39;}</td></tr>
 <tr><td class="h"><a id="L1308">1308</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $col_presence{$local_jc}</td></tr>
 <tr><td class="h"><a id="L1322">1322</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $local_jc ne $self-&gt;{&#39;_join_col&#39;} and $col eq $local_jc</td></tr>
-<tr><td class="h"><a id="L1325">1325</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if (defined $prefix and exists $self-&gt;{&#39;_col_db&#39;}{$col}) { }</td></tr>
-<tr><td class="h"><a id="L1333">1333</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $self-&gt;{&#39;_removed_cols&#39;}{$pub}</td></tr>
-<tr><td class="h"><a id="L1342">1342</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $log = $self-&gt;{&#39;_logger&#39;})</td></tr>
-<tr><td class="h"><a id="L1347">1347</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $rc = $p-&gt;{&#39;remove_columns&#39;})</td></tr>
-<tr><td class="h"><a id="L1429">1429</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $col and $col eq $self-&gt;{&#39;_join_col&#39;}</td></tr>
-<tr><td class="h"><a id="L1431">1431</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $col and length $col)</td></tr>
-<tr><td class="h"><a id="L1556">1556</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $col eq &quot;DESTROY&quot;</td></tr>
-<tr><td class="h"><a id="L1560">1560</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $col =~ /^_/</td></tr>
-<tr><td class="h"><a id="L1564">1564</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless defined $db_idx</td></tr>
-<tr><td class="h"><a id="L1569">1569</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (%{$self-&gt;{&#39;_join_map&#39;};} or %{$self-&gt;{&#39;_filters&#39;};})</td></tr>
-<tr><td class="h"><a id="L1575">1575</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if wantarray</td></tr>
-<tr><td class="h"><a id="L1576">1576</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">@{$rows;} ? :</td></tr>
-<tr><td class="h"><a id="L1599">1599</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless @args</td></tr>
-<tr><td class="h"><a id="L1600">1600</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if @args == 1 and not ref $args[0]</td></tr>
-<tr><td class="h"><a id="L1640">1640</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ref $local_jc</td></tr>
-<tr><td class="h"><a id="L1644">1644</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $db_cols[$i]{$local_jc}</td></tr>
-<tr><td class="h"><a id="L1648">1648</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$i &gt; 0 ? :</td></tr>
-<tr><td class="h"><a id="L1652">1652</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $local_jc ne $join_col and $col eq $local_jc</td></tr>
-<tr><td class="h"><a id="L1654">1654</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if (defined $prefix and exists $col_db{$col}) { }</td></tr>
-<tr><td class="h"><a id="L1694">1694</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($col eq $join_col) { }</td></tr>
+<tr><td class="h"><a id="L1325">1325</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $prefix and exists $self-&gt;{&#39;_col_db&#39;}{$col} and $col ne $self-&gt;{&#39;_join_col&#39;}) { }</td></tr>
+<tr><td class="h"><a id="L1334">1334</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $self-&gt;{&#39;_removed_cols&#39;}{$pub}</td></tr>
+<tr><td class="h"><a id="L1343">1343</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $log = $self-&gt;{&#39;_logger&#39;})</td></tr>
+<tr><td class="h"><a id="L1348">1348</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $rc = $p-&gt;{&#39;remove_columns&#39;})</td></tr>
+<tr><td class="h"><a id="L1430">1430</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $col and $col eq $self-&gt;{&#39;_join_col&#39;}</td></tr>
+<tr><td class="h"><a id="L1432">1432</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $col and length $col)</td></tr>
+<tr><td class="h"><a id="L1557">1557</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $col eq &quot;DESTROY&quot;</td></tr>
+<tr><td class="h"><a id="L1561">1561</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $col =~ /^_/</td></tr>
+<tr><td class="h"><a id="L1565">1565</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless defined $db_idx</td></tr>
+<tr><td class="h"><a id="L1570">1570</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (%{$self-&gt;{&#39;_join_map&#39;};} or %{$self-&gt;{&#39;_filters&#39;};})</td></tr>
+<tr><td class="h"><a id="L1576">1576</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if wantarray</td></tr>
+<tr><td class="h"><a id="L1577">1577</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">@{$rows;} ? :</td></tr>
+<tr><td class="h"><a id="L1600">1600</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless @args</td></tr>
+<tr><td class="h"><a id="L1601">1601</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if @args == 1 and not ref $args[0]</td></tr>
+<tr><td class="h"><a id="L1641">1641</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ref $local_jc</td></tr>
+<tr><td class="h"><a id="L1645">1645</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $db_cols[$i]{$local_jc}</td></tr>
+<tr><td class="h"><a id="L1649">1649</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$i &gt; 0 ? :</td></tr>
+<tr><td class="h"><a id="L1653">1653</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $local_jc ne $join_col and $col eq $local_jc</td></tr>
+<tr><td class="h"><a id="L1655">1655</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $prefix and exists $col_db{$col} and $col ne $join_col) { }</td></tr>
+<tr><td class="h"><a id="L1697">1697</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($col eq $join_col) { }</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif (defined(my $idx = $self-&gt;{&#39;_col_db&#39;}{$col})) { }</td></tr>
-<tr><td class="h"><a id="L1701">1701</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $val eq &#39;HASH&#39; ? :</td></tr>
-<tr><td class="h"><a id="L1736">1736</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless defined $key</td></tr>
-<tr><td class="h"><a id="L1777">1777</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless %{$base;}</td></tr>
-<tr><td class="h"><a id="L1802">1802</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($had_criteria[$i] or $join_type eq &#39;inner&#39;) { }</td></tr>
+<tr><td class="h"><a id="L1704">1704</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $val eq &#39;HASH&#39; ? :</td></tr>
+<tr><td class="h"><a id="L1739">1739</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless defined $key</td></tr>
+<tr><td class="h"><a id="L1780">1780</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless %{$base;}</td></tr>
+<tr><td class="h"><a id="L1805">1805</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($had_criteria[$i] or $join_type eq &#39;inner&#39;) { }</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif ($join_type eq &#39;outer&#39;) { }</td></tr>
-<tr><td class="h"><a id="L1807">1807</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless exists $indexed[$i]{$k}</td></tr>
-<tr><td class="h"><a id="L1833">1833</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $sec_arr and @{$sec_arr;}</td></tr>
-<tr><td class="h"><a id="L1846">1846</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($rename and $k eq $local_jc) { }</td></tr>
-<tr><td class="h"></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">elsif (my $pub = $renames-&gt;{$k}) { }</td></tr>
-<tr><td class="h"><a id="L1858">1858</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if @removed</td></tr>
-<tr><td class="h"><a id="L1878">1878</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (exists $merged{$col} and ref $merged{$col} eq &#39;HASH&#39; and ref $extra-&gt;{$col} eq &#39;HASH&#39;) { }</td></tr>
-<tr><td class="h"><a id="L1897">1897</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($i18n and $i18n-&gt;can(&quot;translate&quot;))</td></tr>
-<tr><td class="h"><a id="L1904">1904</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">@args ? :</td></tr>
+<tr><td class="h"><a id="L1810">1810</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless exists $indexed[$i]{$k}</td></tr>
+<tr><td class="h"><a id="L1836">1836</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $sec_arr and @{$sec_arr;}</td></tr>
+<tr><td class="h"><a id="L1849">1849</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($rename and $k eq $local_jc) { }</td></tr>
+<tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif (my $pub = $renames-&gt;{$k}) { }</td></tr>
+<tr><td class="h"><a id="L1861">1861</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if @removed</td></tr>
+<tr><td class="h"><a id="L1881">1881</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (exists $merged{$col} and ref $merged{$col} eq &#39;HASH&#39; and ref $extra-&gt;{$col} eq &#39;HASH&#39;) { }</td></tr>
+<tr><td class="h"><a id="L1900">1900</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($i18n and $i18n-&gt;can(&quot;translate&quot;))</td></tr>
+<tr><td class="h"><a id="L1907">1907</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">@args ? :</td></tr>
 </table>
 </body>
 </html>
