@@ -19,7 +19,7 @@ use Sub::Protected;
 # validate_strict schema cannot silently diverge.
 Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_columns);
 
-our $VERSION = '0.002.0';
+our $VERSION = '0.003.0';
 
 # ---------------------------------------------------------------------------
 # All user-facing strings route through this dictionary.  Supply an i18n
@@ -44,7 +44,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 =head1 VERSION
 
-Version 0.002.0
+Version 0.003.0
 
 =head1 SYNOPSIS
 

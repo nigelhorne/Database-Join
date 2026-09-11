@@ -1,7 +1,7 @@
 Revision history for Database::Join
 
-0.003.0
-	[ Enhancements ]
+0.003.0	Fri Sep 11 05:12:03 PM EDT 2026
+	[ Bug Fixes ]
 	- Replace isa('Database::Abstraction') guard in new() and add_database()
 	  with duck-typing (can('selectall_arrayref') && can('columns')).
 	  Database::Join now accepts any object that exposes those two methods,
