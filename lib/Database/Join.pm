@@ -1443,15 +1443,19 @@ memoisation caches are cleared automatically.
 sub remove_column {
 	my ($self, $col) = @_;
 
-	croak $self->_err('error_remove_join_col', $col)
-		if defined $col && $col eq $self->{_join_col};
+	# Premise: undef and '' are provably no-ops (nothing to remove).
+	# Conclusion: guard at the top eliminates two separate defined() checks below.
+	return $self unless defined $col && length $col;
 
-	if (defined $col && length $col) {
-		$self->{_removed_cols}{$col} = 1;
-		delete $self->{_col_db}{$col};
-		$self->{_col_cache}    = undef;
-		$self->{_schema_cache} = undef;
-	}
+	# Premise: $col is defined (proven above) and join_col is always a non-empty string.
+	# Conclusion: direct string comparison is safe without a redundant defined() check.
+	croak $self->_err('error_remove_join_col', $col)
+		if $col eq $self->{_join_col};
+
+	$self->{_removed_cols}{$col} = 1;
+	delete $self->{_col_db}{$col};
+	$self->{_col_cache}    = undef;
+	$self->{_schema_cache} = undef;
 
 	return $self;
 }
@@ -1723,7 +1727,9 @@ sub _partition_criteria :Protected {
 		} elsif (defined(my $idx = $self->{_col_db}{$col})) {
 			# Translate the published column name back to the database's own name
 			# when the column was renamed for a collision (e.g. "pfx.col" -> "col").
-			my $db_col = ($self->{_col_unrename}[$idx] // {})->{$col} // $col;
+			# Invariant: _col_unrename[$idx] is always initialised to {} by _build_col_index
+		# and add_database, so the // {} fallback can never trigger (transitive reduction).
+		my $db_col = $self->{_col_unrename}[$idx]{$col} // $col;
 			$per_db[$idx]{$db_col} = $params->{$col};
 		} else {
 			carp $self->_err('warn_unknown_column', $col);
@@ -1799,17 +1805,14 @@ sub _joined_query :Protected {
 	}
 
 	# Fetch and index each database with its own criteria slice.
-	# !!%hash collapses to 1 (non-empty) or '' (empty) without allocating a count.
 	my @indexed;
+	$indexed[$_] = $self->_fetch_indexed($_, $per_db->[$_]) for 0 .. $n - 1;
+
+	# Premise: the key-set resolution loop starts at i=1 (primary seeds %key_set).
+	# Conclusion: $had_criteria[0] is a dead store (D~); compute only for i >= 1.
+	# !!%hash collapses to 1 (non-empty) or '' (empty) without allocating a count.
 	my @had_criteria;
-	for my $i (0 .. $n - 1) {
-		$indexed[$i]      = $self->_fetch_indexed($i, $per_db->[$i]);
-		# TODO: Data Flow Anomaly (D~) - $had_criteria[0] written here but never read;
-		# the key-set resolution loop below starts at i=1.  When n==1 this is always
-		# a dead store.  Harmless but could be removed if n>1 is enforced, or the
-		# loop could start at i=0 if primary-criteria semantics are ever needed.
-		$had_criteria[$i] = !!%{ $per_db->[$i] };
-	}
+	$had_criteria[$_] = !!%{ $per_db->[$_] } for 1 .. $n - 1;
 
 	# Seed the key set from the primary database.
 	my %key_set = map { $_ => 1 } keys %{ $indexed[0] };
