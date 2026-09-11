@@ -1456,6 +1456,7 @@ sub remove_column {
 	delete $self->{_col_db}{$col};
 	$self->{_col_cache}    = undef;
 	$self->{_schema_cache} = undef;
+	$self->{_removed_list} = undef;	# invalidate the cached removed-column list
 
 	return $self;
 }
@@ -1815,7 +1816,11 @@ sub _joined_query :Protected {
 	$had_criteria[$_] = !!%{ $per_db->[$_] } for 1 .. $n - 1;
 
 	# Seed the key set from the primary database.
-	my %key_set = map { $_ => 1 } keys %{ $indexed[0] };
+	# Hash-slice assignment avoids the intermediate 2K-element flat list that
+	# map { $_ => 1 } would allocate before assigning to %key_set.  Values are
+	# undef; only exists() is used for lookups, so the sentinel value is irrelevant.
+	my %key_set;
+	@key_set{ keys %{ $indexed[0] } } = ();
 
 	# Merge in each secondary database.
 	# Premise 1: indexed[$i] is a valid hashref (returned by _fetch_indexed).
@@ -1836,19 +1841,36 @@ sub _joined_query :Protected {
 		# left + no criteria: key_set unchanged (primary defines the set).
 	}
 
+	# Pre-hoist per-secondary constants outside the key loop.
+	# $sec_local_jc[$i], the rename flag, and $sec_renames[$i] are all invariant
+	# across every key and every primary row.  Computing them inside the key loop
+	# wastes K dereferences per secondary database (K = number of qualifying keys).
+	# Splitting the inner column loop on the rename flag eliminates the flag check
+	# from inside the per-column loop, saving R-1 branch evaluations per secondary
+	# per row (R = columns in the secondary row).
+	my (@sec_local_jc, @sec_rename, @sec_renames);
+	for my $i (1 .. $n - 1) {
+		$sec_local_jc[$i] = $self->{_join_map}{$i};
+		$sec_rename[$i]   = ($sec_local_jc[$i] && $sec_local_jc[$i] ne $join_col) ? 1 : 0;
+		# _col_rename[$i] is always initialised to {} by _build_col_index / add_database
+		# (transitive reduction: the // {} fallback can never trigger).
+		$sec_renames[$i]  = $self->{_col_rename}[$i];
+	}
+
+	# Cache the removed-column list across calls; avoids extracting keys %hash every
+	# query.  Lazily built here and invalidated to undef by remove_column().
+	my $removed = ($self->{_removed_list} //= [keys %{ $self->{_removed_cols} }]);
+
 	# Build one merged result row for every primary-database row that qualifies.
 	# Secondary databases act as lookup tables: when a key maps to multiple
 	# secondary rows, the last one wins (consistent with construction-time
 	# last-database-wins column routing).
 	my @result;
-	my @removed = keys %{ $self->{_removed_cols} };
 	for my $key (sort keys %key_set) {
-		# All qualifying rows from the primary database for this key.
-		# Use [{}] so that outer-join keys absent from the primary still
-		# produce one merged row filled from secondary databases.
-		my @base_rows = @{ $indexed[0]{$key} // [{}] };
-
-		for my $prow (@base_rows) {
+		# Iterate directly over the arrayref: avoids copying primary rows into a
+		# new @base_rows array (saves P element copies per key, P = rows per key).
+		# [{}] ensures outer-join keys absent from the primary produce one merged row.
+		for my $prow (@{ $indexed[0]{$key} // [{}] }) {
 			my %merged = %{$prow};
 
 			for my $i (1 .. $n - 1) {
@@ -1861,24 +1883,35 @@ sub _joined_query :Protected {
 				#   → 2 full hash copies per secondary per row: O(C) + O(|merged|+C)
 				# After: per-key loop writes straight into %merged
 				#   → O(C) key assignments only; no intermediate allocation
-				my $src      = $sec_arr->[-1];
-				my $local_jc = $self->{_join_map}{$i};
-				my $rename   = $local_jc && $local_jc ne $join_col;
-				my $renames  = $self->{_col_rename}[$i] // {};
-				for my $k (keys %{$src}) {
-					if ($rename && $k eq $local_jc) {
-						# Translate local join-key alias to the canonical join_column name
-						$merged{$join_col} = $src->{$k};
-					} elsif (my $pub = $renames->{$k}) {
-						# Collision-renamed column: write under the published prefixed name
-						$merged{$pub} = $src->{$k};
-					} else {
-						$merged{$k} = $src->{$k};
+				my $src = $sec_arr->[-1];
+
+				if ($sec_rename[$i]) {
+					my $local_jc = $sec_local_jc[$i];
+					my $renames  = $sec_renames[$i];
+					for my $k (keys %{$src}) {
+						if ($k eq $local_jc) {
+							# Translate local join-key alias to the canonical join_column name
+							$merged{$join_col} = $src->{$k};
+						} elsif (my $pub = $renames->{$k}) {
+							$merged{$pub} = $src->{$k};
+						} else {
+							$merged{$k} = $src->{$k};
+						}
+					}
+				} else {
+					my $renames = $sec_renames[$i];
+					for my $k (keys %{$src}) {
+						if (my $pub = $renames->{$k}) {
+							# Collision-renamed column: write under the published prefixed name
+							$merged{$pub} = $src->{$k};
+						} else {
+							$merged{$k} = $src->{$k};
+						}
 					}
 				}
 			}
 
-			delete @merged{@removed} if @removed;
+			delete @merged{@{$removed}} if @{$removed};
 			push @result, \%merged;
 		}
 	}
