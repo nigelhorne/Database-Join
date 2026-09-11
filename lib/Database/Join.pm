@@ -306,6 +306,15 @@ C<collision_prefix => { 1 => 'right' }> to publish the second database's
 C<notes> as C<right.notes> so both values survive, or use C<remove_columns>
 (or C<remove_column>) to drop the unwanted duplicate entirely.
 
+=item Mutating the filters hashref after construction has no effect
+
+C<Database::Join> deep-copies the C<filters> hashref (and any C<filter>
+passed to C<add_database>) at the moment of construction.  The original hashref
+you passed in is never stored.  If you later modify it -- for example, to
+tighten or loosen a filter criterion -- the joined view is I<not> affected.
+Construct a new C<Database::Join> object, or use a component
+C<Database::Abstraction> that supports dynamic filter modification.
+
 =back
 
 =head1 METHODS
@@ -455,6 +464,26 @@ to calling C<remove_column> once per name after construction.
     error_no_databases     -- databases arrayref was empty
     error_invalid_db       -- an element of databases is not a D::A subclass
     error_join_col_missing -- join_column (or its join_map alias) not found in a database
+
+=head3 FORMAL SPECIFICATION
+
+    ─── Init ──────────────────────────────────────────────────────────
+    ΔDatabase_Join
+    dbs?              : seq DATABASE_ABSTRACTION   -- required; #dbs? >= 1
+    join_col?         : NAME                       -- default 'entry'
+    join_type?        : {left, inner, outer}       -- default left
+    join_map?         : ℕ ⇸ NAME                  -- optional
+    filters?          : ℕ ⇸ CRITERIA              -- optional; deep-copied on store
+    collision_prefix? : ℕ ⇸ STRING               -- optional; values must not be refs
+    removed?          : ℙ NAME                    -- from remove_columns parameter
+    ───────────────────────────────────────────────────────────────────
+    #dbs? >= 1
+    ∀ i : 0 ‥ #dbs?-1 • local_jc(i) ∈ ran((dbs? i).columns)
+    ∀ i : dom collision_prefix? • ¬ ref(collision_prefix?(i))
+    dbs'      = dbs?
+    join_col' = join_col?
+    col_db'   = buildColIndex(dbs?, join_col?, join_map?)
+    filters'  = deep_copy(filters?)   -- caller mutation has no effect after return
 
 =cut
 
@@ -801,6 +830,17 @@ A single plain scalar argument is interpreted as the C<join_column> value
             $row->{entry}, $row->{tier}, $row->{score} // 0;
     }
 
+=head3 FORMAL SPECIFICATION
+
+    selectall_arrayref : CRITERIA -> seq MERGED_ROW
+    ───────────────────────────────────────────────────────────────────
+    pre:  ∀ col : dom criteria • col ∈ dom self._col_db ∪ {self._join_col}
+          -- unknown columns are dropped with carp; no croak
+    post: result = _joined_query(criteria)
+          result is sorted ascending by join_col value
+          result = [] when no rows match
+    Ξ Database_Join  -- state is not modified
+
 =cut
 
 sub selectall_arrayref {
@@ -845,6 +885,15 @@ nothing matches).
     # First gold-tier customer only
     my $first_vip = $join->selectall_array(tier => 'gold');
     print $first_vip->{name}, "\n" if defined $first_vip;
+
+=head3 FORMAL SPECIFICATION
+
+    selectall_array : CRITERIA -> seq MERGED_ROW | MERGED_ROW?
+    ───────────────────────────────────────────────────────────────────
+    pre:  same preconditions as selectall_arrayref
+    post: wantarray  => result = @{ selectall_arrayref(criteria) }
+          !wantarray => result = selectall_arrayref(criteria)[0]  (or undef)
+    Ξ Database_Join  -- state is not modified
 
 =cut
 
@@ -891,6 +940,14 @@ All the same criteria conventions apply.
     # Positional: works when join_column is 'entry'
     my $row2 = $join->fetchrow_hashref('C001');
 
+=head3 FORMAL SPECIFICATION
+
+    fetchrow_hashref : CRITERIA -> MERGED_ROW?
+    ───────────────────────────────────────────────────────────────────
+    pre:  same preconditions as selectall_arrayref
+    post: result = selectall_arrayref(criteria)[0]  (or undef when empty)
+    Ξ Database_Join  -- state is not modified
+
 =cut
 
 sub fetchrow_hashref {
@@ -932,6 +989,14 @@ C<COUNT(*)> is pushed down to the component databases.
     printf "%d total, %d gold-tier, %d high-scorers\n",
         $total, $gold, $high;
 
+=head3 FORMAL SPECIFICATION
+
+    count : CRITERIA -> ℕ
+    ───────────────────────────────────────────────────────────────────
+    pre:  same preconditions as selectall_arrayref
+    post: result = # selectall_arrayref(criteria)
+    Ξ Database_Join  -- state is not modified
+
 =cut
 
 sub count {
@@ -972,6 +1037,18 @@ The result is memoised: repeated calls are cheap.
     my $cols = $join->columns();
     print join(', ', @{$cols}), "\n";
     # e.g. "entry, name, score, tier"
+
+=head3 FORMAL SPECIFICATION
+
+    columns : -> seq NAME
+    ───────────────────────────────────────────────────────────────────
+    post: result = sort(
+              (⋃ { i : 0 ‥ #dbs-1 • published_names(i) })
+               \ dom removed_cols
+          )
+          where published_names(i) applies collision_prefix renaming for db i
+          and excludes local join-key aliases (from join_map) that differ from join_col
+    Ξ Database_Join  -- state is not modified (result is cached)
 
 =cut
 
@@ -1041,6 +1118,16 @@ The result is memoised.
             $col, $info->{type}, $info->{nullable} ? 'yes' : 'no';
     }
 
+=head3 FORMAL SPECIFICATION
+
+    schema : -> NAME => SCHEMA_INFO
+    ───────────────────────────────────────────────────────────────────
+    post: dom(result) = ran(columns())
+          ∀ col : dom(result) •
+              result(col) = (last database i where col ∈ ran(dbs(i).columns)).schema()(col)
+          Removed columns are absent from dom(result).
+    Ξ Database_Join  -- state is not modified (result is cached)
+
 =cut
 
 sub schema {
@@ -1108,6 +1195,13 @@ has advanced since your last snapshot, re-query.
         $my_cache_timestamp = $last_modified;
     }
 
+=head3 FORMAL SPECIFICATION
+
+    updated : -> ℕ
+    ───────────────────────────────────────────────────────────────────
+    post: result = max { i : 0 ‥ #dbs-1 • dbs(i).updated() }
+    Ξ Database_Join  -- state is not modified
+
 =cut
 
 sub updated {
@@ -1147,6 +1241,14 @@ database.  The logger is used for diagnostic output by all component databases.
     my $join = Database::Join->new(databases => [$db1, $db2], join_column => 'entry');
     $join->set_logger($log);
     # $log is now used by $join and by $db1 and $db2
+
+=head3 FORMAL SPECIFICATION
+
+    set_logger : LOGGER -> Database_Join
+    ───────────────────────────────────────────────────────────────────
+    post: ∀ i : 0 ‥ #dbs-1 • dbs(i).set_logger(logger)
+          self._logger = logger
+          result = self  (chainable)
 
 =cut
 
@@ -1287,6 +1389,24 @@ equivalent to a C<filters> entry.
 
     error_invalid_db       -- argument is not a Database::Abstraction subclass
     error_join_col_missing -- join_column not found in the new database
+
+=head3 FORMAL SPECIFICATION
+
+    -- See =head1 FORMAL SPECIFICATION for the full AddDatabase schema.
+    ΔDatabase_Join
+    db?       : DATABASE_ABSTRACTION
+    local_jc? : NAME     -- optional; defaults to join_col
+    filter?   : CRITERIA -- optional; deep-copied on store
+    remove?   : ℙ NAME   -- optional; from remove_columns
+    ───────────────────────────────────────────────────────────────────
+    db?.isa('Database::Abstraction')
+    local_jc? ∈ ran(db?.columns)
+    dbs'      = dbs ^ <db?>
+    col_db'   = col_db ⊕ { c |-> #dbs | c ∈ ran(db?.columns) \ {local_jc?} \ removed }
+    filters'  = if filter? ≠ {} then filters ⊕ {#dbs |-> deep_copy(filter?)} else filters
+    join_map' = if local_jc? ≠ join_col then join_map ⊕ {#dbs |-> local_jc?} else join_map
+    removed'  = removed ∪ remove?
+    result    = self  (chainable)
 
 =cut
 
@@ -1456,6 +1576,18 @@ memoisation caches are cleared automatically.
 
     error_remove_join_col -- attempt to remove the join_column itself
 
+=head3 FORMAL SPECIFICATION
+
+    remove_column : NAME -> Database_Join
+    ───────────────────────────────────────────────────────────────────
+    pre:  col ≠ self._join_col   -- croak error_remove_join_col otherwise
+          col = undef ∨ col = '' => result = self  (safe no-op)
+    post: self'._removed_cols = self._removed_cols ∪ {col}
+          self'._col_db       = self._col_db \ {col}
+          self'._col_cache    = undef   -- invalidated
+          self'._schema_cache = undef   -- invalidated
+          result = self'  (chainable)
+
 =cut
 
 sub remove_column {
@@ -1582,6 +1714,18 @@ will C<croak> with a clear error message rather than being silently ignored.
         return $rows[0]{col}            in scalar context
     else:
         delegate directly to the owning database
+
+=head3 FORMAL SPECIFICATION
+
+    AUTOLOAD : NAME x CRITERIA -> VALUE | seq VALUE
+    ───────────────────────────────────────────────────────────────────
+    pre:  col ∈ dom self._col_db           -- croak if unknown
+          ¬(col starts with '_')           -- croak; private names blocked
+          col matches /\A\w+\z/            -- enforced by Perl dispatch
+    post: let rows = _joined_query(criteria)
+          wantarray  => result = { r : rows • r(col) }
+          !wantarray => result = rows[0](col)  (or undef when rows is empty)
+    Ξ Database_Join  -- state is not modified
 
 =cut
 
@@ -2163,18 +2307,35 @@ responsibility of the CGI or web layer that renders the output.
 
 C<Database::Join> contains no C<system()>, C<exec()>, backtick, C<open(PIPE)>,
 or C<eval STRING> calls.  It neither opens files nor constructs shell commands.
-The AUTOLOAD regex C</::(\w+)$/>  produces an I<untainted> capture, so the
-column name used for dispatch is clean under C<-T>.  Criteria values are
-passed verbatim to component C<Database::Abstraction> objects; those objects
-are responsible for handling tainted values at the SQL parameterisation layer.
+The AUTOLOAD regex C</ :: (\w++) \z /x> uses a possessive quantifier
+(C<\w++>) and a strict end-of-string anchor (C<\z>) and produces an I<untainted>
+capture, so the column name used for dispatch is clean under C<-T>.  Criteria
+values are passed verbatim to component C<Database::Abstraction> objects; those
+objects are responsible for handling tainted values at the SQL parameterisation
+layer.
 
-=item Operator hashref aliasing
+=item Operator hashref broadcast copy
 
 When the same join-key criterion (an operator hashref such as
-C<< { '>' => 'A' } >>) is broadcast to multiple component databases, all of
-them receive a reference to the I<same> hashref.  A malicious component
-database that mutates the hashref's contents could affect what subsequent
-databases receive.  Component databases are assumed to be trusted.
+C<< { '>' => 'A' } >>) is broadcast to multiple component databases, each
+database receives its own I<shallow copy> of the hashref.  A component database
+that mutates the hashref's contents at the top level cannot affect what
+subsequent databases receive.
+
+=item collision_prefix value type guard
+
+C<_build_col_index> rejects any C<collision_prefix> value that is a reference
+(hashref, arrayref, coderef, etc.) with an immediate C<croak>.  A reference
+value would stringify to C<"HASH(0x...)">, leaking a heap address into every
+column name, C<columns()> listing, and merged row returned to the caller.  The
+guard fires before any column name is constructed.
+
+=item Filter deep-copy isolation
+
+The C<filters> constructor parameter and the C<filter> option of
+C<add_database()> are I<deep-copied> at the point of use.  The caller's
+original hashrefs are never stored; post-construction mutation of those
+hashrefs cannot widen or bypass the configured row-security constraints.
 
 =back
 
