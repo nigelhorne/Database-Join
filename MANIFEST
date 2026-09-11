@@ -21,6 +21,8 @@ t/data/cities.csv
 t/data/states.csv
 t/domain.t
 t/edge_cases.t
+t/eof.t
+t/eol.t
 t/function.t
 t/integration.t
 t/lib/Database/cities.pm

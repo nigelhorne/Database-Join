@@ -4,7 +4,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 # VERSION
 
-Version 0.001.1
+Version 0.002.0
 
 # SYNOPSIS
 
@@ -1182,6 +1182,16 @@ can be localised by supplying an `i18n` object to `new`.
 
     **Fix:** The join key is required for the merge to work and cannot be hidden.
     Remove a different column.
+
+- `error_invalid_prefix`
+
+    **When:** A value in the `collision_prefix` hashref is a reference (e.g. a
+    hashref or arrayref) rather than a plain string.
+
+    **Fix:** All `collision_prefix` values must be plain strings.  A reference
+    would be stringified to `HASH(0x...)` or `ARRAY(0x...)`, leaking a heap
+    address into every column name returned by `columns()`, `schema()`, and all
+    query results.  Pass a plain string such as `'db2'` or `'secondary'`.
 
 - `warn_unknown_column` (carp)
 
