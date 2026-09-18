@@ -1,5 +1,9 @@
 Revision history for Database::Join
 
+0.004.0
+	[ Enhancements ]
+	- Added tsv file tests
+
 0.003.0	Fri Sep 11 05:12:03 PM EDT 2026
 	[ Bug Fixes ]
 	- Replace isa('Database::Abstraction') guard in new() and add_database()
