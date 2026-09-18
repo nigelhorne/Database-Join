@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.004.0
+0.003.1	Fri Sep 18 04:30:36 PM EDT 2026
 	[ Enhancements ]
 	- Added tsv file tests
 
