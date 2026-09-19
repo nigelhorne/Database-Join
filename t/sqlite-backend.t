@@ -504,7 +504,7 @@ subtest 'max_array_rows boundary: exactly at threshold => array path' => sub {
 		max_array_rows => 8,
 	);
 	my $rows = $join_above->selectall_arrayref();
-	is scalar @{$rows}, 5, 'threshold=8, 9 rows: SQLite path, correct row count';
+	is(scalar @{$rows}, 5, 'threshold=8, 9 rows: SQLite path, correct row count');
 };
 
-done_testing;
+done_testing();
