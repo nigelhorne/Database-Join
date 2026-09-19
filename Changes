@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.004.0	Thu Sep 18 2026
+0.004.0	Fri Sep 18 08:27:22 PM EDT 2026
 	[ Enhancements ]
 	- Add SQLite-backed join backend (backend => 'sqlite' | 'auto' | 'array').
 	  'auto' (default) transparently spills source data to a temporary SQLite

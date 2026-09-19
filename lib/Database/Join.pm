@@ -593,8 +593,12 @@ sub new {
 			filters		      => { type => 'hashref',  optional => 1 },
 			collision_prefix  => { type => 'hashref',  optional => 1 },
 			remove_columns	  => { type => 'arrayref', optional => 1 },
-			backend		      => { type => 'string',   optional => 1, default => 'auto',
-			                         enum => ['array', 'sqlite', 'auto'] },
+			backend	=> {
+				type => 'string',
+				optional => 1,
+				default => 'auto',
+				enum => ['array', 'sqlite', 'auto']
+			},
 			max_array_rows    => { type => 'integer',  optional => 1, default => 10_000 },
 			tmpdir            => { type => 'string',   optional => 1 },
 			logger		=> { type => 'object',   optional => 1 },
