@@ -507,4 +507,111 @@ subtest 'max_array_rows boundary: exactly at threshold => array path' => sub {
 	is(scalar @{$rows}, 5, 'threshold=8, 9 rows: SQLite path, correct row count');
 };
 
+# ===========================================================================
+# S14: dbi_source() ATTACH with a .sqlite file extension
+# SQLite has no constraint on file extensions; the ATTACH code path must
+# work regardless of whether the source file ends in .db, .sqlite, or .sqlite3.
+# ===========================================================================
+
+subtest 'dbi_source: ATTACH works with .sqlite file extension' => sub {
+	require DBI;
+	my $tmpdir = tempdir(CLEANUP => 1);
+	my $dbfile = File::Spec->catfile($tmpdir, 'source.sqlite');
+
+	my $src_dbh = DBI->connect(
+		"dbi:SQLite:dbname=$dbfile", '', '',
+		{ RaiseError => 1, PrintError => 0, AutoCommit => 1 },
+	);
+	$src_dbh->do('CREATE TABLE scores (id TEXT, score INTEGER)');
+	$src_dbh->do("INSERT INTO scores VALUES ('k1', 42)");
+	$src_dbh->do("INSERT INTO scores VALUES ('k3', 55)");
+
+	my $da_src = MinimalDA->new(
+		cols  => [qw(id score)],
+		rows  => [
+			{ id => 'k1', score => 42 },
+			{ id => 'k3', score => 55 },
+		],
+		dbh   => $src_dbh,
+		table => 'scores',
+	);
+
+	# Spy on INSERT calls: a zero-copy ATTACH must issue none for this source.
+	my @inserts;
+	my $orig_do = \&DBI::db::do;
+	{ no warnings 'redefine'; *DBI::db::do = sub {
+		my ($dbh, $sql, @rest) = @_;
+		push @inserts, $sql if $sql =~ /^\s*INSERT/i;
+		$orig_do->($dbh, $sql, @rest);
+	} }
+
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_src],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+	my $rows = $join->selectall_arrayref();
+
+	{ no warnings 'redefine'; *DBI::db::do = $orig_do; }
+	$src_dbh->disconnect;
+
+	is scalar @{$rows}, 5, '.sqlite source: left join returns 5 rows';
+	my %by_id = map { $_->{id} => $_ } @{$rows};
+	is $by_id{k1}{score}, 42,      'k1 score from .sqlite ATTACHed source';
+	is $by_id{k1}{name},  'Alice', 'k1 name from spilled primary';
+	is scalar @inserts, 0, 'no INSERT for .sqlite source (zero-copy ATTACH)';
+};
+
+# ===========================================================================
+# S15: dbi_source() ATTACH with a .sqlite3 file extension
+# ===========================================================================
+
+subtest 'dbi_source: ATTACH works with .sqlite3 file extension' => sub {
+	require DBI;
+	my $tmpdir = tempdir(CLEANUP => 1);
+	my $dbfile = File::Spec->catfile($tmpdir, 'source.sqlite3');
+
+	my $src_dbh = DBI->connect(
+		"dbi:SQLite:dbname=$dbfile", '', '',
+		{ RaiseError => 1, PrintError => 0, AutoCommit => 1 },
+	);
+	$src_dbh->do('CREATE TABLE scores (id TEXT, score INTEGER)');
+	$src_dbh->do("INSERT INTO scores VALUES ('k2', 19)");
+	$src_dbh->do("INSERT INTO scores VALUES ('k4', 63)");
+
+	my $da_src = MinimalDA->new(
+		cols  => [qw(id score)],
+		rows  => [
+			{ id => 'k2', score => 19 },
+			{ id => 'k4', score => 63 },
+		],
+		dbh   => $src_dbh,
+		table => 'scores',
+	);
+
+	my @inserts;
+	my $orig_do = \&DBI::db::do;
+	{ no warnings 'redefine'; *DBI::db::do = sub {
+		my ($dbh, $sql, @rest) = @_;
+		push @inserts, $sql if $sql =~ /^\s*INSERT/i;
+		$orig_do->($dbh, $sql, @rest);
+	} }
+
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_src],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+	my $rows = $join->selectall_arrayref();
+
+	{ no warnings 'redefine'; *DBI::db::do = $orig_do; }
+	$src_dbh->disconnect;
+
+	is scalar @{$rows}, 5, '.sqlite3 source: left join returns 5 rows';
+	my %by_id = map { $_->{id} => $_ } @{$rows};
+	is $by_id{k2}{score}, 19,    'k2 score from .sqlite3 ATTACHed source';
+	is $by_id{k4}{score}, 63,    'k4 score from .sqlite3 ATTACHed source';
+	is scalar @inserts, 0, 'no INSERT for .sqlite3 source (zero-copy ATTACH)';
+};
+
 done_testing();
