@@ -2386,38 +2386,34 @@ sub _build_sqlite_cache :Protected {
 		my $filter_crit = $self->{_filters}{$i} // {};
 		my $rows        = $db->selectall_arrayref($filter_crit) // [];
 
+		# No need to check if $rows exists or not
 		# Transitive reduction (P1 invariant): can('columns') is guaranteed for
-		# all _dbs elements; the elsif/else branches below are unreachable.
-		# TODO: Unreachable code detected during path analysis. Investigate for removal.
+		# all _dbs elements
 		$source_cols[$i] = $db->columns();
 
 		my $tbl  = "t$i";
 		my $cols = $source_cols[$i] // [];
 
-		if (@{$cols}) {
-			my $col_defs = join(', ', map { "\"$_\" TEXT" } @{$cols});
-			$tmpdbh->do(qq{CREATE TABLE "$tbl" ($col_defs)});
+		my $col_defs = join(', ', map { "\"$_\" TEXT" } @{$cols});
+		$tmpdbh->do(qq{CREATE TABLE "$tbl" ($col_defs)});
 
-			if (@{$rows}) {
-				my $col_list     = join(', ', map { "\"$_\"" } @{$cols});
-				my $placeholders = join(', ', ('?') x scalar @{$cols});
-				my $sth = $tmpdbh->prepare(
-					qq{INSERT INTO "$tbl" ($col_list) VALUES ($placeholders)}
-				);
-				my $batch = 0;
-				$tmpdbh->begin_work;
-				for my $row (@{$rows}) {
-					$sth->execute(map { $row->{$_} } @{$cols});
-					if (++$batch >= 1_000) {
-						$tmpdbh->commit;
-						$tmpdbh->begin_work;
-						$batch = 0;
-					}
+		if (@{$rows}) {
+			my $col_list     = join(', ', map { "\"$_\"" } @{$cols});
+			my $placeholders = join(', ', ('?') x scalar @{$cols});
+			my $sth = $tmpdbh->prepare(
+				qq{INSERT INTO "$tbl" ($col_list) VALUES ($placeholders)}
+			);
+			my $batch = 0;
+			$tmpdbh->begin_work;
+			for my $row (@{$rows}) {
+				$sth->execute(map { $row->{$_} } @{$cols});
+				if (++$batch >= 1_000) {
+					$tmpdbh->commit;
+					$tmpdbh->begin_work;
+					$batch = 0;
 				}
-				$tmpdbh->commit;
 			}
-		} else {
-			$tmpdbh->do(qq{CREATE TABLE "$tbl" (_dummy TEXT)});
+			$tmpdbh->commit;
 		}
 		$table_refs[$i]  = "\"$tbl\"";
 		$is_attached[$i] = 0;
