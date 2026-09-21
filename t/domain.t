@@ -1553,7 +1553,7 @@ note '--- Section 22: Multibyte and character domain ---';
 			{ $JC => 'bar',          pop => 9_000_000 },
 		],
 	);
-	my $j   = Database::Join->new(databases => [$p, $s], join_column => $JC);
+	my $j = Database::Join->new(databases => [$p, $s], join_column => $JC);
 	my $row = $j->fetchrow_hashref($JC => "caf\x{00e9}");
 	is($row->{region}, 'Paris',
 		'multibyte: unicode char in join key retrieves correct merged row (EP unicode-key)');
