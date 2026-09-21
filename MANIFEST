@@ -45,6 +45,7 @@ t/path.t
 t/sqlite-backend.t
 t/test1_2.t
 t/transaction.t
+t/transition.t
 t/tsv.t
 t/unit.t
 t/xlsx.t
