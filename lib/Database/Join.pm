@@ -2170,7 +2170,28 @@ sub _joined_query_array :Protected {
 
 	# Fetch and index each database with its own criteria slice.
 	my @indexed;
-	$indexed[$_] = $self->_fetch_indexed($_, $per_db->[$_]) for 0 .. $n - 1;
+	$indexed[0] = $self->_fetch_indexed(0, $per_db->[0]);
+
+	# Early exit: for inner and left joins, an empty primary result means the
+	# key set is provably empty (left: primary defines it; inner: ∩ ∅ = ∅).
+	# Skipping secondary fetches avoids up to N-1 unnecessary DA round-trips.
+	#
+	# Two guards prevent premature exit:
+	#   (a) join-column broadcast: when a join-col criterion is present it must
+	#       be physically delivered to each secondary DA (the call itself is what
+	#       forwards it; the partition only prepared the per-db slice).
+	#   (b) secondary-owned criteria: a secondary with its own criteria (e.g.
+	#       score => $val) must still be queried so those criteria are delivered.
+	#       Without the call the DA never receives them — breaking the partition-
+	#       isolation invariant the security tests verify.
+	my $local_jc_0_early    = $self->{_join_map}{0} // $join_col;
+	my $sec_has_criteria    = grep { %{ $per_db->[$_] } } 1 .. $n - 1;
+	return [] if !%{ $indexed[0] }
+	          && $join_type ne 'outer'
+	          && !exists $per_db->[0]{$local_jc_0_early}
+	          && !$sec_has_criteria;
+
+	$indexed[$_] = $self->_fetch_indexed($_, $per_db->[$_]) for 1 .. $n - 1;
 
 	# Premise: the key-set resolution loop starts at i=1 (primary seeds %key_set).
 	# Conclusion: $had_criteria[0] is a dead store (D~); compute only for i >= 1.
@@ -2323,6 +2344,7 @@ sub _cache_fresh :Protected {
 # Entry:   _dbs, _join_map, _filters, _tmpdir must be set.
 # Exit:    $self->{_sqlite_cache} holds {dbh, tmpfile, table_refs, source_cols,
 #          is_attached, updated, n}.  Any previous cache is disconnected first.
+#          Each spilled table has a B-tree index on its join column.
 # Effects: Creates a File::Temp file (SUFFIX='.db', DIR=_tmpdir, UNLINK=1).
 #          Croaks with error_sqlite_connect if DBI::connect fails.
 sub _build_sqlite_cache :Protected {
@@ -2396,6 +2418,10 @@ sub _build_sqlite_cache :Protected {
 
 		my $col_defs = join(', ', map { "\"$_\" TEXT" } @{$cols});
 		$tmpdbh->do(qq{CREATE TABLE "$tbl" ($col_defs)});
+		# Index on the join column: upgrades ON-clause equality lookups from
+		# an O(N²) full-table nested-loop scan to O(N log N) b-tree seek.
+		# SQLite query planner uses it for INNER JOIN / LEFT JOIN ON expressions.
+		$tmpdbh->do(qq{CREATE INDEX "${tbl}_jc" ON "$tbl" ("$local_jc")});
 
 		if (@{$rows}) {
 			my $col_list     = join(', ', map { "\"$_\"" } @{$cols});
@@ -2643,7 +2669,11 @@ sub _sqlite_join :Protected {
 	        . $where_sql
 	        . ' ORDER BY ' . $order_col;
 
-	my $sth = $tmpdbh->prepare($sql);
+	# prepare_cached reuses the parsed statement when the same SQL is executed
+	# again (e.g. identical criteria pattern in a pagination or batch loop),
+	# avoiding repeated statement compilation overhead.  fetchall_arrayref
+	# always exhausts the result set, so the handle is never left active.
+	my $sth = $tmpdbh->prepare_cached($sql);
 	$sth->execute(@bind_vals);
 	return $sth->fetchall_arrayref({});
 }
