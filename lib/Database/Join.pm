@@ -387,14 +387,14 @@ large.  To opt in to the SQLite path for such a DA, either add your own
 C<count()> override that returns the total row count, implement C<dbi_source()>,
 or use C<backend =E<gt> 'sqlite'> unconditionally.
 
-=item dbi_source() zero-copy path is skipped when query-time criteria apply
+=item dbi_source() ATTACH is unconditional - query-time criteria go into WHERE
 
-When a component database implements C<dbi_source()> but the current query
-includes criteria for columns in that database, C<Database::Join> cannot use
-the zero-copy ATTACH path (doing so would require generating a C<WHERE> clause
-inside the attached database, which is not supported in this version).  The
-database is queried normally via C<selectall_arrayref> and rows are spilled
-into the temporary SQLite file instead.
+When a component database implements C<dbi_source()>, C<Database::Join> always
+uses the zero-copy ATTACH path, I<even when the current query includes criteria
+for columns in that database>.  The criteria are translated into parameterised
+SQL C<WHERE> clauses applied against the ATTACHed table; no row-level copy is
+performed.  (Prior to 0.005.0 the presence of any query-time criteria would
+force a spill; that restriction has been removed.)
 
 =item Temp file directory must be writable and have free space
 

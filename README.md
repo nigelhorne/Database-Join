@@ -330,14 +330,14 @@ preserve both values under distinct names instead.
     `count()` override that returns the total row count, implement `dbi_source()`,
     or use `backend => 'sqlite'` unconditionally.
 
-- dbi\_source() zero-copy path is skipped when query-time criteria apply
+- dbi\_source() ATTACH is unconditional - query-time criteria go into WHERE
 
-    When a component database implements `dbi_source()` but the current query
-    includes criteria for columns in that database, `Database::Join` cannot use
-    the zero-copy ATTACH path (doing so would require generating a `WHERE` clause
-    inside the attached database, which is not supported in this version).  The
-    database is queried normally via `selectall_arrayref` and rows are spilled
-    into the temporary SQLite file instead.
+    When a component database implements `dbi_source()`, `Database::Join` always
+    uses the zero-copy ATTACH path, _even when the current query includes criteria
+    for columns in that database_.  The criteria are translated into parameterised
+    SQL `WHERE` clauses applied against the ATTACHed table; no row-level copy is
+    performed.  (Prior to 0.005.0 the presence of any query-time criteria would
+    force a spill; that restriction has been removed.)
 
 - Temp file directory must be writable and have free space
 

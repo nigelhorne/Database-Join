@@ -25,9 +25,9 @@ use warnings;
 #      resolution loop starts at i=1; when n==1, $had_criteria[0] is a
 #      permanent dead store.
 #
-#   3. Filter reference aliasing (annotated):
-#      $self->{_filters} stores the caller's hashref directly.  External
-#      mutation after construction silently changes query behaviour.
+#   3. Filter reference aliasing (FIXED):
+#      _copy_filters() deep-copies the caller's hashref at construction time.
+#      Post-construction mutation of the original hashref has no effect.
 #
 # All component databases are inline stubs (no SQLite, no disk I/O).
 # ---------------------------------------------------------------------------
@@ -490,11 +490,10 @@ subtest 'filter applied on every query: all results respect base restriction' =>
 	}
 };
 
-subtest 'filter reference aliasing — external mutation affects subsequent queries' => sub {
-	# DATA FLOW ANOMALY (annotated in Join.pm): _filters stores the caller's hashref
-	# directly.  Mutation after construction silently changes query behaviour.
-	# This test documents the current (reference-aliasing) behaviour.  A future
-	# deep-copy fix would make this test fail; update accordingly.
+subtest 'filter deep-copy isolation — post-construction mutation has no effect' => sub {
+	# Security property: _copy_filters() deep-copies the caller's hashref at
+	# construction time.  Mutating the original after new() must not change the
+	# stored filter, preserving the row-security guarantee.
 	my $filter_href = { score => '10' };
 	my $da          = DFRecordingDA->new(
 		cols => ['entry', 'score'],
@@ -513,18 +512,15 @@ subtest 'filter reference aliasing — external mutation affects subsequent quer
 	my $rows_before = $j->selectall_arrayref();
 	is scalar @{$rows_before}, 1, 'pre-mutation: filter restricts to 1 row';
 
-	# Mutate the caller's filter hashref
-	$filter_href->{score} = '20';    # now filter matches score=20 instead
+	# Mutate the caller's hashref — the stored deep-copy must be unaffected
+	$filter_href->{score} = '20';
 
-	# If reference aliasing is in effect, the next query uses the mutated filter
+	# The stored filter must still be '10' (the original value)
 	$da->clear_received();
-	my $rows_after = $j->selectall_arrayref();
+	my $rows_after  = $j->selectall_arrayref();
 	my $filter_used = $da->received()->[-1]{hashref};
-	TODO: {
-		local $TODO = 'filter aliasing is a known anomaly (see TODO in Join.pm)';
-		is $filter_used->{score}, '20',
-			'mutated filter hashref flows into query criteria (aliasing confirmed)';
-	}
+	is $filter_used->{score}, '10',
+		'deep-copy isolation: post-construction mutation does not affect stored filter';
 };
 
 subtest 'empty filter {} per DB: acts as no-op filter' => sub {
