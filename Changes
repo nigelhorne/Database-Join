@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.005.0
+0.005.0	Mon Sep 21 02:13:04 PM EDT 2026
 	[ Enhancements ]
 	- SQLite backend now caches the spilled temporary database across query
 	  calls on the same Database::Join object.  Source data is spilled once
