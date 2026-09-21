@@ -2787,7 +2787,7 @@ Approximate LCSAJ segments: 217<br>
 </span><span class=""> 2416: 				$tmpdbh-&gt;begin_work;
 </span><span class=""> 2417: 				for my $row (@{$rows}) {
 </span><span class=""> 2418: 					$sth-&gt;execute(map { $row-&gt;{$_} } @{$cols});
-</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one). Mutation survived. Add targeted tests to validate this branch."> 2419: 					if (++$batch &gt;= 1_000) {
+</span><span class="survived-3 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch. Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 2419: 					if (++$batch &gt;= 1_000) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 4, Killed: 0, Survived: 4)</summary>
