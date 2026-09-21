@@ -20,7 +20,7 @@ https://pjcj.net
 <h1>Branch Coverage</h1>
 <table>
 <tr><td class="h" align="right">File:</td><td align="left">blib/lib/Database/Join.pm</td></tr>
-<tr><td class="h" align="right">Coverage:</td><td align="left" class="c2">90.4%</td></tr>
+<tr><td class="h" align="right">Coverage:</td><td align="left" class="c2">90.8%</td></tr>
 </table>
 <div><br/></div>
 <table>
@@ -114,13 +114,12 @@ eval {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$src-&gt;{&#39;dbh&#39;}{&#39;Driver&#39;}{&#39;Name&#39;}
 }
 } eq &quot;SQLite&quot;)</td></tr>
-<tr><td class="h"><a id="L2397">2397</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if (@{$cols;}) { }</td></tr>
-<tr><td class="h"><a id="L2401">2401</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if (@{$rows;})</td></tr>
-<tr><td class="h"><a id="L2411">2411</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if (++$batch &gt;= 1000)</td></tr>
-<tr><td class="h"><a id="L2431">2431</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $@</td></tr>
-<tr><td class="h"><a id="L2483">2483</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">%{$base;} ? :</td></tr>
-<tr><td class="h"><a id="L2495">2495</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($backend eq &quot;auto&quot;)</td></tr>
-<tr><td class="h"><a id="L2502">2502</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (do {
+<tr><td class="h"><a id="L2400">2400</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if (@{$rows;})</td></tr>
+<tr><td class="h"><a id="L2410">2410</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if (++$batch &gt;= 1000)</td></tr>
+<tr><td class="h"><a id="L2427">2427</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $@</td></tr>
+<tr><td class="h"><a id="L2479">2479</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">%{$base;} ? :</td></tr>
+<tr><td class="h"><a id="L2491">2491</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($backend eq &quot;auto&quot;)</td></tr>
+<tr><td class="h"><a id="L2498">2498</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (do {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;local $@;
 eval {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do {
@@ -128,39 +127,39 @@ eval {
 }
 }
 })</td></tr>
-<tr><td class="h"><a id="L2504">2504</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if ($src and ref $src eq &quot;HASH&quot; and $src-&gt;{&#39;dbh&#39;} and $src-&gt;{&#39;table&#39;} and eval {
+<tr><td class="h"><a id="L2500">2500</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if ($src and ref $src eq &quot;HASH&quot; and $src-&gt;{&#39;dbh&#39;} and $src-&gt;{&#39;table&#39;} and eval {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$src-&gt;{&#39;dbh&#39;}{&#39;Driver&#39;}{&#39;Name&#39;}
 }
 } eq &quot;SQLite&quot;)</td></tr>
-<tr><td class="h"><a id="L2518">2518</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($pkg and do {
+<tr><td class="h"><a id="L2514">2514</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($pkg and do {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;no strict &#39;refs&#39;;
 defined &amp;{&quot;${pkg}::count&quot;;}
 })</td></tr>
-<tr><td class="h"><a id="L2521">2521</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if ($failed)</td></tr>
-<tr><td class="h"><a id="L2532">2532</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if not $can_count or $total &lt;= $self-&gt;{&#39;_max_array_rows&#39;}</td></tr>
-<tr><td class="h"><a id="L2536">2536</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $self-&gt;_cache_fresh</td></tr>
-<tr><td class="h"><a id="L2549">2549</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$is_attached[$i] ? :</td></tr>
-<tr><td class="h"><a id="L2550">2550</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless %{$crit;}</td></tr>
-<tr><td class="h"><a id="L2554">2554</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if (ref $val eq &#39;HASH&#39;) { }</td></tr>
-<tr><td class="h"><a id="L2556">2556</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless $SAFE_SQL_OPS{$op}</td></tr>
-<tr><td class="h"><a id="L2566">2566</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">@where_parts ? :</td></tr>
-<tr><td class="h"><a id="L2579">2579</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">unless ($self-&gt;{&#39;_removed_cols&#39;}{$join_col})</td></tr>
-<tr><td class="h"><a id="L2581">2581</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($join_type eq &#39;outer&#39; and $n &gt; 1) { }</td></tr>
-<tr><td class="h"><a id="L2590">2590</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $local_jc_0 ne $join_col</td></tr>
-<tr><td class="h"><a id="L2598">2598</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $col eq $local_jc_0</td></tr>
-<tr><td class="h"><a id="L2599">2599</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $self-&gt;{&#39;_removed_cols&#39;}{$col}</td></tr>
-<tr><td class="h"><a id="L2609">2609</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $col eq $local_jc</td></tr>
-<tr><td class="h"><a id="L2612">2612</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $prefix and exists $pub_seen{$col} and $col ne $join_col</td></tr>
-<tr><td class="h"><a id="L2613">2613</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $self-&gt;{&#39;_removed_cols&#39;}{$pub}</td></tr>
-<tr><td class="h"><a id="L2616">2616</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $pub ne $col</td></tr>
-<tr><td class="h"><a id="L2630">2630</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$join_type eq &#39;outer&#39; ? :</td></tr>
+<tr><td class="h"><a id="L2517">2517</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if ($failed)</td></tr>
+<tr><td class="h"><a id="L2528">2528</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if not $can_count or $total &lt;= $self-&gt;{&#39;_max_array_rows&#39;}</td></tr>
+<tr><td class="h"><a id="L2532">2532</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $self-&gt;_cache_fresh</td></tr>
+<tr><td class="h"><a id="L2545">2545</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$is_attached[$i] ? :</td></tr>
+<tr><td class="h"><a id="L2546">2546</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless %{$crit;}</td></tr>
+<tr><td class="h"><a id="L2550">2550</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if (ref $val eq &#39;HASH&#39;) { }</td></tr>
+<tr><td class="h"><a id="L2552">2552</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless $SAFE_SQL_OPS{$op}</td></tr>
+<tr><td class="h"><a id="L2562">2562</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">@where_parts ? :</td></tr>
+<tr><td class="h"><a id="L2575">2575</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">unless ($self-&gt;{&#39;_removed_cols&#39;}{$join_col})</td></tr>
+<tr><td class="h"><a id="L2577">2577</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($join_type eq &#39;outer&#39; and $n &gt; 1) { }</td></tr>
+<tr><td class="h"><a id="L2586">2586</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $local_jc_0 ne $join_col</td></tr>
+<tr><td class="h"><a id="L2594">2594</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $col eq $local_jc_0</td></tr>
+<tr><td class="h"><a id="L2595">2595</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $self-&gt;{&#39;_removed_cols&#39;}{$col}</td></tr>
+<tr><td class="h"><a id="L2605">2605</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $col eq $local_jc</td></tr>
+<tr><td class="h"><a id="L2608">2608</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $prefix and exists $pub_seen{$col} and $col ne $join_col</td></tr>
+<tr><td class="h"><a id="L2609">2609</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $self-&gt;{&#39;_removed_cols&#39;}{$pub}</td></tr>
+<tr><td class="h"><a id="L2612">2612</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $pub ne $col</td></tr>
+<tr><td class="h"><a id="L2626">2626</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$join_type eq &#39;outer&#39; ? :</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$had_criteria[$i] || $join_type eq &#39;inner&#39; ? :</td></tr>
-<tr><td class="h"><a id="L2641">2641</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1 ? :</td></tr>
-<tr><td class="h"><a id="L2667">2667</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (exists $merged{$col} and ref $merged{$col} eq &#39;HASH&#39; and ref $extra-&gt;{$col} eq &#39;HASH&#39;) { }</td></tr>
-<tr><td class="h"><a id="L2688">2688</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $criteria and %{$criteria;}</td></tr>
-<tr><td class="h"><a id="L2693">2693</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $criteria-&gt;{$_} eq &#39;HASH&#39; ? :</td></tr>
-<tr><td class="h"><a id="L2706">2706</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $filters and %{$filters;}</td></tr>
+<tr><td class="h"><a id="L2637">2637</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1 ? :</td></tr>
+<tr><td class="h"><a id="L2663">2663</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (exists $merged{$col} and ref $merged{$col} eq &#39;HASH&#39; and ref $extra-&gt;{$col} eq &#39;HASH&#39;) { }</td></tr>
+<tr><td class="h"><a id="L2684">2684</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $criteria and %{$criteria;}</td></tr>
+<tr><td class="h"><a id="L2689">2689</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $criteria-&gt;{$_} eq &#39;HASH&#39; ? :</td></tr>
+<tr><td class="h"><a id="L2702">2702</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $filters and %{$filters;}</td></tr>
 </table>
 </body>
 </html>
