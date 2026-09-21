@@ -728,14 +728,14 @@ Approximate LCSAJ segments: 145<br>
 </span><span class="">  387: C&lt;count()&gt; override that returns the total row count, implement C&lt;dbi_source()&gt;,
 </span><span class="">  388: or use C&lt;backend =E&lt;gt&gt; &#39;sqlite&#39;&gt; unconditionally.
 </span><span class="">  389: 
-</span><span class="">  390: =item dbi_source() zero-copy path is skipped when query-time criteria apply
+</span><span class="">  390: =item dbi_source() ATTACH is unconditional - query-time criteria go into WHERE
 </span><span class="">  391: 
-</span><span class="">  392: When a component database implements C&lt;dbi_source()&gt; but the current query
-</span><span class="">  393: includes criteria for columns in that database, C&lt;Database::Join&gt; cannot use
-</span><span class="">  394: the zero-copy ATTACH path (doing so would require generating a C&lt;WHERE&gt; clause
-</span><span class="">  395: inside the attached database, which is not supported in this version).  The
-</span><span class="">  396: database is queried normally via C&lt;selectall_arrayref&gt; and rows are spilled
-</span><span class="">  397: into the temporary SQLite file instead.
+</span><span class="">  392: When a component database implements C&lt;dbi_source()&gt;, C&lt;Database::Join&gt; always
+</span><span class="">  393: uses the zero-copy ATTACH path, I&lt;even when the current query includes criteria
+</span><span class="">  394: for columns in that database&gt;.  The criteria are translated into parameterised
+</span><span class="">  395: SQL C&lt;WHERE&gt; clauses applied against the ATTACHed table; no row-level copy is
+</span><span class="">  396: performed.  (Prior to 0.005.0 the presence of any query-time criteria would
+</span><span class="">  397: force a spill; that restriction has been removed.)
 </span><span class="">  398: 
 </span><span class="">  399: =item Temp file directory must be writable and have free space
 </span><span class="">  400: 
