@@ -1952,6 +1952,127 @@ Unicode is used throughout this section as required by Z notation.
     ∀ C : CRITERIA •
         _sqlite_join(C) = _joined_query_array(C)
 
+# STATE DIAGRAM
+
+`Database::Join` objects follow three independent finite state machines (FSMs).
+Each FSM is described with an ASCII diagram showing valid states (boxes), the
+triggers that cause transitions (arrows), and important side-effects.
+
+## FSM 1: Object Lifecycle
+
+Governs the structural state of a `Database::Join` instance.
+Query methods (`selectall_arrayref`, `fetchrow_hashref`, `count`,
+`columns`, `schema`, `updated`) are schema-preserving (Xi-transitions) and
+are not shown because they do not change state.
+
+    [pre-creation]
+         |
+         | new( databases => [...], join_column => '...' )
+         |   Side-effect: _col_db routing table built;
+         |                _autoload_pk cached from dbs[0]{id}
+         v
+    [CONSTRUCTED] <-----------------------------------------+
+         |    |                                              |
+         |    +--------------------------------------------+ |
+         |    (query methods: no structural change)         | |
+         |                                                  | |
+         |-- remove_column( col ) -------> [COL_REMOVED] <--+ |
+         |                                      |    |        |
+         |   Side-effect: col removed from       |    |        |
+         |   _col_db; _col_cache and             +----+        |
+         |   _schema_cache cleared.              (idempotent;  |
+         |   Join column cannot be removed.)      chainable)   |
+         |                                                     |
+         +-- add_database( db ) ----------> [DB_ADDED] <------+
+                                                |    |
+             Side-effect: new columns added;    |    | add_database( db )
+             _col_db extended; SQLite cache     |    | (chainable; each
+             invalidated (if any).              +----+  extends the view)
+
+    Note: COL_REMOVED and DB_ADDED are not mutually exclusive.
+    Both transitions are legal on any valid object, in any order.
+
+    Illegal triggers (always croak; object state is not changed):
+
+      Trigger                              Error
+      -----------------------------------  ---------------------------------
+      new( databases => [] )               error_no_databases
+      remove_column( join_column )         error_remove_join_column
+      add_database( non-reference )        error_invalid_database
+      new() with join_col absent from DB   error_join_col_absent
+
+## FSM 2: SQLite Cache Lifecycle
+
+Governs the temporary SQLite cache used by the `backend='sqlite'` and
+`backend='auto'` join paths.  The cache does not exist until the first
+query on the SQLite path.
+
+    [ABSENT] <----- add_database( db )
+       |                  |
+       |  (no temp file)  | Side-effect: old DBI handle disconnected;
+       |                  |   _sqlite_cache deleted.
+       |                  |
+       |                  +<-------------------------------------------+
+       |                                                               |
+       | first query on SQLite path                                    |
+       | Side-effect: File::Temp db created in tmpdir;                 |
+       |   DBI connected; sources ATTACHed or spilled;                 |
+       |   _sqlite_cache = { dbh, tmpfile, n, updated, ... }           |
+       v                                                               |
+    [FRESH] <--+                                                       |
+       |        |                                                      |
+       |        | subsequent queries                                   |
+       |        | (cache reused; refaddr of _sqlite_cache unchanged)   |
+       +--------+                                                      |
+       |                                                               |
+       | updated() timestamp of any source DA changes                  |
+       | -- OR -- source row count changes                             |
+       | Side-effect: none yet (_cache_fresh returns false)            |
+       v                                                               |
+    [STALE]                                                            |
+       |                                                               |
+       | next query                                                    |
+       | Side-effect: old DBI handle disconnected; old temp file       |
+       |   unlinked; new temp file built from current source data.     |
+       +---------------------------------------------------------------+
+       (transitions to FRESH)
+
+    On object DESTROY:
+      FRESH/STALE:  DBI handle disconnected; File::Temp object released
+                    (temp file unlinked by File::Temp DESTROY).
+      ABSENT:       No temp file exists; no-op.
+
+## FSM 3: Column Visibility (per column)
+
+Each column in the logical view independently follows a two-state machine.
+Transition from VISIBLE to REMOVED is one-way: `add_database` never
+restores a column that is in `_removed_cols`.
+
+    [VISIBLE] <-- initial state for every column at construction
+         |    |
+         |    | query / columns() / schema()
+         |    | (column present in results; no state change)
+         +----+
+         |
+         | remove_column( col )
+         | Side-effect: col deleted from _col_db;
+         |   _col_cache and _schema_cache cleared.
+         v
+    [REMOVED] <---+
+         |         |
+         |         | remove_column( col ) again
+         |         | (idempotent; no error; no second side-effect)
+         +---------+
+
+    One-way invariant:
+      If col is in _removed_cols, then add_database( db_that_has_col )
+      does NOT re-add it.  Formal: col_db' = col_db ⊕ { c | c in
+      ran(db.columns) \ {local_jc} \ removed }.
+
+    Illegal trigger:
+      remove_column( join_column )  -- error_remove_join_column (croaks;
+                                       state unchanged)
+
 # AUTHOR
 
 Nigel Horne, `<njh@nigelhorne.com>`

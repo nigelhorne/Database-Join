@@ -20,7 +20,7 @@
 use strict;
 use warnings;
 
-use Test::Most tests => 58;
+use Test::Most tests => 60;
 use Readonly;
 
 use lib 't/lib';
@@ -88,6 +88,15 @@ use_ok('Database::Join') or BAIL_OUT('Database::Join failed to load');
 	package LogicNoTsDA;
 	use parent -norequire, 'LogicDA';
 	sub updated { return undef }
+}
+
+# Minimal stub that has selectall_arrayref but NOT columns().
+# Used by L14 to prove that the P1 invariant is enforced at every entry point.
+{
+	package NoCols;
+	sub new     { bless {}, shift }
+	sub selectall_arrayref { return [] }
+	sub DESTROY {}
 }
 
 # ===========================================================================
@@ -929,4 +938,97 @@ subtest 'L13: _partition_criteria broadcast is isolated per DA (operator hashref
 	my $rows = $j->selectall_arrayref(entry => 'A');
 	is(scalar @{$rows}, 1, 'L13: broadcast isolation: 1 row returned');
 	is($rows->[0]{v}, 1, 'L13: broadcast isolation: correct row (entry=A, v=1)');
+};
+
+# ===========================================================================
+# L14: Transitive Reduction -- P1 invariant: every DA in _dbs has columns()
+#
+# Major Premise: new() validates blessed($db) && can('selectall_arrayref')
+#   && can('columns') for every element of databases before registering it.
+# Major Premise: add_database() applies the same guard before registration.
+# Conclusion: $db->can('columns') is ALWAYS true for all _dbs elements.
+# Corollary: the if($db->can('columns')) guards in _build_sqlite_cache are
+#   vacuous checks; both else branches are unreachable dead code.
+# ===========================================================================
+subtest 'L14: Transitive Reduction -- P1: _dbs satisfies can(columns) invariant' => sub {
+	plan tests => 4;
+
+	# Minor Premise: NoCols has selectall_arrayref but no columns() method.
+	# Modus Ponens: P1 guard fires => new() must croak error_invalid_db.
+	throws_ok {
+		Database::Join->new(
+			databases   => [NoCols->new()],
+			join_column => 'entry',
+			backend     => 'array',
+		)
+	} qr/does not support/i,
+		'L14a: DA lacking columns() croaks at new() (P1 guard enforced)';
+
+	# Minor Premise: a valid join exists; attempt to add a NoCols instance.
+	# Modus Ponens: add_database() guard fires => must croak error_invalid_db.
+	my $j14 = Database::Join->new(
+		databases   => [LogicDA->new(cols => ['entry','x'], rows => [])],
+		join_column => 'entry',
+		backend     => 'array',
+	);
+	throws_ok {
+		$j14->add_database(NoCols->new())
+	} qr/does not support/i,
+		'L14b: DA lacking columns() croaks at add_database() (P1 guard enforced)';
+
+	# Post-condition: every registered DA satisfies can('columns').
+	ok($j14->{_dbs}[0]->can('columns'),
+		'L14c: _dbs[0] satisfies can(columns) after construction');
+
+	my $s14 = LogicDA->new(cols => ['entry','y'], rows => []);
+	$j14->add_database($s14);
+	ok($j14->{_dbs}[1]->can('columns'),
+		'L14d: _dbs[1] satisfies can(columns) after add_database');
+};
+
+# ===========================================================================
+# L15: Dead Store Elimination -- _parse_query_args empty-args fast path
+#
+# Major Premise: _parse_query_args partitions its inputs into three cases:
+#   (a) @args empty     => always return {} (join_col key unused: dead store)
+#   (b) 1 non-ref arg   => return { join_col => arg } ($key is used)
+#   (c) anything else   => return get_params result ($key unused)
+#
+# After moving the empty-args guard above the $key assignment, case (a)
+# never reads $join_col from the object -- behaviour is identical, cost lower.
+# Equivalence partitioning: prove each of the three partitions independently.
+# ===========================================================================
+subtest 'L15: Dead Store -- _parse_query_args empty-args fast path' => sub {
+	plan tests => 4;
+
+	my $p15 = LogicDA->new(
+		cols => ['entry','v'],
+		rows => [{ entry => 'A', v => 1 }, { entry => 'B', v => 2 }],
+	);
+	my $j15 = Database::Join->new(
+		databases   => [$p15],
+		join_column => 'entry',
+		backend     => 'array',
+	);
+
+	# Partition (a): empty args => {} criteria => all rows returned.
+	# Syllogism: empty @args => fast-path return {}; join_col never consulted.
+	my $all = $j15->selectall_arrayref();
+	is(scalar @{$all}, 2,
+		'L15a: empty args => {} criteria => all 2 rows (fast-path, join_col irrelevant)');
+
+	# Partition (b): single non-ref arg => treated as join_col => val.
+	# Syllogism: @args=1 && !ref => return {join_col => $args[0]}; filters to 1 row.
+	my $one = $j15->selectall_arrayref('A');
+	is(scalar @{$one}, 1,
+		'L15b: single positional arg => join_col criterion => 1 row');
+
+	is($one->[0]{entry}, 'A',
+		'L15c: positional arg correctly maps to join_col=entry');
+
+	# Partition (c): named-pair args => get_params path => criterion preserved.
+	# Syllogism: @args > 1 => get_params(undef, @args); $key is unused (second dead store).
+	my $named = $j15->selectall_arrayref(entry => 'B');
+	is($named->[0]{v}, 2,
+		'L15d: named-pair arg => get_params path => entry=B yields v=2');
 };
