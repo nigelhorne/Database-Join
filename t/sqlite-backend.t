@@ -416,7 +416,8 @@ subtest 'dbi_source: ATTACH used, no INSERT issued for that source' => sub {
 		no warnings 'redefine';
 		*DBI::db::do = sub {
 			my ($dbh, $sql, @rest) = @_;
-			push @inserts, $sql if $sql =~ /^\s*INSERT/i;
+			# \s*+ possessive: O(1) failure on non-INSERT strings (no backtrack).
+			push @inserts, $sql if $sql =~ /^\s*+INSERT/i;
 			$orig_do->($dbh, $sql, @rest);
 		};
 	}
@@ -543,7 +544,7 @@ subtest 'dbi_source: ATTACH works with .sqlite file extension' => sub {
 	my $orig_do = \&DBI::db::do;
 	{ no warnings 'redefine'; *DBI::db::do = sub {
 		my ($dbh, $sql, @rest) = @_;
-		push @inserts, $sql if $sql =~ /^\s*INSERT/i;
+		push @inserts, $sql if $sql =~ /^\s*+INSERT/i;
 		$orig_do->($dbh, $sql, @rest);
 	} }
 
@@ -595,7 +596,7 @@ subtest 'dbi_source: ATTACH works with .sqlite3 file extension' => sub {
 	my $orig_do = \&DBI::db::do;
 	{ no warnings 'redefine'; *DBI::db::do = sub {
 		my ($dbh, $sql, @rest) = @_;
-		push @inserts, $sql if $sql =~ /^\s*INSERT/i;
+		push @inserts, $sql if $sql =~ /^\s*+INSERT/i;
 		$orig_do->($dbh, $sql, @rest);
 	} }
 
@@ -765,7 +766,7 @@ subtest 'ATTACH with criteria: zero-copy path used; WHERE filters correctly' => 
 	my $orig_do = \&DBI::db::do;
 	{ no warnings 'redefine'; *DBI::db::do = sub {
 		my ($dbh, $sql, @rest) = @_;
-		push @inserts, $sql if $sql =~ /^\s*INSERT/i;
+		push @inserts, $sql if $sql =~ /^\s*+INSERT/i;
 		$orig_do->($dbh, $sql, @rest);
 	} }
 
