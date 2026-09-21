@@ -20,7 +20,7 @@ https://pjcj.net
 <h1>Branch Coverage</h1>
 <table>
 <tr><td class="h" align="right">File:</td><td align="left">blib/lib/Database/Join.pm</td></tr>
-<tr><td class="h" align="right">Coverage:</td><td align="left" class="c1">86.1%</td></tr>
+<tr><td class="h" align="right">Coverage:</td><td align="left" class="c1">87.0%</td></tr>
 </table>
 <div><br/></div>
 <table>
@@ -69,7 +69,7 @@ https://pjcj.net
 <tr><td class="h"><a id="L2008">2008</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ref $local_jc</td></tr>
 <tr><td class="h"><a id="L2012">2012</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $db_cols[$i]{$local_jc}</td></tr>
 <tr><td class="h"><a id="L2016">2016</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$i &gt; 0 ? :</td></tr>
-<tr><td class="h"><a id="L2023">2023</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if defined $prefix and ref $prefix</td></tr>
+<tr><td class="h"><a id="L2023">2023</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $prefix and ref $prefix</td></tr>
 <tr><td class="h"><a id="L2028">2028</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $local_jc ne $join_col and $col eq $local_jc</td></tr>
 <tr><td class="h"><a id="L2030">2030</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $prefix and exists $col_db{$col} and $col ne $join_col) { }</td></tr>
 <tr><td class="h"><a id="L2072">2072</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($col eq $join_col) { }</td></tr>
@@ -102,7 +102,7 @@ eval {
 <tr><td class="h"><a id="L2333">2333</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $old = delete $self-&gt;{&#39;_sqlite_cache&#39;})</td></tr>
 <tr><td class="h"><a id="L2335">2335</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if $old-&gt;{&#39;dbh&#39;}</td></tr>
 <tr><td class="h"><a id="L2350">2350</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless my $tmpdbh = &quot;DBI&quot;-&gt;connect(&#39;dbi:SQLite:dbname=&#39; . $tmpfile-&gt;filename, &quot;&quot;, &quot;&quot;, {&quot;RaiseError&quot;, 1, &quot;PrintError&quot;, 0, &quot;AutoCommit&quot;, 1})</td></tr>
-<tr><td class="h"><a id="L2365">2365</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if (do {
+<tr><td class="h"><a id="L2365">2365</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (do {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;local $@;
 eval {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do {
