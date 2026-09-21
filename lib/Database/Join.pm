@@ -2,6 +2,7 @@ package Database::Join;
 
 # ABSTRACT: Combined view across two or more Database::Abstraction objects
 
+use 5.010001;
 use strict;
 use warnings;
 use autodie qw(:all);
@@ -25,6 +26,83 @@ Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_column
 Readonly::Hash my %SAFE_SQL_OPS => map { $_ => 1 } qw(> < >= <= != =);
 
 our $VERSION = '0.005.0';
+
+# ---------------------------------------------------------------------------
+# KNOWN GAPS & ROADMAP (derived from gap-analysis 2026-09-21)
+#
+# PRE-RELEASE BLOCKERS
+#
+# TODO: LIKE silently dropped on SQLite path (undocumented cross-backend gap)
+#   %SAFE_SQL_OPS covers { > < >= <= != = } only.  LIKE, NOT LIKE, IN, NOT IN,
+#   IS NULL, and IS NOT NULL are silently skipped on the SQLite path with no
+#   warning, while the array path passes them directly to the component DA
+#   (which may honour them).  A caller who develops against a small dataset
+#   (array path) and deploys at scale (SQLite path) gets silently wider results.
+#   Fix options: (a) add LIKE to %SAFE_SQL_OPS — safe with bind params; or
+#   (b) add a carp when an unrecognised operator is encountered on the SQLite
+#   path so callers are not silently misled.  Either way, add a COMMON PITFALLS
+#   entry.  See t/cgi_security.t for the %SAFE_SQL_OPS operator-whitelist tests.
+#
+# TODO: Missing =head3 MESSAGES POD sections in eight public methods
+#   Only new(), add_database(), and remove_column() document their error and
+#   warning strings under =head3 MESSAGES.  The following methods can also
+#   carp or croak and need matching sections: selectall_arrayref,
+#   selectall_array, fetchrow_hashref, count, columns, schema, updated,
+#   set_logger, AUTOLOAD.
+#
+# TODO: updated() not defensive against DAs without updated()
+#   sub updated { return max(map { $_->updated() } @{$self->{_dbs}}) }
+#   will propagate an uncaught exception if any component DA does not implement
+#   updated().  _cache_fresh() already handles this gracefully with eval{}.
+#   Either wrap the map body in eval and skip undef returns (consistent with
+#   _cache_fresh), or document the contract requirement in LIMITATIONS.
+#
+# POST-RELEASE ROADMAP
+#
+# TODO: count() SQL push-down on the SQLite path
+#   count() calls _joined_query() and returns scalar @{$rows}, fetching every
+#   row just to count them.  On the cached SQLite backend a SELECT COUNT(*)
+#   against the join SQL would be orders of magnitude cheaper for large tables.
+#
+# TODO: LIKE / NOT LIKE in %SAFE_SQL_OPS (also covers the pre-release gap above)
+#   LIKE with a bind parameter (col LIKE ?) is injection-safe and would unify
+#   array-path and SQLite-path behaviour for pattern-matching criteria.
+#
+# TODO: IN (...) / NOT IN (...) list-operator support
+#   Set-membership criteria are common in read-only query layers.  Requires
+#   bind-parameter list expansion (one ? per element) in the WHERE builder.
+#
+# TODO: IS NULL / IS NOT NULL operator support
+#   Nullable-column filtering cannot be expressed as a bind-parameter operator.
+#   Handle undef criterion values with a separate IS NULL generation path
+#   instead of the current `next if !defined $val` no-op.
+#
+# TODO: Caller-specified ORDER BY on query methods
+#   Results are sorted by join_column only.  An order_by => 'col' (or
+#   order_by => ['col', 'DESC']) parameter would cover a common use-case:
+#   SQL ORDER BY clause on the SQLite path; Perl sort block on the array path.
+#
+# TODO: Limit / offset for pagination
+#   limit => N, offset => M on selectall_arrayref/selectall_array would enable
+#   paginated access.  SQLite path: LIMIT ? OFFSET ? clauses; array path: slice.
+#
+# TODO: dbi_source() on Database::Join itself (composable nested joins)
+#   The join object cannot act as a zero-copy SQLite source in a parent join.
+#   Implementing dbi_source() — returning the cached File::Temp handle and the
+#   join table name — would allow composable nested Database::Join objects at
+#   full ATTACHed speed.
+#
+# TODO: Parallel DA queries in _fetch_indexed
+#   Component DAs are queried sequentially.  An optional parallel => 1
+#   constructor flag could reduce latency by the factor of the slowest DA,
+#   with no change to the merge logic (Coro or IO::Async back-end).
+#
+# TODO: Schema type consistency validation at construction
+#   Columns shared across two DAs (without collision_prefix) are merged
+#   type-blind.  A validation pass comparing schema() types for overlapping
+#   columns at new()/add_database() time could warn callers before silent
+#   type coercion produces unexpected results.
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # All user-facing strings route through this dictionary.  Supply an i18n
@@ -2386,7 +2464,7 @@ sub _build_sqlite_cache :Protected {
 	my $tmpdbh = DBI->connect(
 		'dbi:SQLite:dbname=' . $tmpfile->filename, '', '',
 		{ RaiseError => 1, PrintError => 0, AutoCommit => 1 },
-	) or croak $self->_err('error_sqlite_connect', $DBI::errstr // 'unknown error');
+	) or croak $self->_err('error_sqlite_connect', DBI->errstr // 'unknown error');
 
 	my (@table_refs, @source_cols, @is_attached);
 
