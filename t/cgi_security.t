@@ -26,7 +26,7 @@ use Readonly;
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 88;
+	plan tests => 92;
 }
 
 use_ok('Database::Join');
@@ -1300,6 +1300,73 @@ note '--- SECTION 18: Null Byte in Join-Column Criteria Value ---';
 	} 'S18: null byte embedded in join-column criteria value does not croak';
 	is(scalar @{$rows}, 0,
 		'S18: null-byte value does not match real keys; 0 rows returned (no C-truncation)');
+}
+
+# ===========================================================================
+# SECTION 19 -- SQL Identifier Injection via DA-Supplied Column Name
+#
+# Major Premise: Column names returned by DA->columns() are embedded as SQL
+#   identifiers in the SQLite backend (CREATE TABLE, INSERT, SELECT, WHERE).
+#   A column name containing a literal double-quote character must be escaped
+#   by doubling it ("") inside the surrounding double-quoted identifier, per
+#   the ANSI SQL / SQLite standard.  Without _sql_quote_identifier(), the
+#   string "bad"col" would close the identifier early and inject SQL.
+#
+# Attack Model: A DA whose columns() returns ['entry', 'bad"col'] attempts
+#   SQL identifier injection through the spill-path CREATE TABLE, INSERT,
+#   SELECT, and WHERE clauses.  The fix must double every " so the column
+#   round-trips to SQLite safely, and criteria on that column must match
+#   exactly the rows whose value equals the criterion (no wildcard bleed).
+# ===========================================================================
+
+Readonly::Scalar my $INJECT_COL => 'bad"col';
+Readonly::Scalar my $INJECT_VAL => 'injection test';
+
+note '--- SECTION 19: SQL Identifier Injection via DA Column Name ---';
+
+# Tests 89 & 90
+# Proof: selectall_arrayref() survives a column name containing " and returns
+# the row with the column value intact (no SQL injection, no crash).
+{
+	my $inj_db = MockSecDB->new(
+		columns => ['entry', $INJECT_COL],
+		rows    => [{ entry => 'K1', $INJECT_COL => $INJECT_VAL }],
+	);
+	my ($j19, $rows);
+	lives_ok {
+		$j19 = Database::Join->new(
+			databases   => [$inj_db],
+			join_column => 'entry',
+			backend     => 'sqlite',
+		);
+		$rows = $j19->selectall_arrayref();
+	} 'S19: column name with embedded " round-trips through SQLite without croaking';
+	is($rows->[0]{$INJECT_COL}, $INJECT_VAL,
+		'S19: value of column with embedded " in name returned correctly');
+}
+
+# Tests 91 & 92
+# Proof: a WHERE criterion whose key is 'bad"col' is properly escaped in the
+# per-call SQL so only the matching row is returned (no SQL injection bleed).
+{
+	my $inj_db = MockSecDB->new(
+		columns => ['entry', $INJECT_COL],
+		rows    => [
+			{ entry => 'K1', $INJECT_COL => $INJECT_VAL },
+			{ entry => 'K2', $INJECT_COL => 'other'      },
+		],
+	);
+	my $j19b = Database::Join->new(
+		databases   => [$inj_db],
+		join_column => 'entry',
+		backend     => 'sqlite',
+	);
+	my $rows;
+	lives_ok {
+		$rows = $j19b->selectall_arrayref($INJECT_COL => $INJECT_VAL);
+	} 'S19: criteria keyed on column with embedded " does not croak';
+	is(scalar @{$rows}, 1,
+		'S19: WHERE clause on column "bad""col" returns exactly 1 matching row');
 }
 
 done_testing();
