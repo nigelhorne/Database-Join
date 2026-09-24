@@ -35,27 +35,12 @@ our $VERSION = '0.006.0';
 # ---------------------------------------------------------------------------
 # KNOWN GAPS & ROADMAP (derived from gap-analysis 2026-09-21)
 #
-# PRE-RELEASE BLOCKERS
-#
-# RESOLVED: =head3 MESSAGES POD sections added to all public methods (0.006.1).
-#
-# TODO: updated() not defensive against DAs without updated()
-#   sub updated { return max(map { $_->updated() } @{$self->{_dbs}}) }
-#   will propagate an uncaught exception if any component DA does not implement
-#   updated().  _cache_fresh() already handles this gracefully with eval{}.
-#   Either wrap the map body in eval and skip undef returns (consistent with
-#   _cache_fresh), or document the contract requirement in LIMITATIONS.
-#
 # POST-RELEASE ROADMAP
 #
 # TODO: count() SQL push-down on the SQLite path
 #   count() calls _joined_query() and returns scalar @{$rows}, fetching every
 #   row just to count them.  On the cached SQLite backend a SELECT COUNT(*)
 #   against the join SQL would be orders of magnitude cheaper for large tables.
-#
-# RESOLVED: LIKE / NOT LIKE added to %SAFE_SQL_OPS (0.006.0).
-#   Both operators use a single bind parameter (col LIKE ?) and are
-#   injection-safe.  Unknown operators now emit a carp instead of silent skip.
 #
 # TODO: IN (...) / NOT IN (...) list-operator support
 #   Set-membership criteria are common in read-only query layers.  Requires
@@ -1549,17 +1534,23 @@ has advanced since your last snapshot, re-query.
 
 =head3 MESSAGES
 
-C<updated()> does not itself emit any warnings or errors.  Any exception thrown
-by a component database's C<updated()> method (including the case where a
-component database does not implement C<updated()> at all) propagates uncaught.
-See L<LIMITATIONS> for guidance on handling component databases that do not
-implement C<updated()>.
+C<updated()> does not emit any warnings or errors.  Component databases that do
+not implement C<updated()>, or whose C<updated()> throws, are silently skipped;
+only defined return values contribute to the maximum.  If no component database
+implements C<updated()>, C<undef> is returned (same as C<List::Util::max> on an
+empty list).
 
 =cut
 
 sub updated {
 	my ($self) = @_;
-	return max(map { $_->updated() } @{ $self->{_dbs} });
+	my @timestamps;
+	for my $db (@{ $self->{_dbs} }) {
+		my $ts;
+		do { local $@; $ts = eval { $db->updated() } };
+		push @timestamps, $ts if defined $ts;
+	}
+	return max(@timestamps);
 }
 
 =head2 set_logger

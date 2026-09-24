@@ -6,6 +6,10 @@ Revision history for Database::Join
 	  selectall_array, fetchrow_hashref, count, columns, schema, updated,
 	  set_logger, AUTOLOAD) documenting every carp/croak each method can emit.
 	[ Bug fixes ]
+	- Fix: updated() now silently skips component databases that do not implement
+	  updated() or whose updated() throws.  Previously the exception propagated
+	  uncaught.  Consistent with the existing _cache_fresh() defensive pattern.
+	  Returns undef when no component database implements updated().
 	- Fix: LIKE and NOT LIKE operators now work correctly on the SQLite backend.
 	  Both operators use a single bind parameter (col LIKE ?) and are
 	  injection-safe.  Previously, LIKE/NOT LIKE were silently skipped on the

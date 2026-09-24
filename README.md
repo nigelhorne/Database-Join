@@ -1302,11 +1302,11 @@ if ($last_modified > $my_cache_timestamp) {
 
 #### Messages
 
-`updated()` does not itself emit any warnings or errors.  Any exception thrown
-by a component database's `updated()` method (including the case where a
-component database does not implement `updated()` at all) propagates uncaught.
-See [LIMITATIONS](https://metacpan.org/pod/LIMITATIONS) for guidance on handling component databases that do not
-implement `updated()`.
+`updated()` does not emit any warnings or errors.  Component databases that do
+not implement `updated()`, or whose `updated()` throws, are silently skipped;
+only defined return values contribute to the maximum.  If no component database
+implements `updated()`, `undef` is returned (same as `List::Util::max` on an
+empty list).
 
 ### Set\_Logger
 
