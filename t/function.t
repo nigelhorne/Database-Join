@@ -30,7 +30,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 149;
+	plan tests => 161;
 	use_ok('Database::Join');
 }
 
@@ -100,6 +100,7 @@ Readonly::Scalar my $TS_B     => 2_000_000;
 	sub expose_build_col_index   { my $self = shift; return $self->_build_col_index(@_) }
 	sub expose_cache_fresh        { my $self = shift; return $self->_cache_fresh(@_) }
 	sub expose_build_sqlite_cache { my $self = shift; return $self->_build_sqlite_cache(@_) }
+	sub expose_joined_query_array { my $self = shift; return $self->_joined_query_array(@_) }
 }
 
 # Convenience builder for a bare WhiteBox skeleton (no databases needed for
@@ -2210,6 +2211,214 @@ subtest '_sqlite_join: unsafe operator in criterion is dropped (not injected int
 		'unsafe operator criterion does not croak';
 	# The operator is silently dropped → no WHERE predicate on score → all rows returned.
 	is(scalar @{$rows}, 2, 'all rows returned when the operator key is dropped');
+};
+
+# ===========================================================================
+# SECTION 35 -- order_by parameter (12 tests)
+#
+# order_by is a per-call option accepted by selectall_arrayref,
+# selectall_array, fetchrow_hashref, and AUTOLOAD.  It is NOT a column
+# criterion, so it must be extracted from the params hashref before
+# _partition_criteria sees it.  These tests verify:
+#   1. _parse_query_args includes order_by so callers can delete it.
+#   2. selectall_arrayref does NOT pass order_by as a criterion to DAs.
+#   3. _joined_query_array (array path) re-sorts by the named column.
+#   4. _joined_query_array respects DESC direction.
+#   5. order_by => join_column still produces a correct result.
+#   6. Unknown column emits carp and falls back to join_column order.
+#   7. Invalid direction emits carp and falls back to ASC.
+#   8. _sqlite_join (SQLite path): ORDER BY ASC works end-to-end.
+#   9. _sqlite_join: ORDER BY DESC reverses order end-to-end.
+#  10. _sqlite_join: unknown column emits carp, uses default join_col order.
+#  11. _sqlite_join: invalid direction emits carp, uses ASC.
+#  12. count(): order_by is silently dropped (no carp, correct count).
+# ===========================================================================
+
+# Shared three-row fixture used across order_by subtests.
+# Three distinct names to make ascending/descending sort unambiguous.
+Readonly::Hash my %ORDER_ROWS_A => ();
+my @ORDER_ROWS_A = (
+	{ entry => 'K1', name => 'Carol', tier => 'silver' },
+	{ entry => 'K2', name => 'Alice', tier => 'gold'   },
+	{ entry => 'K3', name => 'Bob',   tier => 'bronze' },
+);
+my @ORDER_ROWS_B = (
+	{ entry => 'K1', score => 88 },
+	{ entry => 'K2', score => 95 },
+	{ entry => 'K3', score => 70 },
+);
+
+sub _make_order_join {
+	my (%extra) = @_;
+	my $db_a = MinimalDA->new(
+		cols => [$JC, $COL_A, $COL_C],
+		rows => \@ORDER_ROWS_A,
+	);
+	my $db_b = MinimalDA->new(
+		cols => [$JC, $COL_B],
+		rows => \@ORDER_ROWS_B,
+	);
+	return Database::Join::WhiteBox->new(
+		databases   => [$db_a, $db_b],
+		join_column => $JC,
+		%extra,
+	);
+}
+
+subtest '_parse_query_args: order_by key is returned in the params hashref' => sub {
+	plan tests => 3;
+	# Callers (selectall_arrayref etc.) delete order_by from the returned hashref
+	# so _partition_criteria never sees it.  Prove _parse_query_args populates it.
+	my $wb = _bare_whitebox();
+	my $params = $wb->expose_parse_query_args(undef, tier => 'gold', order_by => 'name');
+	ok(exists $params->{order_by}, 'order_by key present in _parse_query_args output');
+	is($params->{order_by}, 'name', 'order_by value preserved verbatim');
+	ok(exists $params->{tier}, 'regular criterion key still present alongside order_by');
+};
+
+subtest 'selectall_arrayref: order_by NOT forwarded as column criterion to DAs' => sub {
+	plan tests => 2;
+	# If order_by reached _partition_criteria it would trigger warn_unknown_column
+	# (no column named 'order_by' exists in the view).  Prove no such carp fires.
+	my $j = _make_order_join(backend => 'array');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $j->selectall_arrayref(order_by => 'name');
+	} 'selectall_arrayref with order_by does not croak';
+	my @ob_warns = grep { /order_by.*not present|Column "order_by"/i } @warnings;
+	is(scalar @ob_warns, 0,
+		'no warn_unknown_column carp for order_by: it was extracted before _partition_criteria');
+};
+
+subtest '_joined_query_array: order_by ASC sorts by named column ascending' => sub {
+	plan tests => 2;
+	my $wb = _make_order_join(backend => 'array');
+	my $rows = $wb->expose_joined_query_array({}, order_by => 'name');
+	my @names = map { $_->{name} } @{$rows};
+	# Alice < Bob < Carol alphabetically
+	is_deeply(\@names, [qw(Alice Bob Carol)],
+		'_joined_query_array order_by name ASC: rows in ascending alphabetical order');
+	is(scalar @{$rows}, 3, 'all 3 rows present');
+};
+
+subtest '_joined_query_array: order_by DESC reverses the sort' => sub {
+	plan tests => 1;
+	my $wb = _make_order_join(backend => 'array');
+	my $rows = $wb->expose_joined_query_array({}, order_by => ['name', 'DESC']);
+	my @names = map { $_->{name} } @{$rows};
+	# Carol > Bob > Alice
+	is_deeply(\@names, [qw(Carol Bob Alice)],
+		'_joined_query_array order_by name DESC: rows in descending alphabetical order');
+};
+
+subtest '_joined_query_array: order_by join_column produces join_column-sorted result' => sub {
+	plan tests => 1;
+	# join_column ASC is the default; passing it explicitly must produce the same order.
+	my $wb = _make_order_join(backend => 'array');
+	my $rows = $wb->expose_joined_query_array({}, order_by => $JC);
+	my @keys = map { $_->{$JC} } @{$rows};
+	is_deeply(\@keys, [qw(K1 K2 K3)],
+		'_joined_query_array order_by join_column ASC: default key order');
+};
+
+subtest '_joined_query_array: unknown order_by column emits carp, returns default order' => sub {
+	plan tests => 3;
+	my $wb = _make_order_join(backend => 'array');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $wb->expose_joined_query_array({}, order_by => 'no_such_column');
+	} 'unknown order_by column does not croak';
+	my @ob_warns = grep { /order_by.*not in the merged view/i } @warnings;
+	ok(scalar @ob_warns, 'carp emitted for unknown order_by column');
+	# Default order is by join_column (K1, K2, K3); verify length at minimum
+	is(scalar @{$rows}, 3, 'all 3 rows returned despite bad order_by column');
+};
+
+subtest '_joined_query_array: invalid direction emits carp and falls back to ASC' => sub {
+	plan tests => 3;
+	my $wb = _make_order_join(backend => 'array');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $wb->expose_joined_query_array({}, order_by => ['name', 'SIDEWAYS']);
+	} 'invalid order_by direction does not croak';
+	my @dir_warns = grep { /direction.*not supported|not supported.*direction/i } @warnings;
+	ok(scalar @dir_warns, 'carp emitted for unsupported sort direction');
+	# Falls back to ASC sort: Alice < Bob < Carol
+	my @names = map { $_->{name} } @{$rows};
+	is_deeply(\@names, [qw(Alice Bob Carol)],
+		'invalid direction falls back to ASC: result still sorted ascending');
+};
+
+subtest '_sqlite_join via selectall_arrayref: order_by ASC sorts rows correctly' => sub {
+	plan tests => 2;
+	my $j = _make_order_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(order_by => 'name');
+	my @names = map { $_->{name} } @{$rows};
+	is_deeply(\@names, [qw(Alice Bob Carol)],
+		'SQLite ORDER BY name ASC: rows in ascending order');
+	is(scalar @{$rows}, 3, 'all 3 rows returned');
+};
+
+subtest '_sqlite_join via selectall_arrayref: order_by DESC reverses row order' => sub {
+	plan tests => 2;
+	my $j = _make_order_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(order_by => ['name', 'DESC']);
+	my @names = map { $_->{name} } @{$rows};
+	is_deeply(\@names, [qw(Carol Bob Alice)],
+		'SQLite ORDER BY name DESC: rows in descending order');
+	is(scalar @{$rows}, 3, 'all 3 rows returned');
+};
+
+subtest '_sqlite_join: unknown order_by column emits carp and uses join_column order' => sub {
+	plan tests => 3;
+	my $j = _make_order_join(backend => 'sqlite');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $j->selectall_arrayref(order_by => 'no_such_col');
+	} 'SQLite path: unknown order_by column does not croak';
+	my @ob_warns = grep { /order_by.*not in the merged view/i } @warnings;
+	ok(scalar @ob_warns, 'SQLite path: carp emitted for unknown order_by column');
+	is(scalar @{$rows}, 3, 'all 3 rows returned despite unknown order_by');
+};
+
+subtest '_sqlite_join: invalid direction emits carp and uses ASC' => sub {
+	plan tests => 3;
+	my $j = _make_order_join(backend => 'sqlite');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $j->selectall_arrayref(order_by => ['name', 'UPWARD']);
+	} 'SQLite path: invalid direction does not croak';
+	my @dir_warns = grep { /direction.*not supported|not supported.*direction/i } @warnings;
+	ok(scalar @dir_warns, 'SQLite path: carp emitted for unsupported direction');
+	# Should still return rows (ASC fallback)
+	is(scalar @{$rows}, 3, 'all 3 rows returned after direction fallback');
+};
+
+subtest 'count: order_by is silently dropped, count unaffected' => sub {
+	plan tests => 2;
+	# count() must extract and discard order_by (row ordering is meaningless for
+	# a count).  No carp should fire, and the count must be correct.
+	my $j = _make_order_join(backend => 'array');
+	my @warnings;
+	my $n;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$n = $j->count(order_by => 'name');
+	} 'count with order_by does not croak';
+	# No carp about order_by being an unknown column (it was deleted before _partition_criteria)
+	my @ob_warns = grep { /order_by/i } @warnings;
+	is(scalar @ob_warns, 0,
+		'count: no carp for order_by; it was silently dropped before criteria routing');
 };
 
 diag('All white-box function tests complete') if $ENV{TEST_VERBOSE};
