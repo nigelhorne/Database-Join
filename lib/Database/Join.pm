@@ -37,12 +37,7 @@ our $VERSION = '0.006.0';
 #
 # PRE-RELEASE BLOCKERS
 #
-# TODO: Missing =head3 MESSAGES POD sections in eight public methods
-#   Only new(), add_database(), and remove_column() document their error and
-#   warning strings under =head3 MESSAGES.  The following methods can also
-#   carp or croak and need matching sections: selectall_arrayref,
-#   selectall_array, fetchrow_hashref, count, columns, schema, updated,
-#   set_logger, AUTOLOAD.
+# RESOLVED: =head3 MESSAGES POD sections added to all public methods (0.006.1).
 #
 # TODO: updated() not defensive against DAs without updated()
 #   sub updated { return max(map { $_->updated() } @{$self->{_dbs}}) }
@@ -1210,6 +1205,19 @@ A single plain scalar argument is interpreted as the C<join_column> value
             $row->{entry}, $row->{tier}, $row->{score} // 0;
     }
 
+=head3 MESSAGES
+
+    warn_unknown_column (carp)
+        -- A criterion key names a column not present in any component database;
+           the criterion is silently dropped and all rows are returned.
+    operator-unsupported (carp, SQLite/auto path only)
+        -- An operator hashref key is not in the supported set (see LIKE/NOT LIKE
+           in COMMON PITFALLS); the individual operator term is dropped from the
+           WHERE clause (other operators in the same hashref still apply).
+    error_sqlite_connect (croak, SQLite/auto path only)
+        -- The temporary SQLite join file could not be created; check tmpdir
+           permissions and available disk space.
+
 =cut
 
 sub selectall_arrayref {
@@ -1254,6 +1262,10 @@ nothing matches).
     # First gold-tier customer only
     my $first_vip = $join->selectall_array(tier => 'gold');
     print $first_vip->{name}, "\n" if defined $first_vip;
+
+=head3 MESSAGES
+
+Same messages as C<selectall_arrayref>.
 
 =cut
 
@@ -1300,6 +1312,10 @@ All the same criteria conventions apply.
     # Positional: works when join_column is 'entry'
     my $row2 = $join->fetchrow_hashref('C001');
 
+=head3 MESSAGES
+
+Same messages as C<selectall_arrayref>.
+
 =cut
 
 sub fetchrow_hashref {
@@ -1341,6 +1357,10 @@ C<COUNT(*)> is pushed down to the component databases.
     printf "%d total, %d gold-tier, %d high-scorers\n",
         $total, $gold, $high;
 
+=head3 MESSAGES
+
+Same messages as C<selectall_arrayref>.
+
 =cut
 
 sub count {
@@ -1381,6 +1401,11 @@ The result is memoised: repeated calls are cheap.
     my $cols = $join->columns();
     print join(', ', @{$cols}), "\n";
     # e.g. "entry, name, score, tier"
+
+=head3 MESSAGES
+
+C<columns()> does not itself emit any warnings or errors.  Any exception thrown
+by a component database's C<columns()> method propagates uncaught.
 
 =cut
 
@@ -1450,6 +1475,11 @@ The result is memoised.
             $col, $info->{type}, $info->{nullable} ? 'yes' : 'no';
     }
 
+=head3 MESSAGES
+
+C<schema()> does not itself emit any warnings or errors.  Any exception thrown
+by a component database's C<schema()> method propagates uncaught.
+
 =cut
 
 sub schema {
@@ -1517,6 +1547,14 @@ has advanced since your last snapshot, re-query.
         $my_cache_timestamp = $last_modified;
     }
 
+=head3 MESSAGES
+
+C<updated()> does not itself emit any warnings or errors.  Any exception thrown
+by a component database's C<updated()> method (including the case where a
+component database does not implement C<updated()> at all) propagates uncaught.
+See L<LIMITATIONS> for guidance on handling component databases that do not
+implement C<updated()>.
+
 =cut
 
 sub updated {
@@ -1556,6 +1594,11 @@ database.  The logger is used for diagnostic output by all component databases.
     my $join = Database::Join->new(databases => [$db1, $db2], join_column => 'entry');
     $join->set_logger($log);
     # $log is now used by $join and by $db1 and $db2
+
+=head3 MESSAGES
+
+    (croak) Usage: set_logger($logger)
+        -- Called with an undefined argument.  Pass a valid logger object.
 
 =cut
 
@@ -1997,6 +2040,16 @@ will C<croak> with a clear error message rather than being silently ignored.
         return $rows[0]{col}            in scalar context
     else:
         delegate directly to the owning database
+
+=head3 MESSAGES
+
+    (croak) Database::Join: cannot call private method '_NAME' via AUTOLOAD
+        -- Method name begins with '_'.  Private methods must be called directly,
+           not via AUTOLOAD.  This is a programming error.
+
+    (croak) Database::Join: unknown column 'NAME'
+        -- Method name does not match any visible column in the merged view.
+           Check spelling, or whether the column was removed with remove_column().
 
 =cut
 
@@ -2720,9 +2773,9 @@ sub _sqlite_join :Protected {
 			if (ref($val) eq 'HASH') {
 				for my $op (sort keys %{$val}) {
 					unless ($SAFE_SQL_OPS{$op}) {
-					carp "Database::Join: operator '$op' is not supported on the SQLite backend; criterion skipped (use the array backend or a supported operator)";
-					next;
-				}
+						carp "Database::Join: operator '$op' is not supported on the SQLite backend; criterion skipped (use the array backend or a supported operator)";
+						next;
+					}
 					push @where_parts, $tref . '.' . _sql_quote_identifier($col) . " $op ?";
 					push @bind_vals, $val->{$op};
 				}

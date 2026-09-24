@@ -372,6 +372,21 @@ preserve both values under distinct names instead.
     a secondary to inner-join status.  The broadcast itself is now a transparent
     key-range selector that does not affect join semantics.
 
+- LIKE and NOT LIKE work on the SQLite path; other pattern operators do not yet
+
+    `LIKE` and `NOT LIKE` criteria (e.g. `name => { LIKE => '%ali%' }`) are
+    fully supported on the SQLite backend: the pattern is always passed as a bind
+    parameter, never interpolated into SQL, so there is no injection risk.  The
+    behaviour is identical on both the array path (where the criterion is forwarded
+    to the component DA) and the SQLite path.
+
+    Operators that are _not_ yet in the supported set -- `IN`, `NOT IN`,
+    `IS NULL`, `IS NOT NULL` -- are silently skipped on the SQLite path; a
+    `carp` warning is emitted for each one so callers are not silently misled.
+    The array path forwards these operators to the component DA unchanged, which
+    may or may not honour them.  If you need these operators, use
+    `backend => 'array'` to stay on the array path, or open a feature request.
+
 - Temp file directory must be writable and have free space
 
     The SQLite path creates one temporary `.db` file per `Database::Join` object
@@ -988,6 +1003,21 @@ for my $row (@{$vip}) {
 }
 ```
 
+#### Messages
+
+```
+warn_unknown_column (carp)
+    -- A criterion key names a column not present in any component database;
+       the criterion is silently dropped and all rows are returned.
+operator-unsupported (carp, SQLite/auto path only)
+    -- An operator hashref key is not in the supported set (see LIKE/NOT LIKE
+       in COMMON PITFALLS); the individual operator term is dropped from the
+       WHERE clause (other operators in the same hashref still apply).
+error_sqlite_connect (croak, SQLite/auto path only)
+    -- The temporary SQLite join file could not be created; check tmpdir
+       permissions and available disk space.
+```
+
 ### Selectall\_Array
 
 #### Synopsis
@@ -1034,6 +1064,10 @@ my $first_vip = $join->selectall_array(tier => 'gold');
 print $first_vip->{name}, "\n" if defined $first_vip;
 ```
 
+#### Messages
+
+Same messages as `selectall_arrayref`.
+
 ### Fetchrow\_Hashref
 
 #### Synopsis
@@ -1079,6 +1113,10 @@ if (defined $row) {
 my $row2 = $join->fetchrow_hashref('C001');
 ```
 
+#### Messages
+
+Same messages as `selectall_arrayref`.
+
 ### Count
 
 #### Synopsis
@@ -1120,6 +1158,10 @@ printf "%d total, %d gold-tier, %d high-scorers\n",
     $total, $gold, $high;
 ```
 
+#### Messages
+
+Same messages as `selectall_arrayref`.
+
 ### Columns
 
 #### Synopsis
@@ -1160,6 +1202,11 @@ my $cols = $join->columns();
 print join(', ', @{$cols}), "\n";
 # e.g. "entry, name, score, tier"
 ```
+
+#### Messages
+
+`columns()` does not itself emit any warnings or errors.  Any exception thrown
+by a component database's `columns()` method propagates uncaught.
 
 ### Schema
 
@@ -1207,6 +1254,11 @@ for my $col (sort keys %{$schema}) {
 }
 ```
 
+#### Messages
+
+`schema()` does not itself emit any warnings or errors.  Any exception thrown
+by a component database's `schema()` method propagates uncaught.
+
 ### Updated
 
 #### Synopsis
@@ -1248,6 +1300,14 @@ if ($last_modified > $my_cache_timestamp) {
 }
 ```
 
+#### Messages
+
+`updated()` does not itself emit any warnings or errors.  Any exception thrown
+by a component database's `updated()` method (including the case where a
+component database does not implement `updated()` at all) propagates uncaught.
+See [LIMITATIONS](https://metacpan.org/pod/LIMITATIONS) for guidance on handling component databases that do not
+implement `updated()`.
+
 ### Set\_Logger
 
 #### Synopsis
@@ -1287,6 +1347,13 @@ use Log::Any qw($log);
 my $join = Database::Join->new(databases => [$db1, $db2], join_column => 'entry');
 $join->set_logger($log);
 # $log is now used by $join and by $db1 and $db2
+```
+
+#### Messages
+
+```
+(croak) Usage: set_logger($logger)
+    -- Called with an undefined argument.  Pass a valid logger object.
 ```
 
 ### Add\_Database
@@ -1580,6 +1647,18 @@ if join_map or filters are active:
     return $rows[0]{col}            in scalar context
 else:
     delegate directly to the owning database
+```
+
+#### Messages
+
+```
+(croak) Database::Join: cannot call private method '_NAME' via AUTOLOAD
+    -- Method name begins with '_'.  Private methods must be called directly,
+       not via AUTOLOAD.  This is a programming error.
+
+(croak) Database::Join: unknown column 'NAME'
+    -- Method name does not match any visible column in the merged view.
+       Check spelling, or whether the column was removed with remove_column().
 ```
 
 ## Encoding

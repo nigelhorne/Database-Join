@@ -1,6 +1,10 @@
 Revision history for Database::Join
 
 0.006.1
+	[ Enhancements ]
+	- Add =head3 MESSAGES POD sections to all public methods (selectall_arrayref,
+	  selectall_array, fetchrow_hashref, count, columns, schema, updated,
+	  set_logger, AUTOLOAD) documenting every carp/croak each method can emit.
 	[ Bug fixes ]
 	- Fix: LIKE and NOT LIKE operators now work correctly on the SQLite backend.
 	  Both operators use a single bind parameter (col LIKE ?) and are
