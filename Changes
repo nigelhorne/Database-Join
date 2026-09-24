@@ -1,5 +1,15 @@
 Revision history for Database::Join
 
+0.006.1
+	[ Bug fixes ]
+	- Fix: LIKE and NOT LIKE operators now work correctly on the SQLite backend.
+	  Both operators use a single bind parameter (col LIKE ?) and are
+	  injection-safe.  Previously, LIKE/NOT LIKE were silently skipped on the
+	  SQLite path with no warning, causing silently wider results for callers
+	  who developed against a small dataset (array path) and deployed at scale
+	  (SQLite path).  Unknown operators now emit a carp warning instead of
+	  being silently ignored, so callers are not misled.
+
 0.006.0	Tue Sep 22 07:30:33 PM EDT 2026
 	[ Enhancements ]
 	- JSON backend support: Database::Join now works with JSON-backed

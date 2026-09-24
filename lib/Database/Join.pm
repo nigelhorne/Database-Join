@@ -22,8 +22,13 @@ use Sub::Protected;
 Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_columns);
 
 # SQL comparison operators that are safe to interpolate into WHERE clauses.
-# Any operator not in this set is silently skipped to prevent SQL injection.
-Readonly::Hash my %SAFE_SQL_OPS => map { $_ => 1 } qw(> < >= <= != =);
+# Scalar-binding operators: the value is always passed as a bind param (?), so
+# no quoting or escaping is required on the value side.  LIKE and NOT LIKE are
+# safe for the same reason — the pattern is bound, not interpolated.
+# Operators NOT listed here (IN, IS NULL, IS NOT NULL, etc.) require different
+# SQL generation (multi-bind or no-bind) and are not yet implemented; they emit
+# a carp warning on the SQLite path and are skipped to prevent silent data loss.
+Readonly::Hash my %SAFE_SQL_OPS => map { $_ => 1 } ('>', '<', '>=', '<=', '!=', '=', 'LIKE', 'NOT LIKE');
 
 our $VERSION = '0.006.0';
 
@@ -31,17 +36,6 @@ our $VERSION = '0.006.0';
 # KNOWN GAPS & ROADMAP (derived from gap-analysis 2026-09-21)
 #
 # PRE-RELEASE BLOCKERS
-#
-# TODO: LIKE silently dropped on SQLite path (undocumented cross-backend gap)
-#   %SAFE_SQL_OPS covers { > < >= <= != = } only.  LIKE, NOT LIKE, IN, NOT IN,
-#   IS NULL, and IS NOT NULL are silently skipped on the SQLite path with no
-#   warning, while the array path passes them directly to the component DA
-#   (which may honour them).  A caller who develops against a small dataset
-#   (array path) and deploys at scale (SQLite path) gets silently wider results.
-#   Fix options: (a) add LIKE to %SAFE_SQL_OPS — safe with bind params; or
-#   (b) add a carp when an unrecognised operator is encountered on the SQLite
-#   path so callers are not silently misled.  Either way, add a COMMON PITFALLS
-#   entry.  See t/cgi_security.t for the %SAFE_SQL_OPS operator-whitelist tests.
 #
 # TODO: Missing =head3 MESSAGES POD sections in eight public methods
 #   Only new(), add_database(), and remove_column() document their error and
@@ -64,9 +58,9 @@ our $VERSION = '0.006.0';
 #   row just to count them.  On the cached SQLite backend a SELECT COUNT(*)
 #   against the join SQL would be orders of magnitude cheaper for large tables.
 #
-# TODO: LIKE / NOT LIKE in %SAFE_SQL_OPS (also covers the pre-release gap above)
-#   LIKE with a bind parameter (col LIKE ?) is injection-safe and would unify
-#   array-path and SQLite-path behaviour for pattern-matching criteria.
+# RESOLVED: LIKE / NOT LIKE added to %SAFE_SQL_OPS (0.006.0).
+#   Both operators use a single bind parameter (col LIKE ?) and are
+#   injection-safe.  Unknown operators now emit a carp instead of silent skip.
 #
 # TODO: IN (...) / NOT IN (...) list-operator support
 #   Set-membership criteria are common in read-only query layers.  Requires
@@ -490,6 +484,21 @@ join-column criterion was present.  The fix: only non-join-column criteria
 (e.g. column filters from the caller or base C<filters =E<gt> {...}>) promote
 a secondary to inner-join status.  The broadcast itself is now a transparent
 key-range selector that does not affect join semantics.
+
+=item LIKE and NOT LIKE work on the SQLite path; other pattern operators do not yet
+
+C<LIKE> and C<NOT LIKE> criteria (e.g. C<< name => { LIKE => '%ali%' } >>) are
+fully supported on the SQLite backend: the pattern is always passed as a bind
+parameter, never interpolated into SQL, so there is no injection risk.  The
+behaviour is identical on both the array path (where the criterion is forwarded
+to the component DA) and the SQLite path.
+
+Operators that are I<not> yet in the supported set -- C<IN>, C<NOT IN>,
+C<IS NULL>, C<IS NOT NULL> -- are silently skipped on the SQLite path; a
+C<carp> warning is emitted for each one so callers are not silently misled.
+The array path forwards these operators to the component DA unchanged, which
+may or may not honour them.  If you need these operators, use
+C<< backend => 'array' >> to stay on the array path, or open a feature request.
 
 =item Temp file directory must be writable and have free space
 
@@ -2710,7 +2719,10 @@ sub _sqlite_join :Protected {
 			my $val = $crit->{$col};
 			if (ref($val) eq 'HASH') {
 				for my $op (sort keys %{$val}) {
-					next unless $SAFE_SQL_OPS{$op};
+					unless ($SAFE_SQL_OPS{$op}) {
+					carp "Database::Join: operator '$op' is not supported on the SQLite backend; criterion skipped (use the array backend or a supported operator)";
+					next;
+				}
 					push @where_parts, $tref . '.' . _sql_quote_identifier($col) . " $op ?";
 					push @bind_vals, $val->{$op};
 				}

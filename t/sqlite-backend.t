@@ -798,4 +798,45 @@ subtest 'ATTACH with criteria: zero-copy path used; WHERE filters correctly' => 
 	is  $by_id{k3}{score}, 55, 'k3 score correct';
 };
 
+# ===========================================================================
+# S19: LIKE and NOT LIKE operators on the SQLite backend
+#
+# Major Premise: %SAFE_SQL_OPS includes 'LIKE' and 'NOT LIKE' (added 0.006.0).
+#   The pattern is always passed as a bind parameter (col LIKE ?), so it is
+#   injection-safe regardless of pattern content.
+# ===========================================================================
+
+subtest 'LIKE operator: filters correctly on SQLite backend' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+
+	# 'Al%' matches only Alice (k1).
+	my $rows = $join->selectall_arrayref({ name => { LIKE => 'Al%' } });
+	is scalar @{$rows}, 1, 'LIKE Al%: one row returned';
+	is $rows->[0]{name}, 'Alice', 'LIKE Al%: Alice returned';
+	is $rows->[0]{score}, 95,    'LIKE Al%: Alice score correct';
+};
+
+subtest 'NOT LIKE operator: filters correctly on SQLite backend' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+
+	# 'Al%' excludes Alice; inner join limits to k1-k3+k5 (k4 absent from B).
+	# Remaining rows after NOT LIKE 'Al%': Bob(k2), Carol(k3), Eve(k5) -> 3.
+	my $rows = $join->selectall_arrayref({ name => { 'NOT LIKE' => 'Al%' } });
+	is scalar @{$rows}, 3, 'NOT LIKE Al%: 3 rows (inner join, Alice excluded)';
+	my %by_id = map { $_->{$JOIN_COL} => $_ } @{$rows};
+	ok !exists $by_id{k1}, 'Alice excluded by NOT LIKE';
+	ok  exists $by_id{k2}, 'Bob present';
+	ok  exists $by_id{k3}, 'Carol present';
+	ok  exists $by_id{k5}, 'Eve present';
+};
+
 done_testing();

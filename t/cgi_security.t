@@ -26,7 +26,7 @@ use Readonly;
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 92;
+	plan tests => 96;
 }
 
 use_ok('Database::Join');
@@ -1169,14 +1169,18 @@ sub make_join {
 # Major Premise: _sqlite_join builds SQL WHERE clauses by iterating over
 #   operator keys from criteria hashrefs and checking each key against
 #   %SAFE_SQL_OPS = { '>' => 1, '<' => 1, '>=' => 1, '<=' => 1, '!=' => 1,
-#   '=' => 1 }.  Any key NOT in the whitelist is silently skipped (next).
+#   '=' => 1, 'LIKE' => 1, 'NOT LIKE' => 1 }.
+#   Any key NOT in the whitelist emits a carp warning and is skipped.
 #
 # Attack Model: attacker provides a malicious operator key such as
 #   "'; DELETE FROM t0; --" hoping it is interpolated into the WHERE clause.
-#   The SAFE_SQL_OPS guard must discard it without croaking.
+#   The SAFE_SQL_OPS guard must discard it (with a carp) without croaking.
 #
 # Invariant: a hostile operator key produces no WHERE clause fragment; the
 #   query returns the full unfiltered result set (degraded, not injected).
+#
+# LIKE/NOT LIKE: these are whitelisted because the pattern is always passed
+#   as a bind parameter (col LIKE ?), never interpolated.
 # ===========================================================================
 
 Readonly::Scalar my $HOSTILE_OP   => q{'; DELETE FROM t0; --};
@@ -1187,13 +1191,15 @@ note '--- SECTION 16: SQLite Operator Injection Blocked by SAFE_SQL_OPS ---';
 # Tests 77 & 78
 # Attack: hostile SQL operator key inside a criteria operator hashref.
 # With backend='sqlite' the _sqlite_join builder sees the hostile key, checks
-# it against SAFE_SQL_OPS, finds no match, and skips it (next).  No WHERE
-# clause term is emitted; both rows are returned.
+# it against SAFE_SQL_OPS, finds no match, emits a carp, and skips it.  No
+# WHERE clause term is emitted; both rows are returned.
 {
 	my ($db_a, $db_b) = make_dbs();
 	my $j16a = make_join($db_a, $db_b, backend => 'sqlite');
 	my $rows;
 	lives_ok {
+		# carp warning is expected here — suppress to keep test output clean
+		local $SIG{__WARN__} = sub {};
 		$rows = $j16a->selectall_arrayref({ score => { $HOSTILE_OP => 5 } });
 	} 'S16: hostile SQL-injection operator key in criteria hashref does not croak';
 	is(scalar @{$rows}, 2,
@@ -1202,12 +1208,14 @@ note '--- SECTION 16: SQLite Operator Injection Blocked by SAFE_SQL_OPS ---';
 
 # Tests 79 & 80
 # Attack: OR-based logical injection as operator key.  "OR 1=1 --" is not a
-# valid SQL operator, so SAFE_SQL_OPS rejects it and no WHERE clause is added.
+# valid SQL operator, so SAFE_SQL_OPS rejects it (with a carp) and no WHERE
+# clause is added.
 {
 	my ($db_a, $db_b) = make_dbs();
 	my $j16b = make_join($db_a, $db_b, backend => 'sqlite');
 	my $rows;
 	lives_ok {
+		local $SIG{__WARN__} = sub {};
 		$rows = $j16b->selectall_arrayref({ score => { $OR_INJECT_OP => 0 } });
 	} 'S16: OR-injection operator key does not croak';
 	is(scalar @{$rows}, 2,
@@ -1217,16 +1225,45 @@ note '--- SECTION 16: SQLite Operator Injection Blocked by SAFE_SQL_OPS ---';
 # Tests 81 & 82
 # Defence-in-depth: mix one valid operator ('>') and one hostile key in the
 # same hashref.  The valid key must survive and filter rows (score > 80 =>
-# only Alice, score=95); the hostile key must be silently discarded.
+# only Alice, score=95); the hostile key must be discarded (with a carp).
 {
 	my ($db_a, $db_b) = make_dbs();
 	my $j16c = make_join($db_a, $db_b, backend => 'sqlite');
 	my $rows;
 	lives_ok {
+		local $SIG{__WARN__} = sub {};
 		$rows = $j16c->selectall_arrayref({ score => { '>' => 80, $HOSTILE_OP => 0 } });
 	} 'S16: mixed valid+hostile operator keys do not croak';
 	is(scalar @{$rows}, 1,
 		'S16: valid operator survives; hostile discarded; only score>80 row returned');
+}
+
+# Tests 83 & 84
+# LIKE is whitelisted: the pattern is bound via ?, so no SQL injection is
+# possible regardless of pattern content.  Prove it filters correctly AND
+# that a pattern containing SQL metacharacters is treated as literal data.
+{
+	my ($db_a, $db_b) = make_dbs();
+	my $j16d = make_join($db_a, $db_b, backend => 'sqlite');
+	my $rows;
+	lives_ok {
+		$rows = $j16d->selectall_arrayref({ name => { LIKE => 'Al%' } });
+	} 'S16: LIKE operator does not croak';
+	is(scalar @{$rows}, 1,
+		'S16: LIKE filters correctly — only Alice (Al%) returned');
+}
+
+# Tests 85 & 86
+# NOT LIKE is also whitelisted and filters the complementary set.
+{
+	my ($db_a, $db_b) = make_dbs();
+	my $j16e = make_join($db_a, $db_b, backend => 'sqlite');
+	my $rows;
+	lives_ok {
+		$rows = $j16e->selectall_arrayref({ name => { 'NOT LIKE' => 'Al%' } });
+	} 'S16: NOT LIKE operator does not croak';
+	is(scalar @{$rows}, 1,
+		'S16: NOT LIKE filters correctly — only Bob (not Al%) returned');
 }
 
 # ===========================================================================
