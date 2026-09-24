@@ -25,10 +25,18 @@ Readonly::Array my @_ADD_DB_KEYS => qw(database join_column filter remove_column
 # Scalar-binding operators: the value is always passed as a bind param (?), so
 # no quoting or escaping is required on the value side.  LIKE and NOT LIKE are
 # safe for the same reason — the pattern is bound, not interpolated.
-# Operators NOT listed here (IN, IS NULL, IS NOT NULL, etc.) require different
-# SQL generation (multi-bind or no-bind) and are not yet implemented; they emit
-# a carp warning on the SQLite path and are skipped to prevent silent data loss.
 Readonly::Hash my %SAFE_SQL_OPS => map { $_ => 1 } ('>', '<', '>=', '<=', '!=', '=', 'LIKE', 'NOT LIKE');
+
+# List-membership operators whose criterion value is an arrayref.
+# Each element is bound as a separate ?, so injection is impossible.
+# IN  with an empty list → WHERE 1=0 (no rows match, correct SQL semantics).
+# NOT IN with an empty list → no WHERE term (all rows match, correct semantics).
+Readonly::Hash my %SAFE_LIST_OPS => map { $_ => 1 } ('IN', 'NOT IN');
+
+# Nullability operators: no bind parameter.  The hashref value is ignored —
+# any value (undef, 1, ...) signals intent; only the key selects the operator.
+# A bare undef criterion value (col => undef) also generates IS NULL.
+Readonly::Hash my %SAFE_NOARG_OPS => map { $_ => 1 } ('IS NULL', 'IS NOT NULL');
 
 our $VERSION = '0.006.0';
 
@@ -36,15 +44,6 @@ our $VERSION = '0.006.0';
 # KNOWN GAPS & ROADMAP (derived from gap-analysis 2026-09-21)
 #
 # POST-RELEASE ROADMAP
-#
-# TODO: IN (...) / NOT IN (...) list-operator support
-#   Set-membership criteria are common in read-only query layers.  Requires
-#   bind-parameter list expansion (one ? per element) in the WHERE builder.
-#
-# TODO: IS NULL / IS NOT NULL operator support
-#   Nullable-column filtering cannot be expressed as a bind-parameter operator.
-#   Handle undef criterion values with a separate IS NULL generation path
-#   instead of the current `next if !defined $val` no-op.
 #
 # TODO: Caller-specified ORDER BY on query methods
 #   Results are sorted by join_column only.  An order_by => 'col' (or
@@ -462,18 +461,40 @@ key-range selector that does not affect join semantics.
 
 =item LIKE and NOT LIKE work on the SQLite path; other pattern operators do not yet
 
-C<LIKE> and C<NOT LIKE> criteria (e.g. C<< name => { LIKE => '%ali%' } >>) are
-fully supported on the SQLite backend: the pattern is always passed as a bind
-parameter, never interpolated into SQL, so there is no injection risk.  The
-behaviour is identical on both the array path (where the criterion is forwarded
-to the component DA) and the SQLite path.
+C<LIKE>, C<NOT LIKE>, C<IN>, and C<NOT IN> are fully supported on the SQLite
+backend.  C<LIKE>/C<NOT LIKE> take a scalar pattern; C<IN>/C<NOT IN> take an
+arrayref of values.  All are injection-safe because values are passed as bind
+parameters, never interpolated.
 
-Operators that are I<not> yet in the supported set -- C<IN>, C<NOT IN>,
-C<IS NULL>, C<IS NOT NULL> -- are silently skipped on the SQLite path; a
-C<carp> warning is emitted for each one so callers are not silently misled.
-The array path forwards these operators to the component DA unchanged, which
-may or may not honour them.  If you need these operators, use
-C<< backend => 'array' >> to stay on the array path, or open a feature request.
+    # LIKE
+    my $rows = $join->selectall_arrayref(name => { LIKE => 'A%' });
+
+    # IN
+    my $rows = $join->selectall_arrayref(tier => { IN => ['gold', 'silver'] });
+
+    # NOT IN
+    my $rows = $join->selectall_arrayref(tier => { 'NOT IN' => ['bronze'] });
+
+C<IN> with an empty arrayref matches no rows (SQL semantics: C<IN ()> is
+always false).  C<NOT IN> with an empty arrayref matches all rows (no
+constraint added).
+
+C<IS NULL> and C<IS NOT NULL> are supported on the SQLite backend using an
+explicit operator hashref:
+
+    my $rows = $join->selectall_arrayref(score => { 'IS NULL'     => undef });
+    my $rows = $join->selectall_arrayref(score => { 'IS NOT NULL' => 1    });
+
+The hashref value is ignored; only the key selects the operator.  A bare
+C<undef> criterion value (C<< score => undef >>) also generates C<IS NULL>
+on the SQLite path.  Note: on the in-memory array path, the component DA
+may treat an C<undef> criterion value as C<< no filter >> rather than
+C<IS NULL>, so use the explicit hashref form for consistent behaviour
+across backends.
+
+Any operator not in the supported set is skipped on the SQLite path with a
+C<carp> warning.  The array path forwards all operators to the component DA
+unchanged, which may or may not honour them.
 
 =item Temp file directory must be writable and have free space
 
@@ -1191,9 +1212,13 @@ A single plain scalar argument is interpreted as the C<join_column> value
         -- A criterion key names a column not present in any component database;
            the criterion is silently dropped and all rows are returned.
     operator-unsupported (carp, SQLite/auto path only)
-        -- An operator hashref key is not in the supported set (see LIKE/NOT LIKE
-           in COMMON PITFALLS); the individual operator term is dropped from the
-           WHERE clause (other operators in the same hashref still apply).
+        -- An operator hashref key is not in the supported set (>, <, >=, <=,
+           !=, =, LIKE, NOT LIKE, IS NULL, IS NOT NULL, IN, NOT IN); the
+           individual operator term is dropped from the WHERE clause (other
+           operators in the same hashref still apply).
+    IN/NOT IN wrong value type (carp, SQLite/auto path only)
+        -- An IN or NOT IN criterion was given a non-arrayref value; the operator
+           term is skipped.
     error_sqlite_connect (croak, SQLite/auto path only)
         -- The temporary SQLite join file could not be created; check tmpdir
            permissions and available disk space.
@@ -2764,6 +2789,31 @@ sub _sqlite_join :Protected {
 			my $val = $crit->{$col};
 			if (ref($val) eq 'HASH') {
 				for my $op (sort keys %{$val}) {
+					if ($SAFE_LIST_OPS{$op}) {
+						# IN / NOT IN: value must be an arrayref; each element is bound.
+						my $arr = $val->{$op};
+						unless (ref($arr) eq 'ARRAY') {
+							carp "Database::Join: operator '$op' requires an arrayref value; criterion skipped";
+							next;
+						}
+						my @items = @{$arr};
+						if (!@items) {
+							# IN ()  → always false: add a tautologically-false term.
+							# NOT IN () → always true: omit the term (all rows match).
+							push @where_parts, '1 = 0' if $op eq 'IN';
+							next;
+						}
+						push @where_parts,
+							$tref . '.' . _sql_quote_identifier($col)
+							. " $op (" . join(', ', ('?') x scalar @items) . ')';
+						push @bind_vals, @items;
+						next;
+					}
+					if ($SAFE_NOARG_OPS{$op}) {
+						# IS NULL / IS NOT NULL: no bind parameter at all.
+						push @where_parts, $tref . '.' . _sql_quote_identifier($col) . " $op";
+						next;
+					}
 					unless ($SAFE_SQL_OPS{$op}) {
 						carp "Database::Join: operator '$op' is not supported on the SQLite backend; criterion skipped (use the array backend or a supported operator)";
 						next;
@@ -2771,6 +2821,10 @@ sub _sqlite_join :Protected {
 					push @where_parts, $tref . '.' . _sql_quote_identifier($col) . " $op ?";
 					push @bind_vals, $val->{$op};
 				}
+			} elsif (!defined $val) {
+				# A bare undef value means "WHERE col IS NULL".
+				# (col = NULL is always UNKNOWN in SQL and would match nothing.)
+				push @where_parts, $tref . '.' . _sql_quote_identifier($col) . ' IS NULL';
 			} else {
 				push @where_parts, $tref . '.' . _sql_quote_identifier($col) . ' = ?';
 				push @bind_vals, $val;

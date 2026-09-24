@@ -2,6 +2,19 @@ Revision history for Database::Join
 
 0.006.1
 	[ Enhancements ]
+	- IS NULL and IS NOT NULL operators are now fully supported on the SQLite
+	  backend via explicit operator hashrefs ({ 'IS NULL' => undef }).  These
+	  operators generate no bind parameter — the fixed SQL keywords are
+	  interpolated, not caller values — so they are injection-safe.  A bare
+	  undef criterion value (col => undef) also generates IS NULL on the SQLite
+	  path (previously it silently generated col = NULL which never matches
+	  anything in SQL).
+	- IN and NOT IN list operators are now fully supported on the SQLite backend.
+	  The criterion value is an arrayref; each element becomes a separate bind
+	  parameter (col IN (?, ?, ...)) so injection via list elements is impossible.
+	  IN with an empty arrayref returns no rows (SQL 1=0 semantics); NOT IN with
+	  an empty arrayref adds no constraint (all rows match).  A non-arrayref value
+	  emits a carp warning and the criterion is skipped.
 	- count() on the SQLite backend now executes SELECT COUNT(*) against the
 	  cached join tables instead of fetching all rows.  The JOIN and WHERE
 	  clauses are the same as for selectall_arrayref, so criteria and join-type

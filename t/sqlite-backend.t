@@ -884,4 +884,170 @@ subtest 'count() push-down: DA not re-queried (cache reuse proof)' => sub {
 	is $da_b->{_call_count}, 1, 'da_b: selectall_arrayref not called again for count()';
 };
 
+# ===========================================================================
+# S21: IN and NOT IN list operators on the SQLite backend
+#
+# Major Premise: %SAFE_LIST_OPS = { 'IN' => 1, 'NOT IN' => 1 }.
+#   Values are arrayrefs; each element is a separate bind parameter.
+#   IN ()  → 1=0 (no rows); NOT IN () → no constraint (all rows).
+# ===========================================================================
+
+subtest 'IN operator: filters to named values on SQLite backend' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+
+	# tier IN ('gold', 'silver') → k1(gold), k2(silver), k4(gold), k5(silver).
+	# k4 is absent from B but left join keeps primary-only rows.
+	# k3(Carol/bronze) is the only excluded row.
+	my $rows = $join->selectall_arrayref(tier => { IN => ['gold', 'silver'] });
+	my %by_id = map { $_->{$JOIN_COL} => $_ } @{$rows};
+	is  scalar @{$rows}, 4, 'IN gold/silver: 4 rows (k3/bronze excluded)';
+	ok  exists $by_id{k1}, 'Alice (gold) present';
+	ok  exists $by_id{k2}, 'Bob (silver) present';
+	ok !exists $by_id{k3}, 'Carol (bronze) absent';
+	ok  exists $by_id{k4}, 'Dave (gold, no secondary) present via left join';
+	ok  exists $by_id{k5}, 'Eve (silver) present';
+};
+
+subtest 'NOT IN operator: excludes named values on SQLite backend' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+
+	# tier NOT IN ('bronze') in inner join: excludes Carol(k3/bronze).
+	# k4 absent from B → inner join excludes it regardless.
+	# Remaining: k1, k2, k5 → 3 rows.
+	my $rows = $join->selectall_arrayref(tier => { 'NOT IN' => ['bronze'] });
+	my %by_id = map { $_->{$JOIN_COL} => $_ } @{$rows};
+	is  scalar @{$rows}, 3, 'NOT IN bronze (inner): 3 rows';
+	ok !exists $by_id{k3}, 'Carol (bronze) absent';
+	ok  exists $by_id{k1}, 'Alice present';
+	ok  exists $by_id{k2}, 'Bob present';
+	ok  exists $by_id{k5}, 'Eve present';
+};
+
+subtest 'IN with empty list: no rows returned (1=0 semantics)' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+	my $rows = $join->selectall_arrayref(tier => { IN => [] });
+	is scalar @{$rows}, 0, 'IN with empty list: zero rows';
+};
+
+subtest 'NOT IN with empty list: all rows returned (no constraint)' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+	my $rows = $join->selectall_arrayref(tier => { 'NOT IN' => [] });
+	is scalar @{$rows}, 5, 'NOT IN with empty list: all 5 rows (no constraint)';
+};
+
+subtest 'IN wrong value type emits carp and is skipped' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+	my $rows;
+	my @warnings;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $join->selectall_arrayref(tier => { IN => 'gold' });
+	} 'IN with scalar value does not croak';
+	ok scalar @warnings, 'carp warning emitted for wrong IN value type';
+	is scalar @{$rows}, 5, 'criterion skipped: all rows returned';
+};
+
+# ===========================================================================
+# S22: IS NULL / IS NOT NULL operator and bare-undef criterion value
+# ===========================================================================
+
+# Create a separate small dataset that has one row with a NULL score.
+my $da_a_nullable = MinimalDA->new(
+	cols => [qw(id name tier)],
+	rows => [
+		{ id => 'n1', name => 'Alice', tier => 'gold'   },
+		{ id => 'n2', name => 'Bob',   tier => 'silver' },
+		{ id => 'n3', name => 'Carol', tier => undef    },
+	],
+);
+my $da_b_nullable = MinimalDA->new(
+	cols => [qw(id score)],
+	rows => [
+		{ id => 'n1', score => 95    },
+		{ id => 'n2', score => undef },
+		{ id => 'n3', score => 88    },
+	],
+);
+
+subtest 'IS NULL operator: returns rows where column IS NULL' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_nullable, $da_b_nullable],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+
+	# score IS NULL → only n2 (Bob) has score=undef
+	my $rows = $join->selectall_arrayref(score => { 'IS NULL' => undef });
+	is  scalar @{$rows}, 1, 'IS NULL: exactly 1 row (Bob, score=undef)';
+	is  $rows->[0]{name}, 'Bob', 'IS NULL: correct row returned';
+};
+
+subtest 'IS NOT NULL operator: returns rows where column IS NOT NULL' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_nullable, $da_b_nullable],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+
+	# score IS NOT NULL → n1(Alice/95) and n3(Carol/88); n2(Bob/undef) excluded
+	my $rows = $join->selectall_arrayref(score => { 'IS NOT NULL' => 1 });
+	my %by_id = map { $_->{$JOIN_COL} => $_ } @{$rows};
+	is  scalar @{$rows}, 2,       'IS NOT NULL: 2 rows (Alice and Carol)';
+	ok  exists $by_id{n1}, 'Alice (score=95) present';
+	ok !exists $by_id{n2}, 'Bob (score=undef) absent';
+	ok  exists $by_id{n3}, 'Carol (score=88) present';
+};
+
+subtest 'bare undef criterion value generates IS NULL on SQLite path' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_nullable, $da_b_nullable],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+
+	# tier => undef should generate "tier IS NULL" → only n3 (Carol, tier=undef)
+	my $rows = $join->selectall_arrayref({ tier => undef });
+	is  scalar @{$rows}, 1, 'bare undef: exactly 1 row (Carol, tier=undef)';
+	is  $rows->[0]{name}, 'Carol', 'bare undef: correct row returned';
+};
+
+subtest 'IS NULL on primary column with left join preserves secondary-only rows' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_nullable, $da_b_nullable],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+
+	# tier IS NULL on the primary DA: only Carol (n3); n2 skipped (tier=silver ≠ NULL)
+	my $rows = $join->selectall_arrayref(tier => { 'IS NULL' => undef });
+	is  scalar @{$rows}, 1, 'IS NULL on primary with left join: 1 row';
+	is  $rows->[0]{name}, 'Carol', 'IS NULL: Carol returned';
+	is  $rows->[0]{score}, 88, 'Carol secondary score present';
+};
+
 done_testing();
