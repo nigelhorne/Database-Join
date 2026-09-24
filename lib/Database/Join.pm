@@ -50,17 +50,11 @@ my $HAS_THREADS;
 #
 # POST-RELEASE ROADMAP
 #
-# RESOLVED: Parallel DA queries in _fetch_indexed
-#   parallel => 1 in the constructor spawns one thread per secondary DA so
-#   all secondaries are queried concurrently.  Requires the 'threads' module
-#   (lazy-checked at first use); falls back to sequential with a carp warning
-#   when threads are unavailable.  Effective when n > 2 (2+ secondaries).
-#
-# TODO: Schema type consistency validation at construction
-#   Columns shared across two DAs (without collision_prefix) are merged
-#   type-blind.  A validation pass comparing schema() types for overlapping
-#   columns at new()/add_database() time could warn callers before silent
-#   type coercion produces unexpected results.
+# RESOLVED: Schema type consistency validation at construction
+#   _validate_schema_types() is now called by new() and add_database().
+#   It carps warn_schema_type_mismatch for every shared column whose type
+#   string differs between databases (without collision_prefix).
+#   Callers who intend the merge can silence the warning with collision_prefix.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -80,6 +74,7 @@ Readonly::Hash my %MESSAGES => (
 	error_invalid_prefix	=> 'collision_prefix[%d] must be a plain string, not a reference; passing a reference would leak a heap address into column names',
 	error_invalid_backend	=> 'backend must be "array", "sqlite", or "auto"; got "%s"',
 	error_sqlite_connect	=> 'Failed to open temporary SQLite database for join backend: %s',
+	warn_schema_type_mismatch => 'column "%s" has type "%s" in database[%d] but type "%s" in database[%d]; use collision_prefix to preserve both values without silent type coercion',
 );
 
 =head1 NAME
@@ -692,11 +687,13 @@ to calling C<remove_column> once per name after construction.
 
 =head3 MESSAGES
 
-    error_no_databases     -- databases arrayref was empty
-    error_invalid_db       -- an element of databases is not a D::A subclass
-    error_join_col_missing -- join_column (or its join_map alias) not found in a database
-    error_invalid_backend  -- backend value is not 'array', 'sqlite', or 'auto'
-    error_sqlite_connect   -- temporary SQLite database could not be created (backend='sqlite'/'auto')
+    error_no_databases        -- databases arrayref was empty
+    error_invalid_db          -- an element of databases is not a D::A subclass
+    error_join_col_missing    -- join_column (or its join_map alias) not found in a database
+    error_invalid_backend     -- backend value is not 'array', 'sqlite', or 'auto'
+    error_sqlite_connect      -- temporary SQLite database could not be created (backend='sqlite'/'auto')
+    warn_schema_type_mismatch -- (carp) a shared column has different types across databases;
+                                 use collision_prefix to preserve both values
 
 =cut
 
@@ -790,6 +787,7 @@ sub new {
 	}, $class;
 
 	$self->_build_col_index();
+	$self->_validate_schema_types();
 
 	# Propagate the logger to every component database if one was supplied.
 	# set_logger() is used here (rather than a direct hash write) to honour each
@@ -1951,8 +1949,11 @@ equivalent to a C<filters> entry.
 
 =head3 MESSAGES
 
-    error_invalid_db       -- argument is not a Database::Abstraction subclass
-    error_join_col_missing -- join_column not found in the new database
+    error_invalid_db          -- argument is not a Database::Abstraction subclass
+    error_join_col_missing    -- join_column not found in the new database
+    warn_schema_type_mismatch -- (carp) the new database has a shared column whose type
+                                 differs from the type already in the view; use
+                                 collision_prefix to preserve both values
 
 =cut
 
@@ -2039,6 +2040,9 @@ sub add_database {
 	# Invalidate memoisation caches
 	$self->{_col_cache}    = undef;
 	$self->{_schema_cache} = undef;
+
+	# Warn about schema type mismatches introduced by the new database.
+	$self->_validate_schema_types();
 
 	# Invalidate the SQLite join cache: a new source requires a full rebuild.
 	if (my $old = delete $self->{_sqlite_cache}) {
@@ -2422,6 +2426,62 @@ sub _build_col_index :Protected {
 	$self->{_db_cols}      = \@db_cols;
 	$self->{_col_rename}   = \@col_rename;
 	$self->{_col_unrename} = \@col_unrename;
+
+	return;
+}
+
+# _validate_schema_types()
+# Purpose: Carp when two databases share a column name (without collision_prefix)
+#          but disagree on its type, which would cause silent type coercion.
+# Entry:   _dbs, _col_rename, _join_map, _join_col are all populated.
+# Exit:    Emits one carp per mismatched column; no other side effects.
+sub _validate_schema_types :Protected {
+	my ($self) = @_;
+
+	my $join_col = $self->{_join_col};
+	my %seen;    # col_name => { idx => $i, type => $type_str }
+
+	for my $i (0 .. $#{ $self->{_dbs} }) {
+		my $db       = $self->{_dbs}[$i];
+		my $s        = do { local $@; eval { $db->schema() } } // {};
+		my $local_jc = $self->{_join_map}{$i} // $join_col;
+		my $renames  = $self->{_col_rename}[$i] // {};
+
+		for my $orig_col (keys %{$s}) {
+			# Skip the join-key alias (a different name for the same join key)
+			next if $local_jc ne $join_col && $orig_col eq $local_jc;
+
+			# Skip the canonical join column itself — types may legitimately
+			# differ between DAs (e.g. INTEGER PK vs TEXT) without causing issues
+			# because the join column is not a data column.
+			next if $orig_col eq $join_col;
+
+			# Skip columns that have a collision prefix configured for this DB:
+			# they are published under distinct names, so no silent merge occurs.
+			next if exists $renames->{$orig_col};
+
+			# Normalise to a plain type string; skip if the DA returns no type.
+			my $entry    = $s->{$orig_col};
+			my $type_str = ref($entry) eq 'HASH'
+				? uc($entry->{type} // '')
+				: uc($entry // '');
+			next unless length $type_str;
+
+			if (exists $seen{$orig_col}) {
+				my $prev = $seen{$orig_col};
+				if ($prev->{type} ne $type_str) {
+					carp $self->_err(
+						'warn_schema_type_mismatch',
+						$orig_col,
+						$prev->{type}, $prev->{idx},
+						$type_str,     $i,
+					);
+				}
+			} else {
+				$seen{$orig_col} = { idx => $i, type => $type_str };
+			}
+		}
+	}
 
 	return;
 }

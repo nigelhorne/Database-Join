@@ -30,7 +30,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 177;
+	plan tests => 180;
 	use_ok('Database::Join');
 }
 
@@ -100,7 +100,8 @@ Readonly::Scalar my $TS_B     => 2_000_000;
 	sub expose_build_col_index   { my $self = shift; return $self->_build_col_index(@_) }
 	sub expose_cache_fresh        { my $self = shift; return $self->_cache_fresh(@_) }
 	sub expose_build_sqlite_cache { my $self = shift; return $self->_build_sqlite_cache(@_) }
-	sub expose_joined_query_array { my $self = shift; return $self->_joined_query_array(@_) }
+	sub expose_joined_query_array     { my $self = shift; return $self->_joined_query_array(@_) }
+	sub expose_validate_schema_types  { my $self = shift; return $self->_validate_schema_types(@_) }
 }
 
 # Convenience builder for a bare WhiteBox skeleton (no databases needed for
@@ -505,7 +506,11 @@ subtest 'schema: last DB wins for duplicate column metadata' => sub {
 		cols   => [$JC, $COL_A],
 		schema => { $JC => { type => 'TEXT' }, $COL_A => { type => 'CHAR' } },
 	);
-	my $j = Database::Join->new(databases => [$db0, $db1], join_column => $JC);
+	# Suppress the expected type-mismatch carp; it is tested in S39.
+	my $j = do {
+		local $SIG{__WARN__} = sub {};
+		Database::Join->new(databases => [$db0, $db1], join_column => $JC);
+	};
 	is($j->schema()->{$COL_A}{type}, 'CHAR',
 		'last database wins when the same column appears in multiple databases');
 };
@@ -2628,6 +2633,95 @@ subtest 'parallel: _joined_query_array with parallel => 1 and 3 DAs gives correc
 	my ($row) = grep { $_->{entry} eq 'K1' } @{$rows};
 	is($row->{rank}, 1,
 		'parallel 3-DA: merged row contains column from third DA');
+};
+
+# ===========================================================================
+# S39: _validate_schema_types() — white-box tests for the schema type checker
+#   _validate_schema_types is called by new() and add_database().  These tests
+#   exercise it directly via expose_validate_schema_types on WhiteBox to
+#   isolate the helper from the full construction flow.
+# ===========================================================================
+
+subtest '_validate_schema_types: no carp when types match across all DAs' => sub {
+	plan tests => 1;
+	# _make_join() returns a plain Database::Join; use WhiteBox directly so
+	# expose_validate_schema_types() is available on the returned object.
+	my $db_a = MinimalDA->new(
+		cols   => [$JC, $COL_A, $COL_C],
+		schema => { $JC => { type => 'TEXT' }, $COL_A => { type => 'TEXT' }, $COL_C => { type => 'TEXT' } },
+		rows   => [],
+	);
+	my $db_b = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'INTEGER' } },
+		rows   => [],
+	);
+	# DAs have distinct column sets; no shared data column → no mismatch.
+	my $j = Database::Join::WhiteBox->new(
+		databases   => [$db_a, $db_b],
+		join_column => $JC,
+	);
+	my @warns;
+	local $SIG{__WARN__} = sub { push @warns, $_[0] };
+	$j->expose_validate_schema_types();
+	is(scalar @warns, 0,
+		'_validate_schema_types: no carp when DAs have non-overlapping columns');
+};
+
+subtest '_validate_schema_types: carp fires exactly once per mismatched column' => sub {
+	plan tests => 3;
+	my $db0 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'INTEGER' } },
+		rows   => [],
+	);
+	my $db1 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'REAL' } },
+		rows   => [],
+	);
+	my @warns;
+	# Suppress during construction (already tested in unit.t); re-run the helper
+	# directly via WhiteBox to isolate it from construction-time noise.
+	my $j = do {
+		local $SIG{__WARN__} = sub {};
+		Database::Join::WhiteBox->new(databases => [$db0, $db1], join_column => $JC);
+	};
+	{
+		local $SIG{__WARN__} = sub { push @warns, $_[0] };
+		$j->expose_validate_schema_types();
+	}
+	is(scalar @warns, 1, 'exactly one carp per mismatched column');
+	like($warns[0], qr/has type.*but type|mismatch/i,
+		'carp text describes the mismatch');
+	like($warns[0], qr/\Q$COL_B\E/,
+		'carp text names the mismatched column');
+};
+
+subtest '_validate_schema_types: plain-string schema values are normalized and compared' => sub {
+	plan tests => 1;
+	# Some DAs return schema() as plain strings ('TEXT') rather than hashrefs.
+	my $db0 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => 'TEXT', $COL_B => 'INTEGER' },
+		rows   => [],
+	);
+	my $db1 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => 'TEXT', $COL_B => 'TEXT' },
+		rows   => [],
+	);
+	my $j = do {
+		local $SIG{__WARN__} = sub {};
+		Database::Join::WhiteBox->new(databases => [$db0, $db1], join_column => $JC);
+	};
+	my @warns;
+	{
+		local $SIG{__WARN__} = sub { push @warns, $_[0] };
+		$j->expose_validate_schema_types();
+	}
+	ok(scalar @warns,
+		'plain-string schema values: carp fires when type strings differ');
 };
 
 diag('All white-box function tests complete') if $ENV{TEST_VERBOSE};

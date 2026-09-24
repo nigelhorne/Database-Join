@@ -20,7 +20,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 124;
+	plan tests => 129;
 	use_ok('Database::Join');
 }
 
@@ -196,6 +196,13 @@ my %LEDGER = (
 	'par:constructor_accepted'     => 1,  # parallel => 1 accepted without error
 	'par:two_db_no_effect'         => 1,  # n <= 2 databases: no threading, results correct
 	'par:three_db_correct_results' => 1,  # n > 2 databases: results same as sequential
+
+	# schema type consistency validation (warn_schema_type_mismatch)
+	'st:carp_on_mismatch'     => 1,  # carp when shared column types differ at construction
+	'st:no_carp_same_type'    => 1,  # no carp when shared column types agree
+	'st:join_col_exempt'      => 1,  # join column itself is not checked
+	'st:prefixed_exempt'      => 1,  # collision_prefix columns are exempt
+	'st:add_db_emits_carp'    => 1,  # add_database also checks the new database
 );
 
 # ---------------------------------------------------------------------------
@@ -744,7 +751,7 @@ subtest 'schema: join_map local alias is not exposed' => sub {
 };
 
 subtest 'schema: last database wins for duplicate column metadata' => sub {
-	plan tests => 1;
+	plan tests => 2;
 	my $db0 = MinimalDA->new(
 		cols   => [$JC, $COL_A],
 		schema => { $JC => { type => 'TEXT' }, $COL_A => { type => 'VARCHAR' } },
@@ -753,9 +760,16 @@ subtest 'schema: last database wins for duplicate column metadata' => sub {
 		cols   => [$JC, $COL_A],
 		schema => { $JC => { type => 'TEXT' }, $COL_A => { type => 'CHAR' } },
 	);
-	my $j = Database::Join->new(databases => [$db0, $db1], join_column => $JC);
+	# Capture the type-mismatch carp; the warning is expected here and is tested
+	# explicitly in Section S23.  Capture it so it does not pollute test output.
+	my @warns;
+	my $j = do {
+		local $SIG{__WARN__} = sub { push @warns, $_[0] };
+		Database::Join->new(databases => [$db0, $db1], join_column => $JC);
+	};
 	is($j->schema()->{$COL_A}{type}, 'CHAR',
 		'schema() uses the last database when the same column appears in multiple databases');
+	ok(scalar @warns, 'type mismatch between DAs triggers a carp at construction');
 	delete $LEDGER{'schema:last_db_wins'};
 };
 
@@ -1976,6 +1990,130 @@ subtest 'count() ignores limit and offset: returns total matching rows' => sub {
 	} 'count() with limit+offset does not croak';
 	is($n, 3, 'count() ignores limit/offset: reports all 3 rows');
 	delete $LEDGER{'pg:count_drops_silently'};
+};
+
+# ===========================================================================
+# SECTION 23 -- Schema type consistency validation (warn_schema_type_mismatch)
+#   When two databases share a column name without a collision_prefix, their
+#   schema() types are compared at new() / add_database() time.  A type
+#   mismatch emits warn_schema_type_mismatch (carp) to alert the caller before
+#   silent type coercion produces unexpected query results.
+#   The join column itself and any collision_prefix-renamed columns are exempt.
+# ===========================================================================
+
+subtest 'schema type mismatch: carp emitted when shared column types differ' => sub {
+	plan tests => 2;
+	my $db0 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'INTEGER' } },
+	);
+	my $db1 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'TEXT' } },
+	);
+	my @warns;
+	local $SIG{__WARN__} = sub { push @warns, $_[0] };
+	my $j = Database::Join->new(databases => [$db0, $db1], join_column => $JC);
+	ok(scalar @warns, 'carp fired when shared column types differ at construction');
+	like($warns[0], qr/has type.*but type|type.*mismatch/i,
+		'carp message describes the type mismatch');
+	delete $LEDGER{'st:carp_on_mismatch'};
+};
+
+subtest 'schema type mismatch: no carp when shared column types agree' => sub {
+	plan tests => 1;
+	my $db0 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'INTEGER' } },
+	);
+	my $db1 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'INTEGER' } },
+	);
+	my @warns;
+	local $SIG{__WARN__} = sub { push @warns, $_[0] };
+	Database::Join->new(databases => [$db0, $db1], join_column => $JC);
+	is(scalar @warns, 0, 'no carp when shared column types agree');
+	delete $LEDGER{'st:no_carp_same_type'};
+};
+
+subtest 'schema type mismatch: join column type difference is exempt from check' => sub {
+	plan tests => 1;
+	# The join column is structural, not a data column.  Differing types
+	# in different DAs (e.g. pk => 1 in one, pk => 0 in another) must not
+	# generate a spurious mismatch warning.
+	my $db0 = MinimalDA->new(
+		cols   => [$JC, $COL_A],
+		schema => { $JC => { type => 'INTEGER' }, $COL_A => { type => 'TEXT' } },
+	);
+	my $db1 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT'    }, $COL_B => { type => 'INTEGER' } },
+	);
+	my @warns;
+	local $SIG{__WARN__} = sub { push @warns, $_[0] };
+	Database::Join->new(databases => [$db0, $db1], join_column => $JC);
+	is(scalar @warns, 0, 'join column type mismatch does not trigger a carp');
+	delete $LEDGER{'st:join_col_exempt'};
+};
+
+subtest 'schema type mismatch: collision_prefix columns are exempt from check' => sub {
+	plan tests => 1;
+	# With collision_prefix configured, the secondary column is published under
+	# a prefixed name.  No silent merge occurs, so no warning should fire.
+	my $db0 = MinimalDA->new(
+		cols   => [$JC, $COL_A],
+		schema => { $JC => { type => 'TEXT' }, $COL_A => { type => 'INTEGER' } },
+	);
+	my $db1 = MinimalDA->new(
+		cols   => [$JC, $COL_A],
+		schema => { $JC => { type => 'TEXT' }, $COL_A => { type => 'TEXT' } },
+	);
+	my @warns;
+	local $SIG{__WARN__} = sub { push @warns, $_[0] };
+	Database::Join->new(
+		databases        => [$db0, $db1],
+		join_column      => $JC,
+		collision_prefix => { 1 => 'b' },
+	);
+	is(scalar @warns, 0,
+		'no carp when the colliding column is protected by collision_prefix');
+	delete $LEDGER{'st:prefixed_exempt'};
+};
+
+subtest 'schema type mismatch: add_database() also validates the new database' => sub {
+	plan tests => 2;
+	my $db0 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'INTEGER' } },
+		rows   => [{ entry => 'K1', score => 10 }],
+	);
+	my $db1 = MinimalDA->new(
+		cols   => [$JC, $COL_A],
+		schema => { $JC => { type => 'TEXT' }, $COL_A => { type => 'TEXT' } },
+		rows   => [{ entry => 'K1', name => 'Alice' }],
+	);
+	# Create with no shared columns; no warning at this point.
+	my $j;
+	{
+		my @warns;
+		local $SIG{__WARN__} = sub { push @warns, $_[0] };
+		$j = Database::Join->new(databases => [$db0], join_column => $JC);
+		is(scalar @warns, 0, 'no warning at construction with a single database');
+	}
+	# Now add a database that shares COL_B but with a different type.
+	my $db2 = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		schema => { $JC => { type => 'TEXT' }, $COL_B => { type => 'REAL' } },
+		rows   => [{ entry => 'K1', score => 9.5 }],
+	);
+	my @warns2;
+	{
+		local $SIG{__WARN__} = sub { push @warns2, $_[0] };
+		$j->add_database($db2);
+	}
+	ok(scalar @warns2, 'add_database() emits carp when new DB introduces type mismatch');
+	delete $LEDGER{'st:add_db_emits_carp'};
 };
 
 # ---------------------------------------------------------------------------

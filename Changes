@@ -2,6 +2,19 @@ Revision history for Database::Join
 
 0.006.1
 	[ Enhancements ]
+	- Schema type consistency validation: new() and add_database() now call the
+	  new _validate_schema_types() protected helper immediately after the column
+	  routing table is built.  For every column that is shared across two or more
+	  databases WITHOUT a collision_prefix, the helper compares the schema() type
+	  strings (e.g. "TEXT" vs "INTEGER") and emits a warn_schema_type_mismatch
+	  carp when they disagree.  This surfaces silent type-coercion bugs at
+	  construction time rather than at query time.  The join column itself and
+	  any column that has a collision prefix configured are exempt (the join
+	  column is structural, not a data column; prefixed columns already have
+	  distinct published names so no merge occurs).  Callers that intentionally
+	  accept the merge may suppress the warning by adding collision_prefix for
+	  the secondary database.  DAs that return an empty or undef schema() are
+	  skipped silently.
 	- parallel => 1 constructor flag: when set and the join has three or more
 	  databases (primary + two or more secondaries), secondary DA fetches are
 	  issued concurrently using Perl threads.  Each secondary is queried in its

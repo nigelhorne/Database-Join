@@ -261,8 +261,11 @@ preserve both values under distinct names instead.
 
 - Sort order
 
-    Results are sorted by the `join_column` value only.  Caller-specified
-    `ORDER BY` is not propagated to the component databases.
+    Results are sorted ascending by `join_column` by default.  Pass
+    `order_by => 'colname'` (or `order_by => ['colname', 'DESC']`)
+    to any query method to override this.  The array path uses string comparison
+    (`cmp`); for accurate numeric ordering on large datasets use the SQLite
+    backend, which sorts natively by type.
 
 - count() fetches all rows
 
@@ -374,18 +377,44 @@ preserve both values under distinct names instead.
 
 - LIKE and NOT LIKE work on the SQLite path; other pattern operators do not yet
 
-    `LIKE` and `NOT LIKE` criteria (e.g. `name => { LIKE => '%ali%' }`) are
-    fully supported on the SQLite backend: the pattern is always passed as a bind
-    parameter, never interpolated into SQL, so there is no injection risk.  The
-    behaviour is identical on both the array path (where the criterion is forwarded
-    to the component DA) and the SQLite path.
+    `LIKE`, `NOT LIKE`, `IN`, and `NOT IN` are fully supported on the SQLite
+    backend.  `LIKE`/`NOT LIKE` take a scalar pattern; `IN`/`NOT IN` take an
+    arrayref of values.  All are injection-safe because values are passed as bind
+    parameters, never interpolated.
 
-    Operators that are _not_ yet in the supported set -- `IN`, `NOT IN`,
-    `IS NULL`, `IS NOT NULL` -- are silently skipped on the SQLite path; a
-    `carp` warning is emitted for each one so callers are not silently misled.
-    The array path forwards these operators to the component DA unchanged, which
-    may or may not honour them.  If you need these operators, use
-    `backend => 'array'` to stay on the array path, or open a feature request.
+    ```perl
+    # LIKE
+    my $rows = $join->selectall_arrayref(name => { LIKE => 'A%' });
+
+    # IN
+    my $rows = $join->selectall_arrayref(tier => { IN => ['gold', 'silver'] });
+
+    # NOT IN
+    my $rows = $join->selectall_arrayref(tier => { 'NOT IN' => ['bronze'] });
+    ```
+
+    `IN` with an empty arrayref matches no rows (SQL semantics: `IN ()` is
+    always false).  `NOT IN` with an empty arrayref matches all rows (no
+    constraint added).
+
+    `IS NULL` and `IS NOT NULL` are supported on the SQLite backend using an
+    explicit operator hashref:
+
+    ```perl
+    my $rows = $join->selectall_arrayref(score => { 'IS NULL'     => undef });
+    my $rows = $join->selectall_arrayref(score => { 'IS NOT NULL' => 1    });
+    ```
+
+    The hashref value is ignored; only the key selects the operator.  A bare
+    `undef` criterion value (`score => undef`) also generates `IS NULL`
+    on the SQLite path.  Note: on the in-memory array path, the component DA
+    may treat an `undef` criterion value as `no filter` rather than
+    `IS NULL`, so use the explicit hashref form for consistent behaviour
+    across backends.
+
+    Any operator not in the supported set is skipped on the SQLite path with a
+    `carp` warning.  The array path forwards all operators to the component DA
+    unchanged, which may or may not honour them.
 
 - Temp file directory must be writable and have free space
 
@@ -537,6 +566,19 @@ tmpdir         => { type => 'string',   optional => 1 }
                   # DOMAIN -- EP valid:   any writable directory path string.
                   # DOMAIN -- EP absent:  uses File::Spec->tmpdir() (system temp dir).
 
+parallel       => { type => 'integer',  optional => 1, default => 0 }
+                  # When set to 1 and the join has more than 2 databases (primary +
+                  # 2 or more secondaries), secondary DA fetches are issued in
+                  # parallel Perl threads.  Requires the 'threads' module; falls
+                  # back to sequential with a carp warning when unavailable.
+                  # Has no effect on the SQLite backend (which uses a single SQL
+                  # JOIN).  DBI-backed DAs are not thread-safe by default; only
+                  # enable this for in-memory or otherwise thread-safe DA backends.
+                  #
+                  # DOMAIN -- EP valid:   0 (sequential, default) or 1 (parallel).
+                  # DOMAIN -- EP invalid: any other integer is treated as truthy/falsy.
+                  # DOMAIN -- Default:    0.
+
 logger         => { type => 'object',   optional => 1 }
                   # Logger object propagated to all component databases.
 
@@ -584,12 +626,14 @@ return the new object
 
 #### Messages
 
-```
-error_no_databases     -- databases arrayref was empty
-error_invalid_db       -- an element of databases is not a D::A subclass
-error_join_col_missing -- join_column (or its join_map alias) not found in a database
-error_invalid_backend  -- backend value is not 'array', 'sqlite', or 'auto'
-error_sqlite_connect   -- temporary SQLite database could not be created (backend='sqlite'/'auto')
+```perl
+error_no_databases        -- databases arrayref was empty
+error_invalid_db          -- an element of databases is not a D::A subclass
+error_join_col_missing    -- join_column (or its join_map alias) not found in a database
+error_invalid_backend     -- backend value is not 'array', 'sqlite', or 'auto'
+error_sqlite_connect      -- temporary SQLite database could not be created (backend='sqlite'/'auto')
+warn_schema_type_mismatch -- (carp) a shared column has different types across databases;
+                             use collision_prefix to preserve both values
 ```
 
 ### Join\_Map - Joining on Differently-Named Columns
@@ -884,6 +928,47 @@ my $join = Database::Join->new(
 );
 ```
 
+**Parallel secondary fetches (`parallel` constructor parameter)**
+
+By default, component databases are queried sequentially — the primary first,
+then each secondary in order.  When the component databases are network- or
+disk-backed and have non-trivial per-query latency, the sequential fetch means
+total latency is the _sum_ of all per-DA latencies.
+
+Setting `parallel => 1` in the constructor enables concurrent fetching
+of secondary databases using Perl `threads`.  With `parallel =` 1> and
+two or more secondary databases (`n > 2` total), secondary fetches run in
+parallel after the primary fetch completes; total latency drops to
+_max(secondary latencies)_ instead of _sum(secondary latencies)_.
+
+```perl
+my $join = Database::Join->new(
+    databases   => [ $customers, $loyalty, $scores ],   # 3 DAs — 2 secondaries
+    join_column => 'entry',
+    parallel    => 1,    # loyalty and scores fetched concurrently
+);
+```
+
+Requirements and caveats:
+
+- The `threads` module must be available.  Most distributions ship it, but it
+requires a Perl binary compiled with `-Dusethreads`.  When threads are
+unavailable, a `carp` warning is emitted and fetching falls back to
+sequential; the result is identical, only slower.
+- Parallel fetching is only active when the join has three or more total
+databases (`n > 2`).  With two databases (one secondary), the thread
+creation overhead exceeds the benefit of concurrency; sequential is used
+regardless of `parallel`.
+- Component databases must be safe to call from Perl threads.  In-memory
+databases (CSV, JSON, TSV after slurp) are safe.  DBI-backed databases
+whose handles were created in the same thread may not be safe — consult your
+DBD driver's thread documentation.  The array backend is recommended for
+DBI-backed sources; the SQLite backend performs its join in a single SQL
+statement and does not use parallel fetching.
+- `parallel =` 1> applies to the array backend only.  The SQLite backend
+performs a single SQL JOIN after spilling source data, so per-DA parallelism
+is irrelevant.
+
 **Zero-copy ATTACH (`dbi_source()` interface)**
 
 Normally, when the SQLite path is active, rows from each component database
@@ -944,6 +1029,11 @@ my $rows = $join->selectall_arrayref();
 my $rows = $join->selectall_arrayref(tier  => 'gold');
 my $rows = $join->selectall_arrayref(score => { '>' => 80 });
 my $rows = $join->selectall_arrayref('C001');  # positional: entry => 'C001'
+my $rows = $join->selectall_arrayref(order_by => 'name');
+my $rows = $join->selectall_arrayref(tier => 'gold', order_by => ['score', 'DESC']);
+my $rows = $join->selectall_arrayref(limit => 10);
+my $rows = $join->selectall_arrayref(limit => 10, offset => 20);
+my $rows = $join->selectall_arrayref(tier => 'gold', order_by => 'name', limit => 5);
 ```
 
 #### Description
@@ -973,13 +1063,31 @@ Calling conventions (in order of precedence):
 Values may be:
   Plain scalar                -- exact match
   Hashref of operators        -- e.g. { '>' => 80 }
+
+Optional parameters (mixed in with any of the above):
+  order_by => 'colname'            -- sort ascending by that column
+  order_by => ['colname', 'DESC']  -- sort descending
+  order_by => ['colname', 'ASC']   -- sort ascending (explicit)
+  limit    => N                    -- return at most N rows (positive integer)
+  offset   => M                   -- skip the first M rows (non-negative integer)
+
+The column named in order_by must be present in the merged view (i.e. it
+must appear in columns()).  An unknown column or an invalid direction emits
+a carp warning and falls back to the default join_column ascending sort.
+
+limit and offset are applied after ordering.  offset without limit skips
+rows but returns all remaining rows.  limit without offset starts from
+the first qualifying row.  An invalid limit or offset emits a carp warning
+and the parameter is ignored (treated as absent).
 ```
 
 ##### Output
 
 ```
-Arrayref of hashrefs; one hashref per qualifying merged row,
-sorted ascending by join_column value.
+Arrayref of hashrefs; one hashref per qualifying merged row.
+Sorted ascending by join_column by default; caller-controlled via order_by.
+At most C<limit> rows when limit is given; the first C<offset> rows are
+skipped when offset is given.
 Returns a reference to an empty array when no rows match.
 ```
 
@@ -1009,10 +1117,23 @@ for my $row (@{$vip}) {
 warn_unknown_column (carp)
     -- A criterion key names a column not present in any component database;
        the criterion is silently dropped and all rows are returned.
+order_by column unknown (carp)
+    -- The column given in order_by is not in the merged view; the result
+       is returned in the default join_column ascending order instead.
+order_by direction invalid (carp)
+    -- The direction given in order_by is not 'ASC' or 'DESC'; ASC is used.
+limit invalid (carp)
+    -- The value given for limit is not a positive integer; it is ignored.
+offset invalid (carp)
+    -- The value given for offset is not a non-negative integer; it is ignored.
 operator-unsupported (carp, SQLite/auto path only)
-    -- An operator hashref key is not in the supported set (see LIKE/NOT LIKE
-       in COMMON PITFALLS); the individual operator term is dropped from the
-       WHERE clause (other operators in the same hashref still apply).
+    -- An operator hashref key is not in the supported set (>, <, >=, <=,
+       !=, =, LIKE, NOT LIKE, IS NULL, IS NOT NULL, IN, NOT IN); the
+       individual operator term is dropped from the WHERE clause (other
+       operators in the same hashref still apply).
+IN/NOT IN wrong value type (carp, SQLite/auto path only)
+    -- An IN or NOT IN criterion was given a non-arrayref value; the operator
+       term is skipped.
 error_sqlite_connect (croak, SQLite/auto path only)
     -- The temporary SQLite join file could not be created; check tmpdir
        permissions and available disk space.
@@ -1161,6 +1282,77 @@ printf "%d total, %d gold-tier, %d high-scorers\n",
 #### Messages
 
 Same messages as `selectall_arrayref`.
+
+### Dbi\_Source
+
+#### Synopsis
+
+```perl
+# Use a Database::Join object as a zero-copy SQLite source inside a
+# parent Database::Join, giving the parent ATTACHed-speed access to
+# the child's joined data without iterating through Perl.
+my $child  = Database::Join->new(databases => [$da, $db], join_column => 'id', backend => 'sqlite');
+my $parent = Database::Join->new(databases => [$child, $dc], join_column => 'id', backend => 'sqlite');
+```
+
+#### Description
+
+Returns a hashref `{ dbh => $sqlite_dbh, table => '_dj_result' }` that
+allows a parent `Database::Join` (or any other caller that understands the
+`dbi_source()` interface) to ATTACH the child's temporary SQLite database
+file and query the materialised join result directly via SQL, without routing
+rows through Perl.
+
+The first call builds the SQLite cache (if not already current) and
+materialises the full join result — with `filters` applied but no query-time
+criteria — into a real table named `_dj_result` inside the cache file.
+Subsequent calls within the same cache cycle reuse the existing table.
+
+Returns `undef` when the backend is `'array'` (no SQLite file exists).
+
+#### Api Specification
+
+##### Input
+
+```
+None.
+```
+
+##### Output
+
+```perl
+On the SQLite/auto backend:
+  Hashref with keys:
+    dbh   => DBI handle to the child's temporary SQLite database file.
+    table => '_dj_result'  (the materialized join table inside that file).
+On the array backend:
+  undef
+```
+
+#### Example
+
+```perl
+# The parent automatically ATTACHes the child's SQLite file and queries
+# _dj_result for zero-copy composable nested joins.
+my $inner = Database::Join->new(
+    databases   => [$customers, $loyalty],
+    join_column => 'entry',
+    backend     => 'sqlite',
+);
+my $outer = Database::Join->new(
+    databases   => [$inner, $scores],
+    join_column => 'entry',
+    backend     => 'sqlite',
+);
+my $rows = $outer->selectall_arrayref(tier => 'gold');
+```
+
+#### Messages
+
+```
+error_sqlite_connect (croak)
+    -- The temporary SQLite join file could not be created.
+```
 
 ### Columns
 
@@ -1490,9 +1682,12 @@ return $self
 
 #### Messages
 
-```
-error_invalid_db       -- argument is not a Database::Abstraction subclass
-error_join_col_missing -- join_column not found in the new database
+```perl
+error_invalid_db          -- argument is not a Database::Abstraction subclass
+error_join_col_missing    -- join_column not found in the new database
+warn_schema_type_mismatch -- (carp) the new database has a shared column whose type
+                             differs from the type already in the view; use
+                             collision_prefix to preserve both values
 ```
 
 ### Remove\_Column
@@ -2361,3 +2556,11 @@ Copyright (C) 2026 Nigel Horne.
 
 Usage is subject to the GPL2 licence terms.
 If you use it, please let me know.
+
+## Pod Errors
+
+Hey! **The above document had some coding errors, which are explained below:**
+
+- Around line 1105:
+
+    Non-ASCII character seen before =encoding in '—'. Assuming UTF-8
