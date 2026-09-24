@@ -1270,4 +1270,140 @@ subtest 'limit + offset combined with order_by on SQLite path' => sub {
 	is $rows->[1]{name}, 'Carol', 'then Carol (3rd name DESC)';
 };
 
+# ===========================================================================
+# S25: dbi_source() on Database::Join itself — composable nested joins
+#   Verifies that a child Database::Join can expose itself as a zero-copy
+#   SQLite source to a parent Database::Join, allowing the parent to ATTACH
+#   the child's temp file and query _dj_result directly.
+#
+# Fixture: child joins $da_a_small (id/name/tier) with $da_b_small (id/score),
+#          left join — 5 rows: k1..k5.  Parent adds $da_c (id/rank).
+# ===========================================================================
+
+my @ROWS_C_NESTED = (
+	{ id => 'k1', rank => 1 },
+	{ id => 'k2', rank => 2 },
+	{ id => 'k3', rank => 3 },
+	{ id => 'k4', rank => 4 },
+	{ id => 'k5', rank => 5 },
+);
+my $da_c_nested = MinimalDA->new(
+	cols => [qw(id rank)],
+	rows => \@ROWS_C_NESTED,
+);
+
+subtest 'dbi_source: array backend returns undef' => sub {
+	my $child = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'array',
+		join_type   => 'left',
+	);
+	is $child->dbi_source(), undef,
+		'dbi_source() returns undef when backend is array';
+};
+
+subtest 'dbi_source: sqlite backend returns dbh and table name' => sub {
+	my $child = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $src = $child->dbi_source();
+	ok defined($src),              'dbi_source() returns a defined value';
+	is ref($src), 'HASH',          'dbi_source() return value is a hashref';
+	ok defined($src->{dbh}),       'dbi_source() hashref has dbh key';
+	is $src->{table}, '_dj_result','dbi_source() table is _dj_result';
+
+	# The _dj_result table must contain all 5 left-joined rows.
+	my $rows = $src->{dbh}->selectall_arrayref(
+		'SELECT * FROM "_dj_result" ORDER BY "id"',
+		{ Slice => {} },
+	);
+	is scalar @{$rows}, 5, '_dj_result contains all 5 rows';
+	is $rows->[0]{name}, 'Alice', 'first row (k1) has name Alice';
+};
+
+subtest 'dbi_source: reused across calls (same hashref cycle)' => sub {
+	my $child = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $src1 = $child->dbi_source();
+	my $src2 = $child->dbi_source();
+	is $src1->{dbh},   $src2->{dbh},   'same dbh across two dbi_source() calls';
+	is $src1->{table}, $src2->{table}, 'same table across two dbi_source() calls';
+};
+
+subtest 'dbi_source: parent join ATTACHes child and queries _dj_result' => sub {
+	# The child join exposes (name, tier, score) merged on id.
+	# The parent joins that view with $da_c_nested (id, rank).
+	my $child = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $parent = Database::Join->new(
+		databases   => [$child, $da_c_nested],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+	my $rows = $parent->selectall_arrayref();
+	# k1..k5 all present in da_c_nested, so inner join keeps all 5.
+	is scalar @{$rows}, 5, 'nested join returns 5 merged rows';
+
+	# Verify that columns from all three sources are present.
+	my ($alice) = grep { $_->{$JOIN_COL} eq 'k1' } @{$rows};
+	ok defined $alice, 'k1 (Alice) row found in nested join result';
+	is $alice->{name},  'Alice', 'name column from child primary source';
+	is $alice->{score}, 95,      'score column from child secondary source';
+	is $alice->{rank},  1,       'rank column from parent secondary source';
+};
+
+subtest 'dbi_source: inner join at parent level filters correctly' => sub {
+	# k4 is present in da_a_small but absent from da_b_small (left join in child).
+	# The parent inner join with da_c_nested (which has all 5) keeps all 5.
+	# Criteria on child columns are applied at parent query time.
+	my $child = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $parent = Database::Join->new(
+		databases   => [$child, $da_c_nested],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+	# Filter on tier (a column from the child's primary source).
+	my $gold_rows = $parent->selectall_arrayref(tier => 'gold');
+	# Alice (k1) and Dave (k4) are both gold.
+	is scalar @{$gold_rows}, 2, 'parent query on child column returns 2 gold rows';
+	my @names = sort map { $_->{name} } @{$gold_rows};
+	is $names[0], 'Alice', 'first gold row is Alice';
+	is $names[1], 'Dave',  'second gold row is Dave';
+};
+
+subtest 'dbi_source: auto backend forces SQLite path for parent ATTACH' => sub {
+	my $child = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'auto',  # small data set; would normally use array path
+		join_type   => 'left',
+	);
+	my $src = $child->dbi_source();
+	# Even though auto would choose array for a 5-row dataset, dbi_source()
+	# must force the SQLite path so the parent gets a usable handle.
+	ok defined($src) && ref($src) eq 'HASH',
+		'auto backend: dbi_source() returns a hashref (SQLite forced)';
+	is $src->{table}, '_dj_result',
+		'auto backend: materialised table is _dj_result';
+};
+
 done_testing();

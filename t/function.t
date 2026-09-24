@@ -30,7 +30,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 169;
+	plan tests => 174;
 	use_ok('Database::Join');
 }
 
@@ -2512,6 +2512,60 @@ subtest 'count: limit and offset silently dropped, no carp fired' => sub {
 	} 'count() with limit+offset does not croak';
 	my @pg_warns = grep { /limit|offset/i } @warns;
 	is(scalar @pg_warns, 0, 'count: no carp for limit/offset; both silently dropped');
+};
+
+# ===========================================================================
+# S37: dbi_source() on Database::Join — composable nested join white-box tests
+#   Verifies the internal mechanics: create_table path in _sqlite_join,
+#   _dj_built flag, reuse across calls, and that the array backend returns undef.
+# ===========================================================================
+
+subtest 'dbi_source: array backend returns undef' => sub {
+	plan tests => 1;
+	my $j = _make_order_join(backend => 'array');
+	is($j->dbi_source(), undef,
+		'dbi_source() returns undef on array backend');
+};
+
+subtest 'dbi_source: sqlite backend returns correct hashref shape' => sub {
+	plan tests => 3;
+	my $j   = _make_order_join(backend => 'sqlite');
+	my $src = $j->dbi_source();
+	ok(defined $src,              'dbi_source() defined on sqlite backend');
+	is(ref($src), 'HASH',         'return value is a hashref');
+	is($src->{table}, '_dj_result', 'table key is _dj_result');
+};
+
+subtest 'dbi_source: _dj_result table exists and has correct rows' => sub {
+	plan tests => 2;
+	my $j   = _make_order_join(backend => 'sqlite');
+	my $src = $j->dbi_source();
+	my $rows = $src->{dbh}->selectall_arrayref(
+		'SELECT * FROM "_dj_result" ORDER BY "entry"',
+		{ Slice => {} },
+	);
+	# _make_order_join has Carol/K1, Alice/K2, Bob/K3 — 3 rows.
+	is(scalar @{$rows}, 3, '_dj_result contains 3 materialised rows');
+	is($rows->[0]{name}, 'Carol', 'first row (K1) is Carol');
+};
+
+subtest 'dbi_source: second call reuses same materialised table (_dj_built)' => sub {
+	plan tests => 2;
+	my $j    = _make_order_join(backend => 'sqlite');
+	my $src1 = $j->dbi_source();
+	my $src2 = $j->dbi_source();
+	is($src1->{dbh},   $src2->{dbh},   'same DBI handle returned on second call');
+	is($src1->{table}, $src2->{table}, 'same table name returned on second call');
+};
+
+subtest 'dbi_source: auto backend builds SQLite cache regardless of threshold' => sub {
+	plan tests => 2;
+	my $j   = _make_order_join(backend => 'auto');
+	my $src = $j->dbi_source();
+	# auto backend would choose array for 3 rows, but dbi_source() must force SQLite.
+	ok(defined $src && ref($src) eq 'HASH',
+		'auto backend: dbi_source() returns hashref');
+	is($src->{table}, '_dj_result', 'auto backend: table is _dj_result');
 };
 
 diag('All white-box function tests complete') if $ENV{TEST_VERBOSE};

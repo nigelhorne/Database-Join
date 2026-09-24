@@ -20,7 +20,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 117;
+	plan tests => 121;
 	use_ok('Database::Join');
 }
 
@@ -185,6 +185,12 @@ my %LEDGER = (
 	'pg:invalid_limit_carp'   => 1,  # invalid limit => carp + all rows returned
 	'pg:invalid_offset_carp'  => 1,  # invalid offset => carp + no rows skipped
 	'pg:count_drops_silently' => 1,  # count() ignores limit/offset, returns total
+
+	# dbi_source() — composable nested joins (POD section: "dbi_source")
+	'ds:array_returns_undef'    => 1,  # array backend → undef
+	'ds:sqlite_returns_hashref' => 1,  # sqlite backend → {dbh, table}
+	'ds:nested_join_works'      => 1,  # parent join can ATTACH child _dj_result
+	'ds:auto_forces_sqlite'     => 1,  # auto backend forces SQLite for dbi_source
 );
 
 # ---------------------------------------------------------------------------
@@ -1804,6 +1810,68 @@ subtest 'count: order_by parameter is silently dropped' => sub {
 	is(scalar @ob_warns, 0,
 		'count: no carp for order_by — it is silently dropped before criteria routing');
 	delete $LEDGER{'ob:count_drops_silently'};
+};
+
+# ===========================================================================
+# SECTION 21 -- dbi_source() composable nested joins
+#   Verifies the public API of dbi_source(): return value shape, array-backend
+#   undef, and that a parent join can ATTACH a child join and query rows.
+#   Uses the _three_row_join() fixture (Carol/K1, Alice/K2, Bob/K3).
+# ===========================================================================
+
+subtest 'dbi_source: array backend returns undef' => sub {
+	plan tests => 1;
+	my $j = _three_row_join(backend => 'array');
+	is($j->dbi_source(), undef,
+		'dbi_source() returns undef when backend is array');
+	delete $LEDGER{'ds:array_returns_undef'};
+};
+
+subtest 'dbi_source: sqlite backend returns {dbh, table} hashref' => sub {
+	plan tests => 4;
+	my $j   = _three_row_join(backend => 'sqlite');
+	my $src = $j->dbi_source();
+	ok(defined $src,                'dbi_source() returns a defined value');
+	is(ref($src), 'HASH',           'return value is a hashref');
+	ok(defined $src->{dbh},         'hashref has a dbh key');
+	is($src->{table}, '_dj_result', 'hashref table is _dj_result');
+	delete $LEDGER{'ds:sqlite_returns_hashref'};
+};
+
+subtest 'dbi_source: parent join ATTACHes child and queries merged columns' => sub {
+	plan tests => 3;
+	# Child exposes entry/name/score.  Add a rank source for the parent.
+	my $db_rank = MinimalDA->new(
+		cols => [$JC, 'rank'],
+		rows => [
+			{ entry => 'K1', rank => 10 },
+			{ entry => 'K2', rank => 20 },
+			{ entry => 'K3', rank => 30 },
+		],
+	);
+	my $child  = _three_row_join(backend => 'sqlite');
+	my $parent = Database::Join->new(
+		databases   => [$child, $db_rank],
+		join_column => $JC,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+	my $rows = $parent->selectall_arrayref();
+	is(scalar @{$rows}, 3, 'nested join returns 3 rows');
+	my ($carol) = grep { $_->{$JC} eq 'K1' } @{$rows};
+	is($carol->{$COL_A}, 'Carol', 'name column visible through nested join');
+	is($carol->{rank},   10,      'rank column from parent source also present');
+	delete $LEDGER{'ds:nested_join_works'};
+};
+
+subtest 'dbi_source: auto backend forces SQLite path (dbi_source always usable)' => sub {
+	plan tests => 2;
+	my $j   = _three_row_join(backend => 'auto');
+	my $src = $j->dbi_source();
+	ok(defined $src && ref($src) eq 'HASH',
+		'auto backend: dbi_source() returns hashref (SQLite forced)');
+	is($src->{table}, '_dj_result', 'auto backend: table is _dj_result');
+	delete $LEDGER{'ds:auto_forces_sqlite'};
 };
 
 # ===========================================================================

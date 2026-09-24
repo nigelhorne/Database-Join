@@ -45,12 +45,6 @@ our $VERSION = '0.006.0';
 #
 # POST-RELEASE ROADMAP
 #
-# TODO: dbi_source() on Database::Join itself (composable nested joins)
-#   The join object cannot act as a zero-copy SQLite source in a parent join.
-#   Implementing dbi_source() — returning the cached File::Temp handle and the
-#   join table name — would allow composable nested Database::Join objects at
-#   full ATTACHed speed.
-#
 # TODO: Parallel DA queries in _fetch_indexed
 #   Component DAs are queried sequentially.  An optional parallel => 1
 #   constructor flag could reduce latency by the factor of the slowest DA,
@@ -1418,6 +1412,96 @@ sub count {
 	return scalar @{ $self->_joined_query_array($params) };
 }
 
+=head2 dbi_source
+
+=head3 SYNOPSIS
+
+    # Use a Database::Join object as a zero-copy SQLite source inside a
+    # parent Database::Join, giving the parent ATTACHed-speed access to
+    # the child's joined data without iterating through Perl.
+    my $child  = Database::Join->new(databases => [$da, $db], join_column => 'id', backend => 'sqlite');
+    my $parent = Database::Join->new(databases => [$child, $dc], join_column => 'id', backend => 'sqlite');
+
+=head3 DESCRIPTION
+
+Returns a hashref C<< { dbh => $sqlite_dbh, table => '_dj_result' } >> that
+allows a parent C<Database::Join> (or any other caller that understands the
+C<dbi_source()> interface) to ATTACH the child's temporary SQLite database
+file and query the materialised join result directly via SQL, without routing
+rows through Perl.
+
+The first call builds the SQLite cache (if not already current) and
+materialises the full join result — with C<filters> applied but no query-time
+criteria — into a real table named C<_dj_result> inside the cache file.
+Subsequent calls within the same cache cycle reuse the existing table.
+
+Returns C<undef> when the backend is C<'array'> (no SQLite file exists).
+
+=head3 API SPECIFICATION
+
+=head4 Input
+
+    None.
+
+=head4 Output
+
+    On the SQLite/auto backend:
+      Hashref with keys:
+        dbh   => DBI handle to the child's temporary SQLite database file.
+        table => '_dj_result'  (the materialized join table inside that file).
+    On the array backend:
+      undef
+
+=head3 EXAMPLE
+
+    # The parent automatically ATTACHes the child's SQLite file and queries
+    # _dj_result for zero-copy composable nested joins.
+    my $inner = Database::Join->new(
+        databases   => [$customers, $loyalty],
+        join_column => 'entry',
+        backend     => 'sqlite',
+    );
+    my $outer = Database::Join->new(
+        databases   => [$inner, $scores],
+        join_column => 'entry',
+        backend     => 'sqlite',
+    );
+    my $rows = $outer->selectall_arrayref(tier => 'gold');
+
+=head3 MESSAGES
+
+    error_sqlite_connect (croak)
+        -- The temporary SQLite join file could not be created.
+
+=cut
+
+sub dbi_source {
+	my ($self) = @_;
+
+	# The array backend has no SQLite handle to expose.
+	return undef if $self->{_backend} eq 'array';
+
+	# Build or refresh the per-source SQLite cache.  On 'auto' backend this
+	# forces the SQLite path regardless of the auto-threshold decision — a
+	# parent that wants to ATTACH us requires a real on-disk file.
+	$self->_build_sqlite_cache() unless $self->_cache_fresh();
+
+	my $cache = $self->{_sqlite_cache};
+
+	# If the materialised result table is already current, reuse it.
+	# _dj_built is reset implicitly when _build_sqlite_cache creates a fresh
+	# cache hashref (the old hashref is replaced, so its _dj_built is gone).
+	unless ($cache->{_dj_built}) {
+		# Materialise all joined rows (filter criteria only, no query-time
+		# criteria) into _dj_result so a parent connection can ATTACH and
+		# query it as a plain table.
+		$self->_sqlite_join({}, create_table => '_dj_result');
+		$cache->{_dj_built} = 1;
+	}
+
+	return { dbh => $cache->{dbh}, table => '_dj_result' };
+}
+
 =head2 columns
 
 =head3 SYNOPSIS
@@ -2774,10 +2858,11 @@ sub _build_sqlite_cache :Protected {
 #          Database::Join object is destroyed or the source data changes.
 sub _sqlite_join :Protected {
 	my ($self, $params, %opts) = @_;
-	my $count_only = $opts{count_only} // 0;
-	my $order_by   = $opts{order_by};
-	my $limit      = $opts{limit};
-	my $offset     = $opts{offset};
+	my $count_only   = $opts{count_only} // 0;
+	my $order_by     = $opts{order_by};
+	my $limit        = $opts{limit};
+	my $offset       = $opts{offset};
+	my $create_table = $opts{create_table};  # when set, materialize into a real table
 
 	# Validate limit and offset; invalid values are ignored with a carp.
 	if (defined $limit) {
@@ -2831,7 +2916,9 @@ sub _sqlite_join :Protected {
 	# For 'auto' mode: check total row count without fetching rows.
 	# Count(*) is used for dbi_source() sources; count() for others.
 	# If any source supports neither, fall back to the array path.
-	if ($backend eq 'auto') {
+	# Skipped when create_table is set — dbi_source() has already committed to
+	# the SQLite path and we must materialise regardless of row count.
+	if ($backend eq 'auto' && !defined $create_table) {
 		my $total     = 0;
 		my $can_count = 1;
 		for my $i (0 .. $n - 1) {
@@ -3023,6 +3110,20 @@ sub _sqlite_join :Protected {
 			$expr   .= ' AS ' . _sql_quote_identifier($pub) if $pub ne $col;
 			push @selects, $expr;
 		}
+	}
+
+	# dbi_source() materialisation path: CREATE TABLE name AS SELECT ...
+	# Executed BEFORE ORDER BY / LIMIT / OFFSET because they are irrelevant here —
+	# the parent join will impose its own ordering and pagination per-call.
+	# _sql_quote_identifier guards against any injection via the table name.
+	if (defined $create_table) {
+		my $mat_sql = 'SELECT ' . join(', ', @selects)
+		            . ' FROM ' . $from . $join_sql . $where_sql;
+		$tmpdbh->do('DROP TABLE IF EXISTS ' . _sql_quote_identifier($create_table));
+		$tmpdbh->do('CREATE TABLE ' . _sql_quote_identifier($create_table)
+		          . ' AS ' . $mat_sql,
+		          undef, @bind_vals);
+		return;
 	}
 
 	# ORDER BY: default is join_column ascending.  Caller may override via

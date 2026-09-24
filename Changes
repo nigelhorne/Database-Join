@@ -2,6 +2,19 @@ Revision history for Database::Join
 
 0.006.1
 	[ Enhancements ]
+	- dbi_source() on Database::Join itself: a Database::Join object with a
+	  SQLite or auto backend now implements dbi_source(), returning {dbh, table}
+	  pointing at a materialised '_dj_result' table inside its temporary SQLite
+	  file.  A parent Database::Join (or any caller that understands the
+	  dbi_source() interface) can ATTACH the child's file and query _dj_result
+	  directly via SQL, giving composable nested joins at full ATTACHed speed
+	  without routing rows through Perl.  Filter criteria (filters =>) are baked
+	  into _dj_result at materialisation time; query-time criteria are applied
+	  by the parent's WHERE clause per-call.  The result table is rebuilt lazily
+	  when the underlying source data changes (cache invalidation propagates via
+	  updated() timestamps exactly as for leaf sources).  Returns undef on the
+	  array backend.  The 'auto' backend forces the SQLite path when dbi_source()
+	  is called so a parent always gets a usable handle.
 	- Limit / offset pagination: selectall_arrayref and selectall_array now
 	  accept limit => N (positive integer) and offset => M (non-negative integer).
 	  The SQLite path appends LIMIT ? OFFSET ? as bind parameters to the generated
