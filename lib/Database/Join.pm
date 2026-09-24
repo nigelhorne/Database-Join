@@ -2573,26 +2573,45 @@ sub _joined_query :Protected {
 # index order.  For duplicate columns, later databases win.  Local join-key
 # aliases are renamed to the canonical join_column before merging.
 # Removed columns are deleted from every merged row.
-sub _joined_query_array :Protected {
-	my ($self, $params, %opts) = @_;
-	my $order_by = $opts{order_by};
-	my $limit    = $opts{limit};
-	my $offset   = $opts{offset};
-
-	# Validate limit: must be a positive integer.
+# _validate_pagination( $limit, $offset ) -> ($validated_limit, $validated_offset)
+#
+# Purpose: Single source of truth for pagination parameter validation.
+#          Shared by _joined_query_array (array path) and _sqlite_join (SQLite path).
+# Entry:   $limit and $offset are raw caller values -- may be undef, negative,
+#          non-integer, etc.
+# Exit:    Returns the original values when valid; returns undef (with carp) when
+#          invalid.  Premise: after this call, limit ∈ ℤ+ ∪ {undef} and
+#          offset ∈ ℤ≥0 ∪ {undef}.  All downstream guards may safely rely on this.
+sub _validate_pagination :Protected {
+	my ($self, $limit, $offset) = @_;
+	# Syllogism: limit must be a positive integer ∧ matches /^\d+$/ ∧ >= 1.
+	# Conclusion: any value that fails either check is treated as absent.
 	if (defined $limit) {
 		if ($limit !~ /^\d+$/ || $limit < 1) {
 			carp "Database::Join: limit must be a positive integer; ignored";
 			undef $limit;
 		}
 	}
-	# Validate offset: must be a non-negative integer.
+	# Syllogism: offset must be a non-negative integer ∧ matches /^\d+$/.
+	# Conclusion: any value that fails the check is treated as absent.
 	if (defined $offset) {
 		if ($offset !~ /^\d+$/) {
 			carp "Database::Join: offset must be a non-negative integer; ignored";
 			undef $offset;
 		}
 	}
+	return ($limit, $offset);
+}
+
+sub _joined_query_array :Protected {
+	my ($self, $params, %opts) = @_;
+	my $order_by = $opts{order_by};
+	my $limit    = $opts{limit};
+	my $offset   = $opts{offset};
+
+	# Premise: caller may supply raw (unvalidated) limit/offset.
+	# _validate_pagination is the single validation point; result is clean or undef.
+	($limit, $offset) = $self->_validate_pagination($limit, $offset);
 
 	my $join_col  = $self->{_join_col};
 	my $join_type = $self->{_join_type};
@@ -3025,19 +3044,10 @@ sub _sqlite_join :Protected {
 	my $offset       = $opts{offset};
 	my $create_table = $opts{create_table};  # when set, materialize into a real table
 
-	# Validate limit and offset; invalid values are ignored with a carp.
-	if (defined $limit) {
-		if ($limit !~ /^\d+$/ || $limit < 1) {
-			carp "Database::Join: limit must be a positive integer; ignored";
-			undef $limit;
-		}
-	}
-	if (defined $offset) {
-		if ($offset !~ /^\d+$/) {
-			carp "Database::Join: offset must be a non-negative integer; ignored";
-			undef $offset;
-		}
-	}
+	# Transitive reduction: _validate_pagination is the single validation site.
+	# count() and dbi_source() never supply limit/offset (both methods delete them
+	# before calling _sqlite_join), so for those callers this is a cheap undef-check.
+	($limit, $offset) = $self->_validate_pagination($limit, $offset);
 
 	my $backend   = $self->{_backend};
 	my $join_col  = $self->{_join_col};
