@@ -20,7 +20,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 102;
+	plan tests => 109;
 	use_ok('Database::Join');
 }
 
@@ -166,6 +166,15 @@ my %LEDGER = (
 	'backend:auto_above_threshold_uses_sqlite'=> 1,
 	'backend:results_identical'               => 1,
 	'backend:error_sqlite_connect'            => 1,
+
+	# order_by parameter (POD section: "selectall_arrayref / Input / Optional parameter")
+	'ob:asc_array'            => 1,  # order_by 'col' ASC on array path
+	'ob:desc_array'           => 1,  # order_by ['col','DESC'] on array path
+	'ob:asc_sqlite'           => 1,  # order_by ASC on SQLite path
+	'ob:desc_sqlite'          => 1,  # order_by DESC on SQLite path
+	'ob:unknown_col_carp'     => 1,  # unknown column => carp + default join_col sort
+	'ob:invalid_dir_carp'     => 1,  # invalid direction => carp + ASC fallback
+	'ob:count_drops_silently' => 1,  # count() silently drops order_by
 );
 
 # ---------------------------------------------------------------------------
@@ -272,6 +281,34 @@ sub _two_db_join {
 	return Database::Join->new(
 		databases   => [$db_a, $db_b],
 		join_column => $JC,
+		%opts,
+	);
+}
+
+# Three-row variant: three distinct names makes ascending/descending sort
+# unambiguous.  Used exclusively for order_by tests (Section 19).
+sub _three_row_join {
+	my (%opts) = @_;
+	my $db_a = MinimalDA->new(
+		cols => [$JC, $COL_A, $COL_C],
+		rows => [
+			{ entry => 'K1', name => 'Carol', tier => 'silver' },
+			{ entry => 'K2', name => 'Alice', tier => 'gold'   },
+			{ entry => 'K3', name => 'Bob',   tier => 'bronze' },
+		],
+	);
+	my $db_b = MinimalDA->new(
+		cols => [$JC, $COL_B],
+		rows => [
+			{ entry => 'K1', score => 88 },
+			{ entry => 'K2', score => 95 },
+			{ entry => 'K3', score => 70 },
+		],
+	);
+	return Database::Join->new(
+		databases   => [$db_a, $db_b],
+		join_column => $JC,
+		join_type   => 'inner',
 		%opts,
 	);
 }
@@ -1646,6 +1683,117 @@ subtest 'error_sqlite_connect: DBI::connect failure croaks with the documented m
 	like($first_line, qr/Failed to open temporary SQLite database/,
 		'error_sqlite_connect: documented message fires when DBI::connect returns undef');
 	delete $LEDGER{'backend:error_sqlite_connect'};
+};
+
+# ===========================================================================
+# SECTION 19 -- order_by parameter (7 tests)
+#
+# POD guarantees: all query methods accept order_by => 'col' (ascending)
+# or order_by => ['col', 'DESC'] (descending).  An unknown column or an
+# invalid direction emits a carp and falls back to the default join_column
+# ascending sort.  count() silently drops order_by.
+#
+# Both the array backend (Perl sort) and the SQLite backend (SQL ORDER BY)
+# are exercised so identical semantics are confirmed on each path.
+# ===========================================================================
+
+subtest 'order_by ASC on array path: rows sorted by named column ascending' => sub {
+	plan tests => 2;
+	my $j    = _three_row_join(backend => 'array');
+	my $rows = $j->selectall_arrayref(order_by => $COL_A);
+	my @names = map { $_->{$COL_A} } @{$rows};
+	is_deeply(\@names, [qw(Alice Bob Carol)],
+		'order_by name ASC (array): ascending alphabetical order');
+	is(scalar @{$rows}, 3, 'all 3 rows present');
+	delete $LEDGER{'ob:asc_array'};
+};
+
+subtest 'order_by DESC on array path: rows sorted by named column descending' => sub {
+	plan tests => 1;
+	my $j    = _three_row_join(backend => 'array');
+	my $rows = $j->selectall_arrayref(order_by => [$COL_A, 'DESC']);
+	my @names = map { $_->{$COL_A} } @{$rows};
+	is_deeply(\@names, [qw(Carol Bob Alice)],
+		'order_by name DESC (array): descending alphabetical order');
+	delete $LEDGER{'ob:desc_array'};
+};
+
+subtest 'order_by ASC on SQLite path: SQL ORDER BY applied correctly' => sub {
+	plan tests => 2;
+	my $j    = _three_row_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(order_by => $COL_A);
+	my @names = map { $_->{$COL_A} } @{$rows};
+	is_deeply(\@names, [qw(Alice Bob Carol)],
+		'order_by name ASC (SQLite): ascending order from SQL ORDER BY');
+	is(scalar @{$rows}, 3, 'all 3 rows returned');
+	delete $LEDGER{'ob:asc_sqlite'};
+};
+
+subtest 'order_by DESC on SQLite path: SQL ORDER BY DESC reverses order' => sub {
+	plan tests => 2;
+	my $j    = _three_row_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(order_by => [$COL_A, 'DESC']);
+	my @names = map { $_->{$COL_A} } @{$rows};
+	is_deeply(\@names, [qw(Carol Bob Alice)],
+		'order_by name DESC (SQLite): descending order from SQL ORDER BY');
+	is(scalar @{$rows}, 3, 'all 3 rows returned');
+	delete $LEDGER{'ob:desc_sqlite'};
+};
+
+subtest 'order_by unknown column: carp emitted, result returned in default order' => sub {
+	plan tests => 3;
+	# POD: "An unknown column emits a carp warning and falls back to the default
+	# join_column ascending sort."  The query must not croak.
+	my $j = _three_row_join(backend => 'array');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $j->selectall_arrayref(order_by => 'no_such_column');
+	} 'unknown order_by column does not croak';
+	my @ob_warns = grep { /order_by.*not in the merged view/i } @warnings;
+	ok(scalar @ob_warns,
+		'carp fired for unknown order_by column (documented warning)');
+	is(scalar @{$rows}, 3, 'all 3 rows returned despite bad order_by');
+	delete $LEDGER{'ob:unknown_col_carp'};
+};
+
+subtest 'order_by invalid direction: carp emitted, ASC fallback used' => sub {
+	plan tests => 3;
+	# POD: "An invalid direction emits a carp warning and falls back to the
+	# default join_column ascending sort."
+	my $j = _three_row_join(backend => 'array');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $j->selectall_arrayref(order_by => [$COL_A, 'SIDEWAYS']);
+	} 'invalid order_by direction does not croak';
+	my @dir_warns = grep { /direction.*not supported|not supported.*direction/i } @warnings;
+	ok(scalar @dir_warns,
+		'carp fired for unsupported direction (documented warning)');
+	# With ASC fallback the result is still sorted ascending
+	my @names = map { $_->{$COL_A} } @{$rows};
+	is_deeply(\@names, [qw(Alice Bob Carol)],
+		'invalid direction falls back to ASC: ascending order returned');
+	delete $LEDGER{'ob:invalid_dir_carp'};
+};
+
+subtest 'count: order_by parameter is silently dropped' => sub {
+	plan tests => 2;
+	# POD: "count() ignores order_by as row ordering does not affect a count."
+	# No carp must fire, and the count must be the correct total.
+	my $j = _three_row_join(backend => 'array');
+	my @warnings;
+	my $n;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$n = $j->count(order_by => $COL_A);
+	} 'count with order_by does not croak';
+	my @ob_warns = grep { /order_by/i } @warnings;
+	is(scalar @ob_warns, 0,
+		'count: no carp for order_by — it is silently dropped before criteria routing');
+	delete $LEDGER{'ob:count_drops_silently'};
 };
 
 # ===========================================================================
