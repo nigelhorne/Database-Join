@@ -3116,7 +3116,8 @@ sub _sqlite_join :Protected {
 			last;
 		}
 		if (!$can_count || $total <= $self->{_max_array_rows}) {
-			my $rows = $self->_joined_query_array($params);
+			my $rows = $self->_joined_query_array($params,
+				order_by => $order_by, limit => $limit, offset => $offset);
 			return $count_only ? scalar @{$rows} : $rows;
 		}
 	}
