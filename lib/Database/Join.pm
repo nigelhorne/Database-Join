@@ -2609,9 +2609,10 @@ sub _joined_query_array :Protected {
 	my $limit    = $opts{limit};
 	my $offset   = $opts{offset};
 
-	# Premise: caller may supply raw (unvalidated) limit/offset.
-	# _validate_pagination is the single validation point; result is clean or undef.
-	($limit, $offset) = $self->_validate_pagination($limit, $offset);
+	# Fast path: skip Sub::Protected dispatch entirely when no pagination params are
+	# supplied (the common case).  Saves one method-lookup overhead per query.
+	($limit, $offset) = $self->_validate_pagination($limit, $offset)
+		if defined $limit || defined $offset;
 
 	my $join_col  = $self->{_join_col};
 	my $join_type = $self->{_join_type};
@@ -2702,9 +2703,12 @@ sub _joined_query_array :Protected {
 	for my $i (1 .. $n - 1) {
 		my $local_jc   = $self->{_join_map}{$i} // $join_col;
 		my $has_filter = !!%{ $self->{_filters}{$i} // {} };
-		my %q          = %{ $per_db->[$i] };
-		delete $q{$local_jc};
-		$had_criteria[$i] = $has_filter || !!%q;
+		my $crit       = $per_db->[$i];
+		# Avoid copying the criteria hash just to delete the join-col key.
+		# Arithmetic is O(1) allocations: count total keys, subtract 1 when the
+		# local join-col key is present.  Any result > 0 is truthy (has own criteria).
+		my $own = (keys %{$crit}) - (exists $crit->{$local_jc} ? 1 : 0);
+		$had_criteria[$i] = $has_filter || $own;
 	}
 
 	# Seed the key set from the primary database.
@@ -2753,12 +2757,37 @@ sub _joined_query_array :Protected {
 	# query.  Lazily built here and invalidated to undef by remove_column().
 	my $removed = ($self->{_removed_list} //= [keys %{ $self->{_removed_cols} }]);
 
+	# Parse order_by once before the merge loop so we can decide whether the
+	# initial O(K log K) sort of %key_set is necessary.
+	# When order_by targets a column other than the join_col, that initial sort
+	# is overridden by the final Schwarzian pass -- skip it to save a full sort.
+	# When order_by is absent or targets the join_col, the initial sort IS the
+	# final order and must be kept.
+	my ($ob_col, $ob_dir) = ($join_col, 'ASC');
+	if (defined $order_by) {
+		my ($req_col, $req_dir) = ref($order_by) eq 'ARRAY' ? @{$order_by} : ($order_by, 'ASC');
+		$req_dir = uc($req_dir // 'ASC');
+		unless ($req_dir eq 'ASC' || $req_dir eq 'DESC') {
+			carp "Database::Join: order_by direction '$req_dir' is not supported; using ASC";
+			$req_dir = 'ASC';
+		}
+		if ($req_col ne $join_col && !exists $self->{_col_db}{$req_col}) {
+			carp "Database::Join: order_by column '$req_col' is not in the merged view; result sorted by join_column";
+		} else {
+			($ob_col, $ob_dir) = ($req_col, $req_dir);
+		}
+	}
+	# True when order_by targets a non-join column: the initial sort is redundant.
+	my $ob_override = ($ob_col ne $join_col);
+
 	# Build one merged result row for every primary-database row that qualifies.
 	# Secondary databases act as lookup tables: when a key maps to multiple
 	# secondary rows, the last one wins (consistent with construction-time
 	# last-database-wins column routing).
 	my @result;
-	for my $key (sort keys %key_set) {
+	# When order_by will override the join_col order, iterate keys unsorted (O(K))
+	# instead of sorted (O(K log K)); the Schwarzian pass at the end reorders.
+	for my $key ($ob_override ? keys %key_set : sort keys %key_set) {
 		# Iterate directly over the arrayref: avoids copying primary rows into a
 		# new @base_rows array (saves P element copies per key, P = rows per key).
 		# [{}] ensures outer-join keys absent from the primary produce one merged row.
@@ -2808,25 +2837,30 @@ sub _joined_query_array :Protected {
 		}
 	}
 
-	# Caller-specified ORDER BY.  The result is already in join_column ascending
-	# order (built via `sort keys %key_set`); only re-sort when order_by is given.
-	if (defined $order_by) {
-		my ($ob_col, $ob_dir) = ref($order_by) eq 'ARRAY' ? @{$order_by} : ($order_by, 'ASC');
-		$ob_dir = uc($ob_dir // 'ASC');
-		unless ($ob_dir eq 'ASC' || $ob_dir eq 'DESC') {
-			carp "Database::Join: order_by direction '$ob_dir' is not supported; using ASC";
-			$ob_dir = 'ASC';
-		}
-		if ($ob_col ne $join_col && !exists $self->{_col_db}{$ob_col}) {
-			carp "Database::Join: order_by column '$ob_col' is not in the merged view; result sorted by join_column";
+	# Caller-specified ORDER BY.
+	# $ob_col / $ob_dir / $ob_override were parsed BEFORE the merge loop.
+	# Three cases:
+	#   1. Non-join-col override ($ob_override true): Schwarzian transform
+	#      O(R) key extractions + O(R log R) scalar comparisons -- cheaper than
+	#      O(2R log R) hash dereferences that a naive sort block would make.
+	#   2. join_col DESC: O(R) reverse -- already sorted ASC by the loop.
+	#   3. join_col ASC (default): already in order, nothing to do.
+	if ($ob_override) {
+		# Schwarzian: decorate, sort, undecorate.
+		# String comparison (cmp).  For accurate numeric ordering on large
+		# numeric columns use backend => 'sqlite', which sorts by SQL type.
+		my @tagged = map { [$_, $_->{$ob_col} // ''] } @result;
+		if ($ob_dir eq 'DESC') {
+			@result = map { $_->[0] } sort { $b->[1] cmp $a->[1] } @tagged;
 		} else {
-			# String comparison (cmp).  For accurate numeric ordering on large
-			# numeric columns use backend => 'sqlite', which sorts by SQL type.
-			@result = ($ob_dir eq 'DESC')
-			        ? sort { ($b->{$ob_col} // '') cmp ($a->{$ob_col} // '') } @result
-			        : sort { ($a->{$ob_col} // '') cmp ($b->{$ob_col} // '') } @result;
+			@result = map { $_->[0] } sort { $a->[1] cmp $b->[1] } @tagged;
 		}
+	} elsif ($ob_dir eq 'DESC') {
+		# join_col DESC: O(R) reverse is cheaper than O(R log R) re-sort
+		# because the merge loop already produced join_col ASC order.
+		@result = reverse @result;
 	}
+	# join_col ASC: @result is already in join_column ascending order.
 
 	# LIMIT / OFFSET pagination — applied after ordering.
 	# splice removes elements from the front (offset) then truncates to limit.
