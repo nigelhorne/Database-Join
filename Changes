@@ -2,6 +2,15 @@ Revision history for Database::Join
 
 0.006.1
 	[ Enhancements ]
+	- parallel => 1 constructor flag: when set and the join has three or more
+	  databases (primary + two or more secondaries), secondary DA fetches are
+	  issued concurrently using Perl threads.  Each secondary is queried in its
+	  own thread; results are collected with join() and indexed exactly as in the
+	  sequential path.  Falls back to sequential with a carp warning when the
+	  'threads' module is unavailable.  No effect on the SQLite backend (which
+	  executes a single SQL JOIN).  DBI-backed DAs are not thread-safe by default;
+	  documented in POD.  The threshold n > 2 avoids thread-spawn overhead for the
+	  common single-secondary case.
 	- dbi_source() on Database::Join itself: a Database::Join object with a
 	  SQLite or auto backend now implements dbi_source(), returning {dbh, table}
 	  pointing at a materialised '_dj_result' table inside its temporary SQLite

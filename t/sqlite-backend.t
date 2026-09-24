@@ -1406,4 +1406,50 @@ subtest 'dbi_source: auto backend forces SQLite path for parent ATTACH' => sub {
 		'auto backend: materialised table is _dj_result';
 };
 
+# ===========================================================================
+# S26: parallel => 1 constructor flag — SQLite-backend integration tests
+#   Verify that parallel => 1 is accepted and produces correct results, both
+#   when n <= 2 (no threading) and n > 2 (threading or sequential fallback).
+# ===========================================================================
+
+subtest 'parallel: 2-db join with parallel => 1 returns correct rows (n <= 2 threshold)' => sub {
+	my $j = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		join_type   => 'left',
+		parallel    => 1,
+		backend     => 'array',
+	);
+	my $rows = $j->selectall_arrayref();
+	# Left join: all 5 rows from A; k4 has no score from B.
+	is scalar @{$rows}, 5, 'parallel => 1, 2-db join: all 5 left-join rows returned';
+	my @names = sort map { $_->{name} } @{$rows};
+	is $names[0], 'Alice', 'first name alphabetically is Alice';
+};
+
+subtest 'parallel: 3-db join with parallel => 1 results equal sequential (n > 2 threshold)' => sub {
+	my $j_par = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small, $da_c_nested],
+		join_column => $JOIN_COL,
+		join_type   => 'inner',
+		parallel    => 1,
+		backend     => 'array',
+	);
+	my $j_seq = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small, $da_c_nested],
+		join_column => $JOIN_COL,
+		join_type   => 'inner',
+		parallel    => 0,
+		backend     => 'array',
+	);
+	my $rows_par = $j_par->selectall_arrayref();
+	my $rows_seq = $j_seq->selectall_arrayref();
+	is scalar @{$rows_par}, scalar @{$rows_seq},
+		'parallel 3-db join: same row count as sequential';
+	my @ids_par = sort map { $_->{$JOIN_COL} } @{$rows_par};
+	my @ids_seq = sort map { $_->{$JOIN_COL} } @{$rows_seq};
+	is_deeply(\@ids_par, \@ids_seq,
+		'parallel 3-db join: same entry keys as sequential');
+};
+
 done_testing();

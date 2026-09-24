@@ -30,7 +30,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 174;
+	plan tests => 177;
 	use_ok('Database::Join');
 }
 
@@ -2566,6 +2566,68 @@ subtest 'dbi_source: auto backend builds SQLite cache regardless of threshold' =
 	ok(defined $src && ref($src) eq 'HASH',
 		'auto backend: dbi_source() returns hashref');
 	is($src->{table}, '_dj_result', 'auto backend: table is _dj_result');
+};
+
+# ===========================================================================
+# S38: parallel => 1 constructor flag — white-box internal state tests
+#   Verify that _parallel is correctly stored in the blessed hashref, and that
+#   _joined_query_array with parallel => 1 on 3+ DAs produces the same result
+#   as the sequential path (whether threads are actually used or not).
+# ===========================================================================
+
+subtest 'parallel: _parallel defaults to 0 in blessed hashref' => sub {
+	plan tests => 1;
+	my $j = _make_join();
+	is($j->{_parallel}, 0,
+		'_parallel key is 0 when parallel not specified');
+};
+
+subtest 'parallel: _parallel stored as 1 when parallel => 1 given' => sub {
+	plan tests => 1;
+	my $j = _make_join(parallel => 1);
+	is($j->{_parallel}, 1,
+		'_parallel key is 1 when parallel => 1 passed to new()');
+};
+
+subtest 'parallel: _joined_query_array with parallel => 1 and 3 DAs gives correct rows' => sub {
+	plan tests => 2;
+	# Build a three-DA WhiteBox join (primary + 2 secondaries, n > 2 threshold).
+	# The parallel path is activated (or falls back to sequential with carp if
+	# threads are unavailable); either way, results must be complete and correct.
+	my $db_a = MinimalDA->new(
+		cols   => [$JC, $COL_A, $COL_C],
+		rows   => [
+			{ entry => 'K1', name => 'Alice', tier => 'gold'   },
+			{ entry => 'K2', name => 'Bob',   tier => 'silver' },
+		],
+	);
+	my $db_b = MinimalDA->new(
+		cols   => [$JC, $COL_B],
+		rows   => [
+			{ entry => 'K1', score => 95 },
+			{ entry => 'K2', score => 70 },
+		],
+	);
+	my $db_c = MinimalDA->new(
+		cols   => [$JC, 'rank'],
+		rows   => [
+			{ entry => 'K1', rank => 1 },
+			{ entry => 'K2', rank => 2 },
+		],
+	);
+	my $j = Database::Join::WhiteBox->new(
+		databases   => [$db_a, $db_b, $db_c],
+		join_column => $JC,
+		join_type   => 'inner',
+		parallel    => 1,
+		backend     => 'array',
+	);
+	my $rows = $j->expose_joined_query_array({});
+	is(scalar @{$rows}, 2,
+		'parallel 3-DA: _joined_query_array returns correct row count');
+	my ($row) = grep { $_->{entry} eq 'K1' } @{$rows};
+	is($row->{rank}, 1,
+		'parallel 3-DA: merged row contains column from third DA');
 };
 
 diag('All white-box function tests complete') if $ENV{TEST_VERBOSE};

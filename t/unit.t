@@ -20,7 +20,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 121;
+	plan tests => 124;
 	use_ok('Database::Join');
 }
 
@@ -191,6 +191,11 @@ my %LEDGER = (
 	'ds:sqlite_returns_hashref' => 1,  # sqlite backend → {dbh, table}
 	'ds:nested_join_works'      => 1,  # parent join can ATTACH child _dj_result
 	'ds:auto_forces_sqlite'     => 1,  # auto backend forces SQLite for dbi_source
+
+	# parallel => 1 constructor flag (POD section: "new() -- parallel")
+	'par:constructor_accepted'     => 1,  # parallel => 1 accepted without error
+	'par:two_db_no_effect'         => 1,  # n <= 2 databases: no threading, results correct
+	'par:three_db_correct_results' => 1,  # n > 2 databases: results same as sequential
 );
 
 # ---------------------------------------------------------------------------
@@ -1971,6 +1976,92 @@ subtest 'count() ignores limit and offset: returns total matching rows' => sub {
 	} 'count() with limit+offset does not croak';
 	is($n, 3, 'count() ignores limit/offset: reports all 3 rows');
 	delete $LEDGER{'pg:count_drops_silently'};
+};
+
+# ---------------------------------------------------------------------------
+# Helper: three-database join — primary + 2 secondaries (n > 2 threshold).
+# Used exclusively for parallel => 1 tests (Section S22).
+# ---------------------------------------------------------------------------
+sub _three_db_join {
+	my (%opts) = @_;
+	my $db_a = MinimalDA->new(
+		cols => [$JC, $COL_A],
+		rows => [
+			{ entry => 'K1', name => 'Alice' },
+			{ entry => 'K2', name => 'Bob'   },
+		],
+	);
+	my $db_b = MinimalDA->new(
+		cols => [$JC, $COL_B],
+		rows => [
+			{ entry => 'K1', score => 95 },
+			{ entry => 'K2', score => 70 },
+		],
+	);
+	my $db_c = MinimalDA->new(
+		cols => [$JC, $COL_C],
+		rows => [
+			{ entry => 'K1', tier => 'gold'   },
+			{ entry => 'K2', tier => 'silver' },
+		],
+	);
+	return Database::Join->new(
+		databases   => [$db_a, $db_b, $db_c],
+		join_column => $JC,
+		join_type   => 'inner',
+		%opts,
+	);
+}
+
+# ===========================================================================
+# SECTION 22 -- parallel => 1 constructor flag
+#   The parallel flag enables concurrent Perl-thread fetching of secondary DAs
+#   when n > 2 databases are joined.  With n <= 2 (one secondary), the flag
+#   has no effect and the sequential path is used.  Results must be identical
+#   to sequential regardless of whether the threads module is installed.
+# ===========================================================================
+
+subtest 'parallel: constructor accepts parallel => 1 (no croak)' => sub {
+	plan tests => 2;
+	my $j;
+	lives_ok { $j = _two_db_join(parallel => 1) }
+		'parallel => 1 accepted by constructor without croak';
+	isa_ok($j, 'Database::Join');
+	delete $LEDGER{'par:constructor_accepted'};
+};
+
+subtest 'parallel: 2-db join with parallel => 1 returns correct results (n <= 2 threshold)' => sub {
+	plan tests => 2;
+	# n = 2 (1 secondary): the n > 2 guard prevents threading even with parallel => 1.
+	# Results must still be correct.
+	my $j    = _two_db_join(parallel => 1, join_type => 'inner');
+	my $rows = $j->selectall_arrayref();
+	is(scalar @{$rows}, 2, 'parallel => 1, 2-db join: 2 rows returned');
+	my @entries = sort map { $_->{entry} } @{$rows};
+	is_deeply(\@entries, [qw(K1 K2)],
+		'parallel => 1, 2-db join: correct entry keys');
+	delete $LEDGER{'par:two_db_no_effect'};
+};
+
+subtest 'parallel: 3-db join with parallel => 1 returns same results as sequential' => sub {
+	plan tests => 3;
+	# n = 3 (2 secondaries): threading attempted (or falls back to sequential if
+	# threads not installed).  Either way, the merged result must be identical.
+	my $j_par = _three_db_join(parallel => 1, backend => 'array');
+	my $j_seq = _three_db_join(parallel => 0, backend => 'array');
+	my $rows_par = $j_par->selectall_arrayref();
+	my $rows_seq = $j_seq->selectall_arrayref();
+	is(scalar @{$rows_par}, scalar @{$rows_seq},
+		'parallel 3-db join: same row count as sequential');
+	my @ent_par = sort map { $_->{entry} } @{$rows_par};
+	my @ent_seq = sort map { $_->{entry} } @{$rows_seq};
+	is_deeply(\@ent_par, \@ent_seq,
+		'parallel 3-db join: same entry keys as sequential');
+	# Verify all three columns are present in the merged row.
+	my ($row) = grep { $_->{entry} eq 'K1' } @{$rows_par};
+	ok(defined $row->{name} && defined $row->{score} && defined $row->{tier},
+		'parallel 3-db join: merged row contains all three DA columns');
+	delete $LEDGER{'par:three_db_correct_results'};
 };
 
 # ===========================================================================

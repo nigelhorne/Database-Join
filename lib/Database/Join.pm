@@ -40,15 +40,21 @@ Readonly::Hash my %SAFE_NOARG_OPS => map { $_ => 1 } ('IS NULL', 'IS NOT NULL');
 
 our $VERSION = '0.006.0';
 
+# Package-level cache for threads availability.  undef = not yet checked;
+# 1 = available; 0 = not available.  Checked lazily on the first parallel
+# query and never re-evaluated (require is cached in %INC after success).
+my $HAS_THREADS;
+
 # ---------------------------------------------------------------------------
 # KNOWN GAPS & ROADMAP (derived from gap-analysis 2026-09-21)
 #
 # POST-RELEASE ROADMAP
 #
-# TODO: Parallel DA queries in _fetch_indexed
-#   Component DAs are queried sequentially.  An optional parallel => 1
-#   constructor flag could reduce latency by the factor of the slowest DA,
-#   with no change to the merge logic (Coro or IO::Async back-end).
+# RESOLVED: Parallel DA queries in _fetch_indexed
+#   parallel => 1 in the constructor spawns one thread per secondary DA so
+#   all secondaries are queried concurrently.  Requires the 'threads' module
+#   (lazy-checked at first use); falls back to sequential with a carp warning
+#   when threads are unavailable.  Effective when n > 2 (2+ secondaries).
 #
 # TODO: Schema type consistency validation at construction
 #   Columns shared across two DAs (without collision_prefix) are merged
@@ -633,6 +639,19 @@ to calling C<remove_column> once per name after construction.
                       # DOMAIN -- EP valid:   any writable directory path string.
                       # DOMAIN -- EP absent:  uses File::Spec->tmpdir() (system temp dir).
 
+    parallel       => { type => 'integer',  optional => 1, default => 0 }
+                      # When set to 1 and the join has more than 2 databases (primary +
+                      # 2 or more secondaries), secondary DA fetches are issued in
+                      # parallel Perl threads.  Requires the 'threads' module; falls
+                      # back to sequential with a carp warning when unavailable.
+                      # Has no effect on the SQLite backend (which uses a single SQL
+                      # JOIN).  DBI-backed DAs are not thread-safe by default; only
+                      # enable this for in-memory or otherwise thread-safe DA backends.
+                      #
+                      # DOMAIN -- EP valid:   0 (sequential, default) or 1 (parallel).
+                      # DOMAIN -- EP invalid: any other integer is treated as truthy/falsy.
+                      # DOMAIN -- Default:    0.
+
     logger         => { type => 'object',   optional => 1 }
                       # Logger object propagated to all component databases.
 
@@ -707,6 +726,7 @@ sub new {
 			},
 			max_array_rows    => { type => 'integer',  optional => 1, default => 10_000 },
 			tmpdir            => { type => 'string',   optional => 1 },
+			parallel          => { type => 'integer',  optional => 1, default => 0 },
 			logger		=> { type => 'object',   optional => 1 },
 			i18n		=> { type => 'object',   optional => 1 },
 		},
@@ -766,6 +786,7 @@ sub new {
 		_backend          => $p->{backend},
 		_max_array_rows   => $p->{max_array_rows},
 		_tmpdir           => $p->{tmpdir} // File::Spec->tmpdir,
+		_parallel         => $p->{parallel} // 0,
 	}, $class;
 
 	$self->_build_col_index();
@@ -1080,6 +1101,60 @@ faster local disk:
         backend        => 'sqlite',
         tmpdir         => '/dev/shm',     # Linux RAM disk
     );
+
+B<Parallel secondary fetches (C<parallel> constructor parameter)>
+
+By default, component databases are queried sequentially — the primary first,
+then each secondary in order.  When the component databases are network- or
+disk-backed and have non-trivial per-query latency, the sequential fetch means
+total latency is the I<sum> of all per-DA latencies.
+
+Setting C<< parallel => 1 >> in the constructor enables concurrent fetching
+of secondary databases using Perl C<threads>.  With C<parallel => 1> and
+two or more secondary databases (C<n E<gt> 2> total), secondary fetches run in
+parallel after the primary fetch completes; total latency drops to
+I<max(secondary latencies)> instead of I<sum(secondary latencies)>.
+
+    my $join = Database::Join->new(
+        databases   => [ $customers, $loyalty, $scores ],   # 3 DAs — 2 secondaries
+        join_column => 'entry',
+        parallel    => 1,    # loyalty and scores fetched concurrently
+    );
+
+Requirements and caveats:
+
+=over 4
+
+=item *
+
+The C<threads> module must be available.  Most distributions ship it, but it
+requires a Perl binary compiled with C<-Dusethreads>.  When threads are
+unavailable, a C<carp> warning is emitted and fetching falls back to
+sequential; the result is identical, only slower.
+
+=item *
+
+Parallel fetching is only active when the join has three or more total
+databases (C<n E<gt> 2>).  With two databases (one secondary), the thread
+creation overhead exceeds the benefit of concurrency; sequential is used
+regardless of C<parallel>.
+
+=item *
+
+Component databases must be safe to call from Perl threads.  In-memory
+databases (CSV, JSON, TSV after slurp) are safe.  DBI-backed databases
+whose handles were created in the same thread may not be safe — consult your
+DBD driver's thread documentation.  The array backend is recommended for
+DBI-backed sources; the SQLite backend performs its join in a single SQL
+statement and does not use parallel fetching.
+
+=item *
+
+C<parallel => 1> applies to the array backend only.  The SQLite backend
+performs a single SQL JOIN after spilling source data, so per-DA parallelism
+is irrelevant.
+
+=back
 
 B<Zero-copy ATTACH (C<dbi_source()> interface)>
 
@@ -2509,7 +2584,45 @@ sub _joined_query_array :Protected {
 	          && !exists $per_db->[0]{$local_jc_0_early}
 	          && !$sec_has_criteria;
 
-	$indexed[$_] = $self->_fetch_indexed($_, $per_db->[$_]) for 1 .. $n - 1;
+	# Fetch and index secondary databases.
+	# With parallel => 1 and 2+ secondaries: spawn one Perl thread per secondary
+	# so all secondaries are queried concurrently.  Total latency becomes
+	# max(DA latencies) instead of sum(DA latencies).  The primary was already
+	# fetched sequentially above (needed for the early-exit short-circuit).
+	# The thread closure captures only $db, $crit, and $local_jc (plain scalars
+	# or in-memory data) — $self is intentionally not captured to avoid copying
+	# the full blessed hashref (including all DA refs) into each thread.
+	# Falls back to sequential when: threads module is unavailable, n <= 2, or
+	# parallel => 0 (the default).
+	if ($self->{_parallel} && $n > 2) {
+		$HAS_THREADS //= do { local $@; eval { require threads; 1 } ? 1 : 0 };
+		if ($HAS_THREADS) {
+			my @thr = map {
+				my ($i, $db, $crit, $local_jc) = (
+					$_, $self->{_dbs}[$_], $per_db->[$_],
+					$self->{_join_map}{$_} // $join_col,
+				);
+				threads->create(sub {
+					my $rows = $db->selectall_arrayref($crit) // [];
+					my %idx;
+					for my $row (@{$rows}) {
+						my $key = $row->{$local_jc};
+						push @{$idx{$key}}, $row if defined $key;
+					}
+					return ($i, \%idx);
+				});
+			} 1 .. $n - 1;
+			for my $t (@thr) {
+				my ($i, $idx) = $t->join();
+				$indexed[$i] = $idx // {};  # {} on thread failure (DA croaked)
+			}
+		} else {
+			carp 'Database::Join: parallel => 1 requires the threads module; falling back to sequential';
+			$indexed[$_] = $self->_fetch_indexed($_, $per_db->[$_]) for 1 .. $n - 1;
+		}
+	} else {
+		$indexed[$_] = $self->_fetch_indexed($_, $per_db->[$_]) for 1 .. $n - 1;
+	}
 
 	# Premise: the key-set resolution loop starts at i=1 (primary seeds %key_set).
 	# Conclusion: $had_criteria[0] is a dead store (D~); compute only for i >= 1.
