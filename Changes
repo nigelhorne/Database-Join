@@ -2,6 +2,12 @@ Revision history for Database::Join
 
 0.006.1
 	[ Enhancements ]
+	- count() on the SQLite backend now executes SELECT COUNT(*) against the
+	  cached join tables instead of fetching all rows.  The JOIN and WHERE
+	  clauses are the same as for selectall_arrayref, so criteria and join-type
+	  semantics are identical; only the SQL projection changes.  On large cached
+	  datasets this avoids transferring and allocating every row just to count
+	  them.  The array path and the 'auto' array-path fallback are unchanged.
 	- Add =head3 MESSAGES POD sections to all public methods (selectall_arrayref,
 	  selectall_array, fetchrow_hashref, count, columns, schema, updated,
 	  set_logger, AUTOLOAD) documenting every carp/croak each method can emit.

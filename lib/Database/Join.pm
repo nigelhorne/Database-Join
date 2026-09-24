@@ -37,11 +37,6 @@ our $VERSION = '0.006.0';
 #
 # POST-RELEASE ROADMAP
 #
-# TODO: count() SQL push-down on the SQLite path
-#   count() calls _joined_query() and returns scalar @{$rows}, fetching every
-#   row just to count them.  On the cached SQLite backend a SELECT COUNT(*)
-#   against the join SQL would be orders of magnitude cheaper for large tables.
-#
 # TODO: IN (...) / NOT IN (...) list-operator support
 #   Set-membership criteria are common in read-only query layers.  Requires
 #   bind-parameter list expansion (one ? per element) in the WHERE builder.
@@ -1350,8 +1345,11 @@ Same messages as C<selectall_arrayref>.
 
 sub count {
 	my ($self, @args) = @_;
-	my $rows = $self->_joined_query($self->_parse_query_args(undef, @args));
-	return scalar @{$rows};
+	my $params = $self->_parse_query_args(undef, @args);
+	# On the SQLite path, push COUNT(*) into SQL to avoid fetching all rows.
+	return $self->_sqlite_join($params, count_only => 1)
+		unless $self->{_backend} eq 'array';
+	return scalar @{ $self->_joined_query_array($params) };
 }
 
 =head2 columns
@@ -2658,7 +2656,8 @@ sub _build_sqlite_cache :Protected {
 #          File::Temp SQLite file in _tmpdir; the file persists until the
 #          Database::Join object is destroyed or the source data changes.
 sub _sqlite_join :Protected {
-	my ($self, $params) = @_;
+	my ($self, $params, %opts) = @_;
+	my $count_only = $opts{count_only} // 0;
 
 	my $backend   = $self->{_backend};
 	my $join_col  = $self->{_join_col};
@@ -2734,8 +2733,10 @@ sub _sqlite_join :Protected {
 			$can_count = 0;
 			last;
 		}
-		return $self->_joined_query_array($params)
-			if !$can_count || $total <= $self->{_max_array_rows};
+		if (!$can_count || $total <= $self->{_max_array_rows}) {
+			my $rows = $self->_joined_query_array($params);
+			return $count_only ? scalar @{$rows} : $rows;
+		}
 	}
 
 	# Ensure the SQLite cache is valid; rebuild if stale or absent.
@@ -2778,6 +2779,37 @@ sub _sqlite_join :Protected {
 	}
 	my $where_sql = @where_parts ? ' WHERE ' . join(' AND ', @where_parts) : '';
 
+	my $local_jc_0 = $self->{_join_map}{0} // $join_col;
+
+	# Build JOIN clauses.  Hoisted before the SELECT list so the count_only
+	# path can return early without building the (unused) column expressions.
+	# Join type mirrors the key-set semantics of _joined_query_array:
+	#   had_criteria[i] OR inner  => INNER JOIN
+	#   outer (no criteria)       => FULL OUTER JOIN
+	#   left  (no criteria)       => LEFT JOIN
+	my $from     = $table_refs[0];
+	my $join_sql = '';
+	for my $i (1 .. $n - 1) {
+		my $local_jc = $self->{_join_map}{$i} // $join_col;
+		my $join_kw  = ($had_criteria[$i] || $join_type eq 'inner') ? 'JOIN'
+		             : ($join_type eq 'outer')                       ? 'FULL OUTER JOIN'
+		             :                                                  'LEFT JOIN';
+		$join_sql .= " $join_kw $table_refs[$i]"
+		          . ' ON ' . $table_refs[0] . '.' . _sql_quote_identifier($local_jc_0)
+		          . ' = '  . $table_refs[$i] . '.' . _sql_quote_identifier($local_jc);
+	}
+
+	# COUNT(*) short-circuit: WHERE and JOIN are built; SELECT list and ORDER BY
+	# are not needed.  selectrow_array returns a single integer without fetching rows.
+	if ($count_only) {
+		my ($cnt) = $tmpdbh->selectrow_array(
+			'SELECT COUNT(*) FROM ' . $from . $join_sql . $where_sql,
+			undef,
+			@bind_vals,
+		);
+		return $cnt // 0;
+	}
+
 	# Build SELECT clause.
 	# Walk sources in order, applying collision_prefix renaming exactly as
 	# _build_col_index does: first occurrence of a column name wins; subsequent
@@ -2785,7 +2817,6 @@ sub _sqlite_join :Protected {
 	# "$prefix.$col"; removed columns are omitted.
 	my %pub_seen;
 	my @selects;
-	my $local_jc_0 = $self->{_join_map}{0} // $join_col;
 
 	# Join-column expression: for outer joins, use COALESCE across all sources
 	# so that B-only (primary-absent) rows carry their join key rather than NULL.
@@ -2829,23 +2860,6 @@ sub _sqlite_join :Protected {
 			$expr   .= ' AS ' . _sql_quote_identifier($pub) if $pub ne $col;
 			push @selects, $expr;
 		}
-	}
-
-	# Build JOIN clauses.
-	# Join type mirrors the key-set semantics of _joined_query_array:
-	#   had_criteria[i] OR inner  => INNER JOIN
-	#   outer (no criteria)       => FULL OUTER JOIN
-	#   left  (no criteria)       => LEFT JOIN
-	my $from     = $table_refs[0];
-	my $join_sql = '';
-	for my $i (1 .. $n - 1) {
-		my $local_jc = $self->{_join_map}{$i} // $join_col;
-		my $join_kw  = ($had_criteria[$i] || $join_type eq 'inner') ? 'JOIN'
-		             : ($join_type eq 'outer')                       ? 'FULL OUTER JOIN'
-		             :                                                  'LEFT JOIN';
-		$join_sql .= " $join_kw $table_refs[$i]"
-		          . ' ON ' . $table_refs[0] . '.' . _sql_quote_identifier($local_jc_0)
-		          . ' = '  . $table_refs[$i] . '.' . _sql_quote_identifier($local_jc);
 	}
 
 	# ORDER BY: use a qualified column reference to avoid ambiguity.

@@ -839,4 +839,49 @@ subtest 'NOT LIKE operator: filters correctly on SQLite backend' => sub {
 	ok  exists $by_id{k5}, 'Eve present';
 };
 
+# ===========================================================================
+# S20: count() SQL push-down on the SQLite backend
+#
+# Major Premise: count() on the SQLite path executes SELECT COUNT(*) against
+#   the cached join tables rather than fetching all rows.  This is verified by
+#   using CountingDA to prove that selectall_arrayref is NOT called a second
+#   time when count() is called on the same object — the cache services both
+#   calls, and count() uses COUNT(*) rather than fetching rows.
+# ===========================================================================
+
+subtest 'count() push-down: correct value with criteria on SQLite backend' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+
+	# Total rows (left join): all 5 primary rows, k4 has no secondary match.
+	is $join->count(), 5, 'count() all rows: 5';
+
+	# With criteria: gold tier = k1, k4 — both have primary rows;
+	# k4 is absent from B so it still appears in a left join.
+	is $join->count(tier => 'gold'), 2, 'count(tier=gold): 2';
+
+	# Score > 80: k1(95), k3(88) pass; k2(72) and k5(61) fail; k4 absent from B.
+	# Secondary criterion makes B an inner-join partner, so k4 is excluded.
+	is $join->count(score => { '>' => 80 }), 2, 'count(score>80): 2 (inner-join semantics)';
+};
+
+subtest 'count() push-down: DA not re-queried (cache reuse proof)' => sub {
+	my $da_a = CountingDA->new(cols => [qw(id name tier)], rows => \@ROWS_A_SMALL);
+	my $da_b = CountingDA->new(cols => [qw(id score)],     rows => \@ROWS_B_SMALL);
+	my $join = Database::Join->new(
+		databases   => [$da_a, $da_b],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+
+	$join->selectall_arrayref();          # builds cache (call_count = 1 each)
+	my $cnt = $join->count();             # count() uses COUNT(*) — no new DA calls
+	is $cnt,               5,  'count() returns correct total';
+	is $da_a->{_call_count}, 1, 'da_a: selectall_arrayref not called again for count()';
+	is $da_b->{_call_count}, 1, 'da_b: selectall_arrayref not called again for count()';
+};
+
 done_testing();
