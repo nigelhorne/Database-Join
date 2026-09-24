@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.006.1
+0.007.0	Thu Sep 24 07:00:00 PM EDT 2026
 	[ Enhancements ]
 	- Schema type consistency validation: new() and add_database() now call the
 	  new _validate_schema_types() protected helper immediately after the column

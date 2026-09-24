@@ -38,24 +38,12 @@ Readonly::Hash my %SAFE_LIST_OPS => map { $_ => 1 } ('IN', 'NOT IN');
 # A bare undef criterion value (col => undef) also generates IS NULL.
 Readonly::Hash my %SAFE_NOARG_OPS => map { $_ => 1 } ('IS NULL', 'IS NOT NULL');
 
-our $VERSION = '0.006.0';
+our $VERSION = '0.007.0';
 
 # Package-level cache for threads availability.  undef = not yet checked;
 # 1 = available; 0 = not available.  Checked lazily on the first parallel
 # query and never re-evaluated (require is cached in %INC after success).
 my $HAS_THREADS;
-
-# ---------------------------------------------------------------------------
-# KNOWN GAPS & ROADMAP (derived from gap-analysis 2026-09-21)
-#
-# POST-RELEASE ROADMAP
-#
-# RESOLVED: Schema type consistency validation at construction
-#   _validate_schema_types() is now called by new() and add_database().
-#   It carps warn_schema_type_mismatch for every shared column whose type
-#   string differs between databases (without collision_prefix).
-#   Callers who intend the merge can silence the warning with collision_prefix.
-# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # All user-facing strings route through this dictionary.  Supply an i18n
@@ -83,7 +71,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 =head1 VERSION
 
-Version 0.006.0
+Version 0.007.0
 
 =head1 SYNOPSIS
 
