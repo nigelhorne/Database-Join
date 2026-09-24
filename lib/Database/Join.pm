@@ -45,11 +45,6 @@ our $VERSION = '0.006.0';
 #
 # POST-RELEASE ROADMAP
 #
-# TODO: Caller-specified ORDER BY on query methods
-#   Results are sorted by join_column only.  An order_by => 'col' (or
-#   order_by => ['col', 'DESC']) parameter would cover a common use-case:
-#   SQL ORDER BY clause on the SQLite path; Perl sort block on the array path.
-#
 # TODO: Limit / offset for pagination
 #   limit => N, offset => M on selectall_arrayref/selectall_array would enable
 #   paginated access.  SQLite path: LIMIT ? OFFSET ? clauses; array path: slice.
@@ -344,8 +339,11 @@ use C<join_map> to declare each database's local column name.
 
 =item Sort order
 
-Results are sorted by the C<join_column> value only.  Caller-specified
-C<ORDER BY> is not propagated to the component databases.
+Results are sorted ascending by C<join_column> by default.  Pass
+C<< order_by => 'colname' >> (or C<< order_by => ['colname', 'DESC'] >>)
+to any query method to override this.  The array path uses string comparison
+(C<cmp>); for accurate numeric ordering on large datasets use the SQLite
+backend, which sorts natively by type.
 
 =item count() fetches all rows
 
@@ -1154,6 +1152,8 @@ three join types (left, inner, outer) work identically on both paths.
     my $rows = $join->selectall_arrayref(tier  => 'gold');
     my $rows = $join->selectall_arrayref(score => { '>' => 80 });
     my $rows = $join->selectall_arrayref('C001');  # positional: entry => 'C001'
+    my $rows = $join->selectall_arrayref(order_by => 'name');
+    my $rows = $join->selectall_arrayref(tier => 'gold', order_by => ['score', 'DESC']);
 
 =head3 DESCRIPTION
 
@@ -1182,10 +1182,19 @@ A single plain scalar argument is interpreted as the C<join_column> value
       Plain scalar                -- exact match
       Hashref of operators        -- e.g. { '>' => 80 }
 
+    Optional parameter (mixed in with any of the above):
+      order_by => 'colname'            -- sort ascending by that column
+      order_by => ['colname', 'DESC']  -- sort descending
+      order_by => ['colname', 'ASC']   -- sort ascending (explicit)
+
+    The column named in order_by must be present in the merged view (i.e. it
+    must appear in columns()).  An unknown column or an invalid direction emits
+    a carp warning and falls back to the default join_column ascending sort.
+
 =head4 Output
 
-    Arrayref of hashrefs; one hashref per qualifying merged row,
-    sorted ascending by join_column value.
+    Arrayref of hashrefs; one hashref per qualifying merged row.
+    Sorted ascending by join_column by default; caller-controlled via order_by.
     Returns a reference to an empty array when no rows match.
 
 =head3 EXAMPLE
@@ -1211,6 +1220,11 @@ A single plain scalar argument is interpreted as the C<join_column> value
     warn_unknown_column (carp)
         -- A criterion key names a column not present in any component database;
            the criterion is silently dropped and all rows are returned.
+    order_by column unknown (carp)
+        -- The column given in order_by is not in the merged view; the result
+           is returned in the default join_column ascending order instead.
+    order_by direction invalid (carp)
+        -- The direction given in order_by is not 'ASC' or 'DESC'; ASC is used.
     operator-unsupported (carp, SQLite/auto path only)
         -- An operator hashref key is not in the supported set (>, <, >=, <=,
            !=, =, LIKE, NOT LIKE, IS NULL, IS NOT NULL, IN, NOT IN); the
@@ -1227,7 +1241,9 @@ A single plain scalar argument is interpreted as the C<join_column> value
 
 sub selectall_arrayref {
 	my ($self, @args) = @_;
-	return $self->_joined_query($self->_parse_query_args(undef, @args));
+	my $params   = $self->_parse_query_args(undef, @args);
+	my $order_by = delete $params->{order_by};
+	return $self->_joined_query($params, order_by => $order_by);
 }
 
 =head2 selectall_array
@@ -1276,7 +1292,9 @@ Same messages as C<selectall_arrayref>.
 
 sub selectall_array {
 	my ($self, @args) = @_;
-	my $rows = $self->_joined_query($self->_parse_query_args(undef, @args));
+	my $params   = $self->_parse_query_args(undef, @args);
+	my $order_by = delete $params->{order_by};
+	my $rows     = $self->_joined_query($params, order_by => $order_by);
 	return wantarray ? @{$rows} : $rows->[0];
 }
 
@@ -1325,7 +1343,9 @@ Same messages as C<selectall_arrayref>.
 
 sub fetchrow_hashref {
 	my ($self, @args) = @_;
-	my $rows = $self->_joined_query($self->_parse_query_args(undef, @args));
+	my $params   = $self->_parse_query_args(undef, @args);
+	my $order_by = delete $params->{order_by};
+	my $rows     = $self->_joined_query($params, order_by => $order_by);
 	return $rows->[0];
 }
 
@@ -1371,6 +1391,7 @@ Same messages as C<selectall_arrayref>.
 sub count {
 	my ($self, @args) = @_;
 	my $params = $self->_parse_query_args(undef, @args);
+	delete $params->{order_by};  # row ordering is irrelevant for a count
 	# On the SQLite path, push COUNT(*) into SQL to avoid fetching all rows.
 	return $self->_sqlite_join($params, count_only => 1)
 		unless $self->{_backend} eq 'array';
@@ -2096,8 +2117,9 @@ sub AUTOLOAD {
 		# _autoload_pk was captured once at construction from the primary DA's
 		# {id} field; using the cached value avoids re-introspecting the blessed
 		# hash on every call and isolates the coupling to a single known site.
-		my $params = $self->_parse_query_args($self->{_autoload_pk}, @_);
-		my $rows   = $self->_joined_query($params);
+		my $params   = $self->_parse_query_args($self->{_autoload_pk}, @_);
+		my $order_by = delete $params->{order_by};
+		my $rows     = $self->_joined_query($params, order_by => $order_by);
 		return map { $_->{$col} } @{$rows} if wantarray;
 		return @{$rows} ? $rows->[0]{$col} : undef;
 	}
@@ -2290,15 +2312,16 @@ sub _fetch_indexed :Protected {
 	return \%indexed;
 }
 
-# _joined_query( \%params ) -> \@merged_rows
+# _joined_query( \%params, %opts ) -> \@merged_rows
 #
 # Purpose: Dispatcher — routes to the array (in-memory) or SQLite join backend
-#          based on $self->{_backend}.
+#          based on $self->{_backend}.  %opts are passed through to the backend
+#          (currently: order_by).
 sub _joined_query :Protected {
-	my ($self, $params) = @_;
+	my ($self, $params, %opts) = @_;
 	my $backend = $self->{_backend};
-	return $self->_joined_query_array($params) if $backend eq 'array';
-	return $self->_sqlite_join($params);
+	return $self->_joined_query_array($params, %opts) if $backend eq 'array';
+	return $self->_sqlite_join($params, %opts);
 }
 
 # _joined_query_array( \%params ) -> \@merged_rows
@@ -2322,7 +2345,8 @@ sub _joined_query :Protected {
 # aliases are renamed to the canonical join_column before merging.
 # Removed columns are deleted from every merged row.
 sub _joined_query_array :Protected {
-	my ($self, $params) = @_;
+	my ($self, $params, %opts) = @_;
+	my $order_by = $opts{order_by};
 
 	my $join_col  = $self->{_join_col};
 	my $join_type = $self->{_join_type};
@@ -2478,6 +2502,26 @@ sub _joined_query_array :Protected {
 
 			delete @merged{@{$removed}} if @{$removed};
 			push @result, \%merged;
+		}
+	}
+
+	# Caller-specified ORDER BY.  The result is already in join_column ascending
+	# order (built via `sort keys %key_set`); only re-sort when order_by is given.
+	if (defined $order_by) {
+		my ($ob_col, $ob_dir) = ref($order_by) eq 'ARRAY' ? @{$order_by} : ($order_by, 'ASC');
+		$ob_dir = uc($ob_dir // 'ASC');
+		unless ($ob_dir eq 'ASC' || $ob_dir eq 'DESC') {
+			carp "Database::Join: order_by direction '$ob_dir' is not supported; using ASC";
+			$ob_dir = 'ASC';
+		}
+		if ($ob_col ne $join_col && !exists $self->{_col_db}{$ob_col}) {
+			carp "Database::Join: order_by column '$ob_col' is not in the merged view; result sorted by join_column";
+		} else {
+			# String comparison (cmp).  For accurate numeric ordering on large
+			# numeric columns use backend => 'sqlite', which sorts by SQL type.
+			@result = ($ob_dir eq 'DESC')
+			        ? sort { ($b->{$ob_col} // '') cmp ($a->{$ob_col} // '') } @result
+			        : sort { ($a->{$ob_col} // '') cmp ($b->{$ob_col} // '') } @result;
 		}
 	}
 
@@ -2683,6 +2727,7 @@ sub _build_sqlite_cache :Protected {
 sub _sqlite_join :Protected {
 	my ($self, $params, %opts) = @_;
 	my $count_only = $opts{count_only} // 0;
+	my $order_by   = $opts{order_by};
 
 	my $backend   = $self->{_backend};
 	my $join_col  = $self->{_join_col};
@@ -2916,18 +2961,35 @@ sub _sqlite_join :Protected {
 		}
 	}
 
-	# ORDER BY: use a qualified column reference to avoid ambiguity.
-	# For outer joins we aliased the join column via COALESCE, so reference
-	# the alias (SQLite resolves ORDER BY aliases from the SELECT list).
-	# For other join types, qualify with the primary table to be unambiguous.
-	my $order_col = ($join_type eq 'outer' && $n > 1)
-	              ? _sql_quote_identifier($join_col)
-	              : $table_refs[0] . '.' . _sql_quote_identifier($local_jc_0);
+	# ORDER BY: default is join_column ascending.  Caller may override via
+	# order_by => 'col' or order_by => ['col', 'DESC'].
+	# For the join column on an outer join, reference the COALESCE alias.
+	# For any other column, reference the published SELECT-list alias —
+	# SQLite resolves ORDER BY aliases from the SELECT clause.
+	my ($ob_col, $ob_dir) = ($join_col, 'ASC');
+	if (defined $order_by) {
+		my ($req_col, $req_dir) = ref($order_by) eq 'ARRAY' ? @{$order_by} : ($order_by, 'ASC');
+		$req_dir = uc($req_dir // 'ASC');
+		unless ($req_dir eq 'ASC' || $req_dir eq 'DESC') {
+			carp "Database::Join: order_by direction '$req_dir' is not supported; using ASC";
+			$req_dir = 'ASC';
+		}
+		if ($req_col ne $join_col && !exists $self->{_col_db}{$req_col}) {
+			carp "Database::Join: order_by column '$req_col' is not in the merged view; result sorted by join_column";
+		} else {
+			($ob_col, $ob_dir) = ($req_col, $req_dir);
+		}
+	}
+	my $order_expr = ($ob_col eq $join_col)
+	    ? (($join_type eq 'outer' && $n > 1)
+	          ? _sql_quote_identifier($join_col)
+	          : $table_refs[0] . '.' . _sql_quote_identifier($local_jc_0))
+	    : _sql_quote_identifier($ob_col);
 	my $sql = 'SELECT '
 	        . join(', ', @selects)
 	        . ' FROM ' . $from . $join_sql
 	        . $where_sql
-	        . ' ORDER BY ' . $order_col;
+	        . ' ORDER BY ' . $order_expr . ($ob_dir eq 'DESC' ? ' DESC' : '');
 
 	# prepare_cached reuses the parsed statement when the same SQL is executed
 	# again (e.g. identical criteria pattern in a pagination or batch loop),

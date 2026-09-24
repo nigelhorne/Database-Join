@@ -969,7 +969,87 @@ subtest 'IN wrong value type emits carp and is skipped' => sub {
 };
 
 # ===========================================================================
-# S22: IS NULL / IS NOT NULL operator and bare-undef criterion value
+# S22: order_by parameter — caller-specified ORDER BY
+# ===========================================================================
+
+subtest 'order_by ascending: rows sorted by named column' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+
+	# Default sort is by join_column (k1..k5).  order_by name ASC → alphabetical.
+	my $rows = $join->selectall_arrayref(order_by => 'name');
+	is scalar @{$rows}, 5, 'order_by name: 5 rows returned';
+	my @names = map { $_->{name} } @{$rows};
+	is_deeply \@names, [sort @names], 'order_by name ASC: names in ascending order';
+};
+
+subtest 'order_by descending: rows sorted in reverse' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+
+	my $rows = $join->selectall_arrayref(order_by => ['name', 'DESC']);
+	my @names = map { $_->{name} } @{$rows};
+	my @sorted_desc = sort { $b cmp $a } @names;
+	is_deeply \@names, \@sorted_desc, 'order_by name DESC: names in descending order';
+};
+
+subtest 'order_by with criteria: filter then sort' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'inner',
+	);
+
+	# tier != bronze → k1(Alice/gold/95), k2(Bob/silver/72), k5(Eve/silver/61)
+	# Sort by score DESC → k1(95), k2(72), k5(61)
+	my $rows = $join->selectall_arrayref(tier => { '!=' => 'bronze' }, order_by => ['score', 'DESC']);
+	my @scores = map { $_->{score} } @{$rows};
+	is scalar @{$rows}, 3, 'order_by with criteria: 3 rows after filter';
+	ok $scores[0] >= $scores[1] && $scores[1] >= $scores[2],
+		'order_by score DESC: scores in descending order';
+};
+
+subtest 'order_by unknown column: carp + fallback to join_column order' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+	my $rows;
+	my @warnings;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $join->selectall_arrayref(order_by => 'no_such_column');
+	} 'order_by unknown column does not croak';
+	ok scalar @warnings, 'carp warning emitted for unknown order_by column';
+	is scalar @{$rows}, 5, 'all rows returned despite bad order_by';
+};
+
+subtest 'order_by invalid direction: carp + fallback to ASC' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+	);
+	my $rows;
+	my @warnings;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $join->selectall_arrayref(order_by => ['name', 'SIDEWAYS']);
+	} 'order_by invalid direction does not croak';
+	ok scalar @warnings, 'carp warning emitted for invalid direction';
+	is scalar @{$rows}, 5, 'all rows returned despite bad direction';
+};
+
+# ===========================================================================
+# S23: IS NULL / IS NOT NULL operator and bare-undef criterion value
 # ===========================================================================
 
 # Create a separate small dataset that has one row with a NULL score.

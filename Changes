@@ -2,6 +2,14 @@ Revision history for Database::Join
 
 0.006.1
 	[ Enhancements ]
+	- Caller-specified ORDER BY on all query methods (selectall_arrayref,
+	  selectall_array, fetchrow_hashref, AUTOLOAD).  Pass order_by => 'col' for
+	  ascending or order_by => ['col', 'DESC'] for descending.  The SQLite
+	  backend translates this to a SQL ORDER BY clause (type-aware sort); the
+	  array backend re-sorts the in-memory result using Perl string comparison
+	  (cmp).  An unknown column or an invalid direction emits a carp and falls
+	  back to the default join_column ascending sort.  count() ignores order_by
+	  as row ordering does not affect a count.
 	- IS NULL and IS NOT NULL operators are now fully supported on the SQLite
 	  backend via explicit operator hashrefs ({ 'IS NULL' => undef }).  These
 	  operators generate no bind parameter — the fixed SQL keywords are
