@@ -2,6 +2,14 @@ Revision history for Database::Join
 
 0.006.1
 	[ Enhancements ]
+	- Limit / offset pagination: selectall_arrayref and selectall_array now
+	  accept limit => N (positive integer) and offset => M (non-negative integer).
+	  The SQLite path appends LIMIT ? OFFSET ? as bind parameters to the generated
+	  SQL (injection-safe).  The array path uses splice() on the ordered result.
+	  offset without limit uses LIMIT -1 OFFSET ? on the SQLite path (all rows
+	  from offset).  An invalid limit or offset emits a carp warning and the
+	  parameter is treated as absent.  count() and fetchrow_hashref ignore both
+	  parameters silently.
 	- Caller-specified ORDER BY on all query methods (selectall_arrayref,
 	  selectall_array, fetchrow_hashref, AUTOLOAD).  Pass order_by => 'col' for
 	  ascending or order_by => ['col', 'DESC'] for descending.  The SQLite

@@ -30,7 +30,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 161;
+	plan tests => 169;
 	use_ok('Database::Join');
 }
 
@@ -2419,6 +2419,99 @@ subtest 'count: order_by is silently dropped, count unaffected' => sub {
 	my @ob_warns = grep { /order_by/i } @warnings;
 	is(scalar @ob_warns, 0,
 		'count: no carp for order_by; it was silently dropped before criteria routing');
+};
+
+# ===========================================================================
+# S36: White-box coverage for limit / offset pagination
+#   - _joined_query_array: validation carp + splice behaviour
+#   - _sqlite_join: LIMIT/OFFSET bind parameters appended correctly
+#   - selectall_arrayref public interface extracts limit/offset before routing
+#   - count() drops limit/offset silently (no carp fired)
+# Reuses the three-row fixture via _make_order_join().
+# ===========================================================================
+
+subtest '_joined_query_array: limit applied after merge (splice front)' => sub {
+	plan tests => 3;
+	my $wb = _make_order_join(backend => 'array');
+	# Default order is Carol/K1, Alice/K2, Bob/K3 (join_column ascending).
+	my $rows = $wb->expose_joined_query_array({}, limit => 2);
+	is(scalar @{$rows}, 2, 'limit=2 returns 2 rows on array path');
+	is($rows->[0]{name}, 'Carol', 'first row is Carol (K1)');
+	is($rows->[1]{name}, 'Alice', 'second row is Alice (K2)');
+};
+
+subtest '_joined_query_array: offset applied after merge (splice front skips rows)' => sub {
+	plan tests => 3;
+	my $wb = _make_order_join(backend => 'array');
+	my $rows = $wb->expose_joined_query_array({}, offset => 1);
+	is(scalar @{$rows}, 2, 'offset=1 skips one row, 2 remain');
+	is($rows->[0]{name}, 'Alice', 'first remaining is Alice (K2)');
+	is($rows->[1]{name}, 'Bob',   'second remaining is Bob (K3)');
+};
+
+subtest '_joined_query_array: limit + offset combined' => sub {
+	plan tests => 2;
+	my $wb = _make_order_join(backend => 'array');
+	# offset=1 skips Carol/K1; limit=1 takes only Alice/K2.
+	my $rows = $wb->expose_joined_query_array({}, limit => 1, offset => 1);
+	is(scalar @{$rows}, 1, 'limit=1 offset=1: exactly 1 row');
+	is($rows->[0]{name}, 'Alice', 'the one row is Alice (K2)');
+};
+
+subtest '_joined_query_array: invalid limit emits carp and is ignored' => sub {
+	plan tests => 3;
+	my $wb = _make_order_join(backend => 'array');
+	my @warns;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warns, $_[0] };
+		$rows = $wb->expose_joined_query_array({}, limit => 0);
+	} 'limit=0 does not croak';
+	like($warns[0], qr/limit must be a positive integer/, 'carp fired for limit=0');
+	is(scalar @{$rows}, 3, 'limit=0 ignored: all 3 rows returned');
+};
+
+subtest '_joined_query_array: invalid offset emits carp and is ignored' => sub {
+	plan tests => 3;
+	my $wb = _make_order_join(backend => 'array');
+	my @warns;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warns, $_[0] };
+		$rows = $wb->expose_joined_query_array({}, offset => -1);
+	} 'offset=-1 does not croak';
+	like($warns[0], qr/offset must be a non-negative integer/, 'carp fired for offset=-1');
+	is(scalar @{$rows}, 3, 'offset=-1 ignored: all 3 rows returned');
+};
+
+subtest '_sqlite_join: limit applied on SQLite path' => sub {
+	plan tests => 3;
+	my $j = _make_order_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(limit => 2);
+	is(scalar @{$rows}, 2, 'limit=2: 2 rows from SQLite path');
+	is($rows->[0]{name}, 'Carol', 'first row Carol (K1)');
+	is($rows->[1]{name}, 'Alice', 'second row Alice (K2)');
+};
+
+subtest '_sqlite_join: offset applied on SQLite path' => sub {
+	plan tests => 2;
+	my $j = _make_order_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(offset => 2);
+	is(scalar @{$rows}, 1, 'offset=2 leaves 1 row');
+	is($rows->[0]{name}, 'Bob', 'remaining row is Bob (K3)');
+};
+
+subtest 'count: limit and offset silently dropped, no carp fired' => sub {
+	plan tests => 2;
+	my $j = _make_order_join(backend => 'array');
+	my @warns;
+	my $n;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warns, $_[0] };
+		$n = $j->count(limit => 1, offset => 1);
+	} 'count() with limit+offset does not croak';
+	my @pg_warns = grep { /limit|offset/i } @warns;
+	is(scalar @pg_warns, 0, 'count: no carp for limit/offset; both silently dropped');
 };
 
 diag('All white-box function tests complete') if $ENV{TEST_VERBOSE};

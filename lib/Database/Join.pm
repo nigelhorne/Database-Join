@@ -45,10 +45,6 @@ our $VERSION = '0.006.0';
 #
 # POST-RELEASE ROADMAP
 #
-# TODO: Limit / offset for pagination
-#   limit => N, offset => M on selectall_arrayref/selectall_array would enable
-#   paginated access.  SQLite path: LIMIT ? OFFSET ? clauses; array path: slice.
-#
 # TODO: dbi_source() on Database::Join itself (composable nested joins)
 #   The join object cannot act as a zero-copy SQLite source in a parent join.
 #   Implementing dbi_source() — returning the cached File::Temp handle and the
@@ -1154,6 +1150,9 @@ three join types (left, inner, outer) work identically on both paths.
     my $rows = $join->selectall_arrayref('C001');  # positional: entry => 'C001'
     my $rows = $join->selectall_arrayref(order_by => 'name');
     my $rows = $join->selectall_arrayref(tier => 'gold', order_by => ['score', 'DESC']);
+    my $rows = $join->selectall_arrayref(limit => 10);
+    my $rows = $join->selectall_arrayref(limit => 10, offset => 20);
+    my $rows = $join->selectall_arrayref(tier => 'gold', order_by => 'name', limit => 5);
 
 =head3 DESCRIPTION
 
@@ -1182,19 +1181,28 @@ A single plain scalar argument is interpreted as the C<join_column> value
       Plain scalar                -- exact match
       Hashref of operators        -- e.g. { '>' => 80 }
 
-    Optional parameter (mixed in with any of the above):
+    Optional parameters (mixed in with any of the above):
       order_by => 'colname'            -- sort ascending by that column
       order_by => ['colname', 'DESC']  -- sort descending
       order_by => ['colname', 'ASC']   -- sort ascending (explicit)
+      limit    => N                    -- return at most N rows (positive integer)
+      offset   => M                   -- skip the first M rows (non-negative integer)
 
     The column named in order_by must be present in the merged view (i.e. it
     must appear in columns()).  An unknown column or an invalid direction emits
     a carp warning and falls back to the default join_column ascending sort.
 
+    limit and offset are applied after ordering.  offset without limit skips
+    rows but returns all remaining rows.  limit without offset starts from
+    the first qualifying row.  An invalid limit or offset emits a carp warning
+    and the parameter is ignored (treated as absent).
+
 =head4 Output
 
     Arrayref of hashrefs; one hashref per qualifying merged row.
     Sorted ascending by join_column by default; caller-controlled via order_by.
+    At most C<limit> rows when limit is given; the first C<offset> rows are
+    skipped when offset is given.
     Returns a reference to an empty array when no rows match.
 
 =head3 EXAMPLE
@@ -1225,6 +1233,10 @@ A single plain scalar argument is interpreted as the C<join_column> value
            is returned in the default join_column ascending order instead.
     order_by direction invalid (carp)
         -- The direction given in order_by is not 'ASC' or 'DESC'; ASC is used.
+    limit invalid (carp)
+        -- The value given for limit is not a positive integer; it is ignored.
+    offset invalid (carp)
+        -- The value given for offset is not a non-negative integer; it is ignored.
     operator-unsupported (carp, SQLite/auto path only)
         -- An operator hashref key is not in the supported set (>, <, >=, <=,
            !=, =, LIKE, NOT LIKE, IS NULL, IS NOT NULL, IN, NOT IN); the
@@ -1243,7 +1255,9 @@ sub selectall_arrayref {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
 	my $order_by = delete $params->{order_by};
-	return $self->_joined_query($params, order_by => $order_by);
+	my $limit    = delete $params->{limit};
+	my $offset   = delete $params->{offset};
+	return $self->_joined_query($params, order_by => $order_by, limit => $limit, offset => $offset);
 }
 
 =head2 selectall_array
@@ -1294,7 +1308,9 @@ sub selectall_array {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
 	my $order_by = delete $params->{order_by};
-	my $rows     = $self->_joined_query($params, order_by => $order_by);
+	my $limit    = delete $params->{limit};
+	my $offset   = delete $params->{offset};
+	my $rows     = $self->_joined_query($params, order_by => $order_by, limit => $limit, offset => $offset);
 	return wantarray ? @{$rows} : $rows->[0];
 }
 
@@ -1345,6 +1361,8 @@ sub fetchrow_hashref {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
 	my $order_by = delete $params->{order_by};
+	delete $params->{limit};   # fetchrow_hashref always returns one row; limit is meaningless
+	delete $params->{offset};  # offset would change which row is "first"; not supported here
 	my $rows     = $self->_joined_query($params, order_by => $order_by);
 	return $rows->[0];
 }
@@ -1392,6 +1410,8 @@ sub count {
 	my ($self, @args) = @_;
 	my $params = $self->_parse_query_args(undef, @args);
 	delete $params->{order_by};  # row ordering is irrelevant for a count
+	delete $params->{limit};     # count returns total matching rows, not a page
+	delete $params->{offset};
 	# On the SQLite path, push COUNT(*) into SQL to avoid fetching all rows.
 	return $self->_sqlite_join($params, count_only => 1)
 		unless $self->{_backend} eq 'array';
@@ -2119,7 +2139,9 @@ sub AUTOLOAD {
 		# hash on every call and isolates the coupling to a single known site.
 		my $params   = $self->_parse_query_args($self->{_autoload_pk}, @_);
 		my $order_by = delete $params->{order_by};
-		my $rows     = $self->_joined_query($params, order_by => $order_by);
+		my $limit    = delete $params->{limit};
+		my $offset   = delete $params->{offset};
+		my $rows     = $self->_joined_query($params, order_by => $order_by, limit => $limit, offset => $offset);
 		return map { $_->{$col} } @{$rows} if wantarray;
 		return @{$rows} ? $rows->[0]{$col} : undef;
 	}
@@ -2316,7 +2338,7 @@ sub _fetch_indexed :Protected {
 #
 # Purpose: Dispatcher — routes to the array (in-memory) or SQLite join backend
 #          based on $self->{_backend}.  %opts are passed through to the backend
-#          (currently: order_by).
+#          (currently: order_by, limit, offset).
 sub _joined_query :Protected {
 	my ($self, $params, %opts) = @_;
 	my $backend = $self->{_backend};
@@ -2347,6 +2369,23 @@ sub _joined_query :Protected {
 sub _joined_query_array :Protected {
 	my ($self, $params, %opts) = @_;
 	my $order_by = $opts{order_by};
+	my $limit    = $opts{limit};
+	my $offset   = $opts{offset};
+
+	# Validate limit: must be a positive integer.
+	if (defined $limit) {
+		if ($limit !~ /^\d+$/ || $limit < 1) {
+			carp "Database::Join: limit must be a positive integer; ignored";
+			undef $limit;
+		}
+	}
+	# Validate offset: must be a non-negative integer.
+	if (defined $offset) {
+		if ($offset !~ /^\d+$/) {
+			carp "Database::Join: offset must be a non-negative integer; ignored";
+			undef $offset;
+		}
+	}
 
 	my $join_col  = $self->{_join_col};
 	my $join_type = $self->{_join_type};
@@ -2523,6 +2562,15 @@ sub _joined_query_array :Protected {
 			        ? sort { ($b->{$ob_col} // '') cmp ($a->{$ob_col} // '') } @result
 			        : sort { ($a->{$ob_col} // '') cmp ($b->{$ob_col} // '') } @result;
 		}
+	}
+
+	# LIMIT / OFFSET pagination — applied after ordering.
+	# splice removes elements from the front (offset) then truncates to limit.
+	if (defined $offset && $offset > 0) {
+		splice(@result, 0, $offset);
+	}
+	if (defined $limit && $limit < scalar @result) {
+		splice(@result, $limit);
 	}
 
 	return \@result;
@@ -2728,6 +2776,22 @@ sub _sqlite_join :Protected {
 	my ($self, $params, %opts) = @_;
 	my $count_only = $opts{count_only} // 0;
 	my $order_by   = $opts{order_by};
+	my $limit      = $opts{limit};
+	my $offset     = $opts{offset};
+
+	# Validate limit and offset; invalid values are ignored with a carp.
+	if (defined $limit) {
+		if ($limit !~ /^\d+$/ || $limit < 1) {
+			carp "Database::Join: limit must be a positive integer; ignored";
+			undef $limit;
+		}
+	}
+	if (defined $offset) {
+		if ($offset !~ /^\d+$/) {
+			carp "Database::Join: offset must be a non-negative integer; ignored";
+			undef $offset;
+		}
+	}
 
 	my $backend   = $self->{_backend};
 	my $join_col  = $self->{_join_col};
@@ -2991,12 +3055,28 @@ sub _sqlite_join :Protected {
 	        . $where_sql
 	        . ' ORDER BY ' . $order_expr . ($ob_dir eq 'DESC' ? ' DESC' : '');
 
+	# LIMIT / OFFSET pagination — appended after ORDER BY as bind parameters
+	# (never interpolated) to prevent any SQL injection from caller values.
+	# OFFSET without LIMIT uses LIMIT -1 (SQLite extension: "all rows from offset").
+	my @page_bind;
+	if (defined $limit) {
+		$sql .= ' LIMIT ?';
+		push @page_bind, $limit;
+		if (defined $offset) {
+			$sql .= ' OFFSET ?';
+			push @page_bind, $offset;
+		}
+	} elsif (defined $offset) {
+		$sql .= ' LIMIT -1 OFFSET ?';
+		push @page_bind, $offset;
+	}
+
 	# prepare_cached reuses the parsed statement when the same SQL is executed
 	# again (e.g. identical criteria pattern in a pagination or batch loop),
 	# avoiding repeated statement compilation overhead.  fetchall_arrayref
 	# always exhausts the result set, so the handle is never left active.
 	my $sth = $tmpdbh->prepare_cached($sql);
-	$sth->execute(@bind_vals);
+	$sth->execute(@bind_vals, @page_bind);
 	return $sth->fetchall_arrayref({});
 }
 

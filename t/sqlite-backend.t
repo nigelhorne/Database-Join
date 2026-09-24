@@ -1130,4 +1130,144 @@ subtest 'IS NULL on primary column with left join preserves secondary-only rows'
 	is  $rows->[0]{score}, 88, 'Carol secondary score present';
 };
 
+# ===========================================================================
+# S24: limit / offset pagination parameters
+#   - SQLite path: LIMIT ? OFFSET ? appended as bind parameters
+#   - Array path:  splice() applied after ordering
+#   - Validation:  invalid values emit carp and are ignored
+#   - count() and fetchrow_hashref ignore limit/offset silently
+# Fixture: $da_a_small / $da_b_small (5 rows: k1..k5, joined by id).
+# Default join_column-ascending order is Alice/k1, Bob/k2, Carol/k3, Dave/k4, Eve/k5.
+# ===========================================================================
+
+subtest 'limit on SQLite path: returns at most N rows' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $rows = $join->selectall_arrayref(limit => 2);
+	is scalar @{$rows}, 2, 'limit=2 returns exactly 2 rows on SQLite path';
+	is $rows->[0]{name}, 'Alice', 'first row is Alice (k1)';
+	is $rows->[1]{name}, 'Bob',   'second row is Bob (k2)';
+};
+
+subtest 'offset on SQLite path: skips first M rows' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $rows = $join->selectall_arrayref(offset => 2);
+	is scalar @{$rows}, 3, 'offset=2 skips 2 rows, 3 remain on SQLite path';
+	is $rows->[0]{name}, 'Carol', 'first returned row is Carol (k3)';
+	is $rows->[2]{name}, 'Eve',   'last returned row is Eve (k5)';
+};
+
+subtest 'limit + offset on SQLite path: combined pagination window' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $rows = $join->selectall_arrayref(limit => 2, offset => 2);
+	is scalar @{$rows}, 2, 'limit=2 offset=2 returns 2 rows';
+	is $rows->[0]{name}, 'Carol', 'first page-2 row is Carol (k3)';
+	is $rows->[1]{name}, 'Dave',  'second page-2 row is Dave (k4)';
+};
+
+subtest 'limit on array path: returns at most N rows' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'array',
+		join_type   => 'left',
+	);
+	my $rows = $join->selectall_arrayref(limit => 3);
+	is scalar @{$rows}, 3, 'limit=3 returns exactly 3 rows on array path';
+	is $rows->[0]{name}, 'Alice', 'first row is Alice (k1) on array path';
+};
+
+subtest 'offset on array path: skips first M rows' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'array',
+		join_type   => 'left',
+	);
+	my $rows = $join->selectall_arrayref(offset => 3);
+	is scalar @{$rows}, 2, 'offset=3 skips 3 rows, 2 remain on array path';
+	is $rows->[0]{name}, 'Dave', 'first returned row is Dave (k4) on array path';
+	is $rows->[1]{name}, 'Eve',  'second returned row is Eve (k5) on array path';
+};
+
+subtest 'limit + offset larger than result: returns remaining rows' => sub {
+	# offset=4 skips 4 rows; limit=10 is larger than the 1 remaining row.
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my $rows = $join->selectall_arrayref(limit => 10, offset => 4);
+	is scalar @{$rows}, 1, 'offset past most rows: only Eve (k5) remains';
+	is $rows->[0]{name}, 'Eve', 'the one remaining row is Eve (k5)';
+};
+
+subtest 'invalid limit emits carp and is ignored (all rows returned)' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my @warnings;
+	local $SIG{__WARN__} = sub { push @warnings, @_ };
+	my $rows = $join->selectall_arrayref(limit => 0);
+	is   scalar @{$rows}, 5, 'limit=0 ignored: all 5 rows returned';
+	like $warnings[0], qr/limit must be a positive integer/, 'carp emitted for limit=0';
+};
+
+subtest 'invalid offset emits carp and is ignored (no rows skipped)' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	my @warnings;
+	local $SIG{__WARN__} = sub { push @warnings, @_ };
+	my $rows = $join->selectall_arrayref(offset => -1);
+	is   scalar @{$rows}, 5, 'offset=-1 ignored: all 5 rows returned';
+	like $warnings[0], qr/offset must be a non-negative integer/, 'carp emitted for offset=-1';
+};
+
+subtest 'count() ignores limit and offset: counts all matching rows' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	is $join->count(limit => 2, offset => 1), 5,
+		'count() ignores limit/offset and returns total row count';
+};
+
+subtest 'limit + offset combined with order_by on SQLite path' => sub {
+	my $join = Database::Join->new(
+		databases   => [$da_a_small, $da_b_small],
+		join_column => $JOIN_COL,
+		backend     => 'sqlite',
+		join_type   => 'left',
+	);
+	# name DESC order: Eve, Dave, Carol, Bob, Alice; offset=1 skips Eve; limit=2 → Dave, Carol
+	my $rows = $join->selectall_arrayref(order_by => ['name', 'DESC'], limit => 2, offset => 1);
+	is scalar @{$rows}, 2, 'order_by+limit+offset: 2 rows';
+	is $rows->[0]{name}, 'Dave',  'page is Dave (2nd name DESC)';
+	is $rows->[1]{name}, 'Carol', 'then Carol (3rd name DESC)';
+};
+
 done_testing();

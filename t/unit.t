@@ -20,7 +20,7 @@ use Scalar::Util qw(blessed refaddr);
 BEGIN {
 	eval { require Database::Abstraction };
 	plan skip_all => 'Database::Abstraction required' if $@;
-	plan tests => 109;
+	plan tests => 117;
 	use_ok('Database::Join');
 }
 
@@ -175,6 +175,16 @@ my %LEDGER = (
 	'ob:unknown_col_carp'     => 1,  # unknown column => carp + default join_col sort
 	'ob:invalid_dir_carp'     => 1,  # invalid direction => carp + ASC fallback
 	'ob:count_drops_silently' => 1,  # count() silently drops order_by
+
+	# limit / offset pagination (POD section: "selectall_arrayref / Input / Optional parameters")
+	'pg:limit_array'          => 1,  # limit on array path returns at most N rows
+	'pg:offset_array'         => 1,  # offset on array path skips first M rows
+	'pg:limit_sqlite'         => 1,  # limit on SQLite path returns at most N rows
+	'pg:offset_sqlite'        => 1,  # offset on SQLite path skips first M rows
+	'pg:limit_offset_combined'=> 1,  # limit+offset together selects the right window
+	'pg:invalid_limit_carp'   => 1,  # invalid limit => carp + all rows returned
+	'pg:invalid_offset_carp'  => 1,  # invalid offset => carp + no rows skipped
+	'pg:count_drops_silently' => 1,  # count() ignores limit/offset, returns total
 );
 
 # ---------------------------------------------------------------------------
@@ -1794,6 +1804,105 @@ subtest 'count: order_by parameter is silently dropped' => sub {
 	is(scalar @ob_warns, 0,
 		'count: no carp for order_by — it is silently dropped before criteria routing');
 	delete $LEDGER{'ob:count_drops_silently'};
+};
+
+# ===========================================================================
+# SECTION 20 -- limit / offset pagination parameters
+#   Three-row fixture (Carol/K1, Alice/K2, Bob/K3, inner join, sorted by
+#   join_column ascending by default).  limit and offset are tested on both
+#   the array and SQLite backends, along with carp-on-invalid and the
+#   count() silent-drop requirement.
+# ===========================================================================
+
+subtest 'limit on array path: returns at most N rows' => sub {
+	plan tests => 2;
+	my $j    = _three_row_join(backend => 'array');
+	my $rows = $j->selectall_arrayref(limit => 2);
+	is(scalar @{$rows}, 2, 'limit=2: 2 rows returned on array path');
+	is($rows->[0]{name}, 'Carol', 'first row is Carol (K1, join_col order)');
+	delete $LEDGER{'pg:limit_array'};
+};
+
+subtest 'offset on array path: skips first M rows' => sub {
+	plan tests => 2;
+	my $j    = _three_row_join(backend => 'array');
+	my $rows = $j->selectall_arrayref(offset => 1);
+	is(scalar @{$rows}, 2, 'offset=1 skips 1 row, 2 remain on array path');
+	is($rows->[0]{name}, 'Alice', 'first remaining is Alice (K2)');
+	delete $LEDGER{'pg:offset_array'};
+};
+
+subtest 'limit on SQLite path: returns at most N rows' => sub {
+	plan tests => 2;
+	my $j    = _three_row_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(limit => 1);
+	is(scalar @{$rows}, 1, 'limit=1: 1 row returned on SQLite path');
+	is($rows->[0]{name}, 'Carol', 'the one row is Carol (K1)');
+	delete $LEDGER{'pg:limit_sqlite'};
+};
+
+subtest 'offset on SQLite path: skips first M rows' => sub {
+	plan tests => 2;
+	my $j    = _three_row_join(backend => 'sqlite');
+	my $rows = $j->selectall_arrayref(offset => 2);
+	is(scalar @{$rows}, 1, 'offset=2 skips 2 rows, 1 remains on SQLite path');
+	is($rows->[0]{name}, 'Bob', 'the remaining row is Bob (K3)');
+	delete $LEDGER{'pg:offset_sqlite'};
+};
+
+subtest 'limit + offset combined: returns the correct window' => sub {
+	plan tests => 3;
+	my $j    = _three_row_join(backend => 'sqlite');
+	# Skip Carol/K1 (offset=1), take 1 row (limit=1) → Alice/K2
+	my $rows = $j->selectall_arrayref(limit => 1, offset => 1);
+	is(scalar @{$rows}, 1, 'limit=1 offset=1: 1 row in the window');
+	is($rows->[0]{name}, 'Alice', 'window row is Alice (K2)');
+	# Verify array path gives the same window
+	my $j2    = _three_row_join(backend => 'array');
+	my $rows2 = $j2->selectall_arrayref(limit => 1, offset => 1);
+	is($rows2->[0]{name}, 'Alice', 'array path: same window (Alice/K2)');
+	delete $LEDGER{'pg:limit_offset_combined'};
+};
+
+subtest 'invalid limit emits carp and is ignored (all rows returned)' => sub {
+	plan tests => 3;
+	my $j = _three_row_join(backend => 'array');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $j->selectall_arrayref(limit => 0);
+	} 'limit=0 does not croak';
+	like($warnings[0], qr/limit must be a positive integer/, 'carp emitted for limit=0');
+	is(scalar @{$rows}, 3, 'limit=0 ignored: all 3 rows returned');
+	delete $LEDGER{'pg:invalid_limit_carp'};
+};
+
+subtest 'invalid offset emits carp and is ignored (no rows skipped)' => sub {
+	plan tests => 3;
+	my $j = _three_row_join(backend => 'array');
+	my @warnings;
+	my $rows;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$rows = $j->selectall_arrayref(offset => -1);
+	} 'offset=-1 does not croak';
+	like($warnings[0], qr/offset must be a non-negative integer/, 'carp emitted for offset=-1');
+	is(scalar @{$rows}, 3, 'offset=-1 ignored: all 3 rows returned');
+	delete $LEDGER{'pg:invalid_offset_carp'};
+};
+
+subtest 'count() ignores limit and offset: returns total matching rows' => sub {
+	plan tests => 2;
+	my $j = _three_row_join(backend => 'array');
+	my @warnings;
+	my $n;
+	lives_ok {
+		local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+		$n = $j->count(limit => 1, offset => 1);
+	} 'count() with limit+offset does not croak';
+	is($n, 3, 'count() ignores limit/offset: reports all 3 rows');
+	delete $LEDGER{'pg:count_drops_silently'};
 };
 
 # ===========================================================================
