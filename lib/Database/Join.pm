@@ -3140,7 +3140,8 @@ sub _sqlite_join :Protected {
 				if ($src && ref($src) eq 'HASH' && $src->{dbh} && $src->{table}
 					&& eval { $src->{dbh}{Driver}{Name} } eq 'SQLite') {
 					my ($cnt) = $src->{dbh}->selectrow_array(
-						'SELECT COUNT(*) FROM "' . $src->{table} . '"'
+						'SELECT COUNT(*) FROM '
+						. _sql_quote_identifier($src->{table})
 					);
 					$total += $cnt // 0;
 					next;
