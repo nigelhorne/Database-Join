@@ -379,7 +379,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class="">   38: # A bare undef criterion value (col =&gt; undef) also generates IS NULL.
 </span><span class="">   39: Readonly::Hash my %SAFE_NOARG_OPS =&gt; map { $_ =&gt; 1 } (&#39;IS NULL&#39;, &#39;IS NOT NULL&#39;);
 </span><span class="">   40: 
-</span><span class="">   41: our $VERSION = &#39;0.007.0&#39;;
+</span><span class="">   41: our $VERSION = &#39;0.007.1&#39;;
 </span><span class="">   42: 
 </span><span class="">   43: # Package-level cache for threads availability.  undef = not yet checked;
 </span><span class="">   44: # 1 = available; 0 = not available.  Checked lazily on the first parallel
@@ -412,7 +412,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class="">   71: 
 </span><span class="">   72: =head1 VERSION
 </span><span class="">   73: 
-</span><span class="">   74: Version 0.007.0
+</span><span class="">   74: Version 0.007.1
 </span><span class="">   75: 
 </span><span class="">   76: =head1 SYNOPSIS
 </span><span class="">   77: 
@@ -3447,7 +3447,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 3100: 			$tmpdbh-&gt;begin_work;
 </span><span class=""> 3101: 			for my $row (@{$rows}) {
 </span><span class=""> 3102: 				$sth-&gt;execute(map { $row-&gt;{$_} } @{$cols});
-</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one). Mutation survived. Add targeted tests to validate this branch."> 3103: 				if (++$batch &gt;= 1_000) {
+</span><span class="survived-3 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch. Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 3103: 				if (++$batch &gt;= 1_000) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 4, Killed: 0, Survived: 4)</summary>
