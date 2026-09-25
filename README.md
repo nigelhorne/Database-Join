@@ -930,7 +930,7 @@ my $join = Database::Join->new(
 
 **Parallel secondary fetches (`parallel` constructor parameter)**
 
-By default, component databases are queried sequentially — the primary first,
+By default, component databases are queried sequentially - the primary first,
 then each secondary in order.  When the component databases are network- or
 disk-backed and have non-trivial per-query latency, the sequential fetch means
 total latency is the _sum_ of all per-DA latencies.
@@ -943,7 +943,7 @@ _max(secondary latencies)_ instead of _sum(secondary latencies)_.
 
 ```perl
 my $join = Database::Join->new(
-    databases   => [ $customers, $loyalty, $scores ],   # 3 DAs — 2 secondaries
+    databases   => [ $customers, $loyalty, $scores ],   # 3 DAs - 2 secondaries
     join_column => 'entry',
     parallel    => 1,    # loyalty and scores fetched concurrently
 );
@@ -961,7 +961,7 @@ creation overhead exceeds the benefit of concurrency; sequential is used
 regardless of `parallel`.
 - Component databases must be safe to call from Perl threads.  In-memory
 databases (CSV, JSON, TSV after slurp) are safe.  DBI-backed databases
-whose handles were created in the same thread may not be safe — consult your
+whose handles were created in the same thread may not be safe - consult your
 DBD driver's thread documentation.  The array backend is recommended for
 DBI-backed sources; the SQLite backend performs its join in a single SQL
 statement and does not use parallel fetching.
@@ -1304,8 +1304,8 @@ file and query the materialised join result directly via SQL, without routing
 rows through Perl.
 
 The first call builds the SQLite cache (if not already current) and
-materialises the full join result — with `filters` applied but no query-time
-criteria — into a real table named `_dj_result` inside the cache file.
+materialises the full join result - with `filters` applied but no query-time
+criteria - into a real table named `_dj_result` inside the cache file.
 Subsequent calls within the same cache cycle reuse the existing table.
 
 Returns `undef` when the backend is `'array'` (no SQLite file exists).
@@ -2556,11 +2556,3 @@ Copyright (C) 2026 Nigel Horne.
 
 Usage is subject to the GPL2 licence terms.
 If you use it, please let me know.
-
-## Pod Errors
-
-Hey! **The above document had some coding errors, which are explained below:**
-
-- Around line 1105:
-
-    Non-ASCII character seen before =encoding in '—'. Assuming UTF-8

@@ -1090,7 +1090,7 @@ faster local disk:
 
 B<Parallel secondary fetches (C<parallel> constructor parameter)>
 
-By default, component databases are queried sequentially — the primary first,
+By default, component databases are queried sequentially - the primary first,
 then each secondary in order.  When the component databases are network- or
 disk-backed and have non-trivial per-query latency, the sequential fetch means
 total latency is the I<sum> of all per-DA latencies.
@@ -1102,7 +1102,7 @@ parallel after the primary fetch completes; total latency drops to
 I<max(secondary latencies)> instead of I<sum(secondary latencies)>.
 
     my $join = Database::Join->new(
-        databases   => [ $customers, $loyalty, $scores ],   # 3 DAs — 2 secondaries
+        databases   => [ $customers, $loyalty, $scores ],   # 3 DAs - 2 secondaries
         join_column => 'entry',
         parallel    => 1,    # loyalty and scores fetched concurrently
     );
@@ -1129,7 +1129,7 @@ regardless of C<parallel>.
 
 Component databases must be safe to call from Perl threads.  In-memory
 databases (CSV, JSON, TSV after slurp) are safe.  DBI-backed databases
-whose handles were created in the same thread may not be safe — consult your
+whose handles were created in the same thread may not be safe - consult your
 DBD driver's thread documentation.  The array backend is recommended for
 DBI-backed sources; the SQLite backend performs its join in a single SQL
 statement and does not use parallel fetching.
@@ -1492,8 +1492,8 @@ file and query the materialised join result directly via SQL, without routing
 rows through Perl.
 
 The first call builds the SQLite cache (if not already current) and
-materialises the full join result — with C<filters> applied but no query-time
-criteria — into a real table named C<_dj_result> inside the cache file.
+materialises the full join result - with C<filters> applied but no query-time
+criteria - into a real table named C<_dj_result> inside the cache file.
 Subsequent calls within the same cache cycle reuse the existing table.
 
 Returns C<undef> when the backend is C<'array'> (no SQLite file exists).
@@ -2584,18 +2584,23 @@ sub _joined_query :Protected {
 #          offset ∈ ℤ≥0 ∪ {undef}.  All downstream guards may safely rely on this.
 sub _validate_pagination :Protected {
 	my ($self, $limit, $offset) = @_;
-	# Syllogism: limit must be a positive integer ∧ matches /^\d+$/ ∧ >= 1.
+	# Syllogism: limit must be a positive integer ∧ matches /^\d+\z/a ∧ >= 1.
 	# Conclusion: any value that fails either check is treated as absent.
+	# \z (not $): rejects strings ending with \n that $ would silently accept.
+	# /a flag:    restricts \d to ASCII [0-9]; rejects Unicode decimal digits
+	#             (e.g. Arabic-Indic ٣) that \d matches but Perl's numeric
+	#             coercion would silently treat as 0, bypassing the >= 1 guard.
 	if (defined $limit) {
-		if ($limit !~ /^\d+$/ || $limit < 1) {
+		if ($limit !~ /^\d+\z/a || $limit < 1) {
 			carp "Database::Join: limit must be a positive integer; ignored";
 			undef $limit;
 		}
 	}
-	# Syllogism: offset must be a non-negative integer ∧ matches /^\d+$/.
+	# Syllogism: offset must be a non-negative integer ∧ matches /^\d+\z/a.
 	# Conclusion: any value that fails the check is treated as absent.
+	# Same \z / /a rationale as limit above.
 	if (defined $offset) {
-		if ($offset !~ /^\d+$/) {
+		if ($offset !~ /^\d+\z/a) {
 			carp "Database::Join: offset must be a non-negative integer; ignored";
 			undef $offset;
 		}
