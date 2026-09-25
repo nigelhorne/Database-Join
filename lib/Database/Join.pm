@@ -3328,6 +3328,10 @@ sub _sqlite_join :Protected {
 	# Executed BEFORE ORDER BY / LIMIT / OFFSET because they are irrelevant here —
 	# the parent join will impose its own ordering and pagination per-call.
 	# _sql_quote_identifier guards against any injection via the table name.
+	# D~: $order_by, $limit, $offset are dead stores on this path.  They were
+	# parsed and validated above (shared with the normal query path) but the
+	# caller of create_table always passes undef for these, so _validate_pagination
+	# is a no-op and the variables are harmlessly abandoned at this return.
 	if (defined $create_table) {
 		my $mat_sql = 'SELECT ' . join(', ', @selects)
 		            . ' FROM ' . $from . $join_sql . $where_sql;
