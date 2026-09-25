@@ -319,7 +319,7 @@ use C<join_map> to declare each database's local column name.
 =item Sort order
 
 Results are sorted ascending by C<join_column> by default.  Pass
-C<< order_by => 'colname' >> (or C<< order_by => ['colname', 'DESC'] >>)
+C<< sort_by => 'colname' >> (or C<< sort_by => ['colname', 'DESC'] >>)
 to any query method to override this.  The array path uses string comparison
 (C<cmp>); for accurate numeric ordering on large datasets use the SQLite
 backend, which sorts natively by type.
@@ -1207,11 +1207,11 @@ three join types (left, inner, outer) work identically on both paths.
     my $rows = $join->selectall_arrayref(tier  => 'gold');
     my $rows = $join->selectall_arrayref(score => { '>' => 80 });
     my $rows = $join->selectall_arrayref('C001');  # positional: entry => 'C001'
-    my $rows = $join->selectall_arrayref(order_by => 'name');
-    my $rows = $join->selectall_arrayref(tier => 'gold', order_by => ['score', 'DESC']);
+    my $rows = $join->selectall_arrayref(sort_by => 'name');
+    my $rows = $join->selectall_arrayref(tier => 'gold', sort_by => ['score', 'DESC']);
     my $rows = $join->selectall_arrayref(limit => 10);
     my $rows = $join->selectall_arrayref(limit => 10, offset => 20);
-    my $rows = $join->selectall_arrayref(tier => 'gold', order_by => 'name', limit => 5);
+    my $rows = $join->selectall_arrayref(tier => 'gold', sort_by => 'name', limit => 5);
 
 =head3 DESCRIPTION
 
@@ -1241,13 +1241,13 @@ A single plain scalar argument is interpreted as the C<join_column> value
       Hashref of operators        -- e.g. { '>' => 80 }
 
     Optional parameters (mixed in with any of the above):
-      order_by => 'colname'            -- sort ascending by that column
-      order_by => ['colname', 'DESC']  -- sort descending
-      order_by => ['colname', 'ASC']   -- sort ascending (explicit)
+      sort_by => 'colname'            -- sort ascending by that column
+      sort_by => ['colname', 'DESC']  -- sort descending
+      sort_by => ['colname', 'ASC']   -- sort ascending (explicit)
       limit    => N                    -- return at most N rows (positive integer)
       offset   => M                   -- skip the first M rows (non-negative integer)
 
-    The column named in order_by must be present in the merged view (i.e. it
+    The column named in sort_by must be present in the merged view (i.e. it
     must appear in columns()).  An unknown column or an invalid direction emits
     a carp warning and falls back to the default join_column ascending sort.
 
@@ -1256,7 +1256,7 @@ A single plain scalar argument is interpreted as the C<join_column> value
     the first qualifying row.  An invalid limit or offset emits a carp warning
     and the parameter is ignored (treated as absent).
 
-    DOMAIN -- order_by:
+    DOMAIN -- sort_by:
       EP absent:          result sorted by join_column ASC (default).
       EP string:          any column name in columns(); sorts ASC by that column.
       EP ['col','ASC']:   explicit ascending; equivalent to the string form.
@@ -1291,7 +1291,7 @@ A single plain scalar argument is interpreted as the C<join_column> value
 =head4 Output
 
     Arrayref of hashrefs; one hashref per qualifying merged row.
-    Sorted ascending by join_column by default; caller-controlled via order_by.
+    Sorted ascending by join_column by default; caller-controlled via sort_by.
     At most C<limit> rows when limit is given; the first C<offset> rows are
     skipped when offset is given.
     Returns a reference to an empty array when no rows match.
@@ -1319,11 +1319,11 @@ A single plain scalar argument is interpreted as the C<join_column> value
     warn_unknown_column (carp)
         -- A criterion key names a column not present in any component database;
            the criterion is silently dropped and all rows are returned.
-    order_by column unknown (carp)
-        -- The column given in order_by is not in the merged view; the result
+    sort_by column unknown (carp)
+        -- The column given in sort_by is not in the merged view; the result
            is returned in the default join_column ascending order instead.
-    order_by direction invalid (carp)
-        -- The direction given in order_by is not 'ASC' or 'DESC'; ASC is used.
+    sort_by direction invalid (carp)
+        -- The direction given in sort_by is not 'ASC' or 'DESC'; ASC is used.
     limit invalid (carp)
         -- The value given for limit is not a positive integer; it is ignored.
     offset invalid (carp)
@@ -1345,10 +1345,10 @@ A single plain scalar argument is interpreted as the C<join_column> value
 sub selectall_arrayref {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
-	my $order_by = delete $params->{order_by};
+	my $sort_by = delete $params->{sort_by};
 	my $limit    = delete $params->{limit};
 	my $offset   = delete $params->{offset};
-	return $self->_joined_query($params, order_by => $order_by, limit => $limit, offset => $offset);
+	return $self->_joined_query($params, sort_by => $sort_by, limit => $limit, offset => $offset);
 }
 
 =head2 selectall_array
@@ -1398,10 +1398,10 @@ Same messages as C<selectall_arrayref>.
 sub selectall_array {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
-	my $order_by = delete $params->{order_by};
+	my $sort_by = delete $params->{sort_by};
 	my $limit    = delete $params->{limit};
 	my $offset   = delete $params->{offset};
-	my $rows     = $self->_joined_query($params, order_by => $order_by, limit => $limit, offset => $offset);
+	my $rows     = $self->_joined_query($params, sort_by => $sort_by, limit => $limit, offset => $offset);
 	return wantarray ? @{$rows} : $rows->[0];
 }
 
@@ -1451,10 +1451,10 @@ Same messages as C<selectall_arrayref>.
 sub fetchrow_hashref {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
-	my $order_by = delete $params->{order_by};
+	my $sort_by = delete $params->{sort_by};
 	delete $params->{limit};   # fetchrow_hashref always returns one row; limit is meaningless
 	delete $params->{offset};  # offset would change which row is "first"; not supported here
-	my $rows     = $self->_joined_query($params, order_by => $order_by);
+	my $rows     = $self->_joined_query($params, sort_by => $sort_by);
 	return $rows->[0];
 }
 
@@ -1501,7 +1501,7 @@ Same messages as C<selectall_arrayref>.
 sub count {
 	my ($self, @args) = @_;
 	my $params = $self->_parse_query_args(undef, @args);
-	delete $params->{order_by};  # row ordering is irrelevant for a count
+	delete $params->{sort_by};  # row ordering is irrelevant for a count
 	delete $params->{limit};     # count returns total matching rows, not a page
 	delete $params->{offset};
 	# On the SQLite path, push COUNT(*) into SQL to avoid fetching all rows.
@@ -2326,10 +2326,10 @@ sub AUTOLOAD {
 		# {id} field; using the cached value avoids re-introspecting the blessed
 		# hash on every call and isolates the coupling to a single known site.
 		my $params   = $self->_parse_query_args($self->{_autoload_pk}, @_);
-		my $order_by = delete $params->{order_by};
+		my $sort_by = delete $params->{sort_by};
 		my $limit    = delete $params->{limit};
 		my $offset   = delete $params->{offset};
-		my $rows     = $self->_joined_query($params, order_by => $order_by, limit => $limit, offset => $offset);
+		my $rows     = $self->_joined_query($params, sort_by => $sort_by, limit => $limit, offset => $offset);
 		return map { $_->{$col} } @{$rows} if wantarray;
 		return @{$rows} ? $rows->[0]{$col} : undef;
 	}
@@ -2582,7 +2582,7 @@ sub _fetch_indexed :Protected {
 #
 # Purpose: Dispatcher — routes to the array (in-memory) or SQLite join backend
 #          based on $self->{_backend}.  %opts are passed through to the backend
-#          (currently: order_by, limit, offset).
+#          (currently: sort_by, limit, offset).
 sub _joined_query :Protected {
 	my ($self, $params, %opts) = @_;
 	my $backend = $self->{_backend};
@@ -2647,7 +2647,7 @@ sub _validate_pagination :Protected {
 
 sub _joined_query_array :Protected {
 	my ($self, $params, %opts) = @_;
-	my $order_by = $opts{order_by};
+	my $sort_by = $opts{sort_by};
 	my $limit    = $opts{limit};
 	my $offset   = $opts{offset};
 
@@ -2836,27 +2836,27 @@ sub _joined_query_array :Protected {
 	# query.  Lazily built here and invalidated to undef by remove_column().
 	my $removed = ($self->{_removed_list} //= [keys %{ $self->{_removed_cols} }]);
 
-	# Parse order_by once before the merge loop so we can decide whether the
+	# Parse sort_by once before the merge loop so we can decide whether the
 	# initial O(K log K) sort of %key_set is necessary.
-	# When order_by targets a column other than the join_col, that initial sort
+	# When sort_by targets a column other than the join_col, that initial sort
 	# is overridden by the final Schwarzian pass -- skip it to save a full sort.
-	# When order_by is absent or targets the join_col, the initial sort IS the
+	# When sort_by is absent or targets the join_col, the initial sort IS the
 	# final order and must be kept.
 	my ($ob_col, $ob_dir) = ($join_col, 'ASC');
-	if (defined $order_by) {
-		my ($req_col, $req_dir) = ref($order_by) eq 'ARRAY' ? @{$order_by} : ($order_by, 'ASC');
+	if (defined $sort_by) {
+		my ($req_col, $req_dir) = ref($sort_by) eq 'ARRAY' ? @{$sort_by} : ($sort_by, 'ASC');
 		$req_dir = uc($req_dir // 'ASC');
 		unless ($req_dir eq 'ASC' || $req_dir eq 'DESC') {
-			carp "Database::Join: order_by direction '$req_dir' is not supported; using ASC";
+			carp "Database::Join: sort_by direction '$req_dir' is not supported; using ASC";
 			$req_dir = 'ASC';
 		}
 		if ($req_col ne $join_col && !exists $self->{_col_db}{$req_col}) {
-			carp "Database::Join: order_by column '$req_col' is not in the merged view; result sorted by join_column";
+			carp "Database::Join: sort_by column '$req_col' is not in the merged view; result sorted by join_column";
 		} else {
 			($ob_col, $ob_dir) = ($req_col, $req_dir);
 		}
 	}
-	# True when order_by targets a non-join column: the initial sort is redundant.
+	# True when sort_by targets a non-join column: the initial sort is redundant.
 	my $ob_override = ($ob_col ne $join_col);
 
 	# Build one merged result row for every primary-database row that qualifies.
@@ -2864,7 +2864,7 @@ sub _joined_query_array :Protected {
 	# secondary rows, the last one wins (consistent with construction-time
 	# last-database-wins column routing).
 	my @result;
-	# When order_by will override the join_col order, iterate keys unsorted (O(K))
+	# When sort_by will override the join_col order, iterate keys unsorted (O(K))
 	# instead of sorted (O(K log K)); the Schwarzian pass at the end reorders.
 	for my $key ($ob_override ? keys %key_set : sort keys %key_set) {
 		# Iterate directly over the arrayref: avoids copying primary rows into a
@@ -3152,7 +3152,7 @@ sub _build_sqlite_cache :Protected {
 sub _sqlite_join :Protected {
 	my ($self, $params, %opts) = @_;
 	my $count_only   = $opts{count_only} // 0;
-	my $order_by     = $opts{order_by};
+	my $sort_by     = $opts{sort_by};
 	my $limit        = $opts{limit};
 	my $offset       = $opts{offset};
 	my $create_table = $opts{create_table};  # when set, materialize into a real table
@@ -3241,7 +3241,7 @@ sub _sqlite_join :Protected {
 		}
 		if (!$can_count || $total <= $self->{_max_array_rows}) {
 			my $rows = $self->_joined_query_array($params,
-				order_by => $order_by, limit => $limit, offset => $offset);
+				sort_by => $sort_by, limit => $limit, offset => $offset);
 			return $count_only ? scalar @{$rows} : $rows;
 		}
 	}
@@ -3402,7 +3402,7 @@ sub _sqlite_join :Protected {
 	# Executed BEFORE ORDER BY / LIMIT / OFFSET because they are irrelevant here —
 	# the parent join will impose its own ordering and pagination per-call.
 	# _sql_quote_identifier guards against any injection via the table name.
-	# D~: $order_by, $limit, $offset are dead stores on this path.  They were
+	# D~: $sort_by, $limit, $offset are dead stores on this path.  They were
 	# parsed and validated above (shared with the normal query path) but the
 	# caller of create_table always passes undef for these, so _validate_pagination
 	# is a no-op and the variables are harmlessly abandoned at this return.
@@ -3417,20 +3417,20 @@ sub _sqlite_join :Protected {
 	}
 
 	# ORDER BY: default is join_column ascending.  Caller may override via
-	# order_by => 'col' or order_by => ['col', 'DESC'].
+	# sort_by => 'col' or sort_by => ['col', 'DESC'].
 	# For the join column on an outer join, reference the COALESCE alias.
 	# For any other column, reference the published SELECT-list alias —
 	# SQLite resolves ORDER BY aliases from the SELECT clause.
 	my ($ob_col, $ob_dir) = ($join_col, 'ASC');
-	if (defined $order_by) {
-		my ($req_col, $req_dir) = ref($order_by) eq 'ARRAY' ? @{$order_by} : ($order_by, 'ASC');
+	if (defined $sort_by) {
+		my ($req_col, $req_dir) = ref($sort_by) eq 'ARRAY' ? @{$sort_by} : ($sort_by, 'ASC');
 		$req_dir = uc($req_dir // 'ASC');
 		unless ($req_dir eq 'ASC' || $req_dir eq 'DESC') {
-			carp "Database::Join: order_by direction '$req_dir' is not supported; using ASC";
+			carp "Database::Join: sort_by direction '$req_dir' is not supported; using ASC";
 			$req_dir = 'ASC';
 		}
 		if ($req_col ne $join_col && !exists $self->{_col_db}{$req_col}) {
-			carp "Database::Join: order_by column '$req_col' is not in the merged view; result sorted by join_column";
+			carp "Database::Join: sort_by column '$req_col' is not in the merged view; result sorted by join_column";
 		} else {
 			($ob_col, $ob_dir) = ($req_col, $req_dir);
 		}

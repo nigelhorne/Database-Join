@@ -1167,17 +1167,17 @@ Readonly::Scalar my $BAD_TMPDIR => '/nonexistent/__txn_test_dir__';
 }
 
 # ============================================================================
-# S21: order_by Transaction Lifecycle
+# S21: sort_by Transaction Lifecycle
 #
 # Lifecycle phases:
 #   CONSTRUCT → DEFAULT-SORT → VALID-ASC → VALID-DESC → INVALID-DIR → UNKNOWN-COL
 #
 # Each phase verifies that the query results match the ordering implied by the
-# current order_by parameter, and that invalid inputs trigger a carp without
+# current sort_by parameter, and that invalid inputs trigger a carp without
 # aborting the transaction or leaving the object in a broken state.
 # ============================================================================
 
-note '--- S21: order_by Transaction Lifecycle ---';
+note '--- S21: sort_by Transaction Lifecycle ---';
 
 Readonly::Scalar my $L_ALPHA => 'alpha';
 Readonly::Scalar my $L_BETA  => 'beta';
@@ -1200,29 +1200,29 @@ my $j21 = Database::Join->new(
 );
 
 # Phase 1: CONSTRUCT — object built; column routing table populated correctly.
-ok(defined $j21, 'S21-P1: order_by lifecycle: join object constructed');		# T147
+ok(defined $j21, 'S21-P1: sort_by lifecycle: join object constructed');		# T147
 
-# Phase 2: DEFAULT-SORT — no order_by; join_col ASC is the default ordering.
+# Phase 2: DEFAULT-SORT — no sort_by; join_col ASC is the default ordering.
 # k1 < k2 < k3 → k1 must come first.
 {
 	my $rows = $j21->selectall_arrayref();
-	is($rows->[0]{entry}, $K1, 'S21-P2: default order_by → join_col ASC → k1 first');	# T148
+	is($rows->[0]{entry}, $K1, 'S21-P2: default sort_by → join_col ASC → k1 first');	# T148
 }
 
-# Phase 3: VALID-ASC — order_by = 'label' (string form) → Schwarzian ASC.
+# Phase 3: VALID-ASC — sort_by = 'label' (string form) → Schwarzian ASC.
 # alpha(k3) < beta(k2) < gamma(k1): k3 must come first.
 {
-	my $rows = $j21->selectall_arrayref(order_by => 'label');
+	my $rows = $j21->selectall_arrayref(sort_by => 'label');
 	is($rows->[0]{label}, $L_ALPHA,
-		'S21-P3: order_by label ASC → alpha first (non-join-col Schwarzian)');		# T149
+		'S21-P3: sort_by label ASC → alpha first (non-join-col Schwarzian)');		# T149
 }
 
-# Phase 4: VALID-DESC — order_by = ['label','DESC'] → Schwarzian DESC.
+# Phase 4: VALID-DESC — sort_by = ['label','DESC'] → Schwarzian DESC.
 # gamma(k1) > beta(k2) > alpha(k3): gamma must come first.
 {
-	my $rows = $j21->selectall_arrayref(order_by => ['label', 'DESC']);
+	my $rows = $j21->selectall_arrayref(sort_by => ['label', 'DESC']);
 	is($rows->[0]{label}, $L_GAMMA,
-		'S21-P4: order_by label DESC → gamma first (Schwarzian DESC)');			# T150
+		'S21-P4: sort_by label DESC → gamma first (Schwarzian DESC)');			# T150
 }
 
 # Phase 5: INVALID-DIR — direction 'UP' is not ASC or DESC → carp; ASC fallback.
@@ -1230,25 +1230,25 @@ ok(defined $j21, 'S21-P1: order_by lifecycle: join object constructed');		# T147
 {
 	my @warns;
 	{ local $SIG{__WARN__} = sub { push @warns, @_ };
-	  my $rows = $j21->selectall_arrayref(order_by => ['label', 'UP']);
+	  my $rows = $j21->selectall_arrayref(sort_by => ['label', 'UP']);
 	  is($rows->[0]{label}, $L_ALPHA,
 		'S21-P5b: invalid direction carps + ASC fallback → alpha first');		# T152
 	}
 	ok(scalar @warns,
-		'S21-P5a: order_by direction "UP" → carp emitted; object still operational');	# T151
+		'S21-P5a: sort_by direction "UP" → carp emitted; object still operational');	# T151
 }
 
-# Phase 6: UNKNOWN-COL — order_by column not in the view → carp; join_col fallback.
+# Phase 6: UNKNOWN-COL — sort_by column not in the view → carp; join_col fallback.
 # k1 must come first (join_col ASC default).
 {
 	my @warns;
 	{ local $SIG{__WARN__} = sub { push @warns, @_ };
-	  my $rows = $j21->selectall_arrayref(order_by => 'nonexistent');
+	  my $rows = $j21->selectall_arrayref(sort_by => 'nonexistent');
 	  is($rows->[0]{entry}, $K1,
-		'S21-P6b: unknown order_by col → join_col ASC fallback → k1 first');		# T154
+		'S21-P6b: unknown sort_by col → join_col ASC fallback → k1 first');		# T154
 	}
 	ok(scalar @warns,
-		'S21-P6a: unknown order_by column → carp; object continues to function');	# T153
+		'S21-P6a: unknown sort_by column → carp; object continues to function');	# T153
 }
 
 # ============================================================================
@@ -1331,7 +1331,7 @@ my $page1_22;
 }
 
 # ============================================================================
-# S23: Combined order_by + Pagination Transaction Lifecycle
+# S23: Combined sort_by + Pagination Transaction Lifecycle
 #
 # Lifecycle phases:
 #   SORTED-FULL → SORTED-PAGE-1 → SORTED-PAGE-2
@@ -1342,7 +1342,7 @@ my $page1_22;
 # visible as a wrong first element on each page.
 # ============================================================================
 
-note '--- S23: Combined order_by + Pagination Lifecycle ---';
+note '--- S23: Combined sort_by + Pagination Lifecycle ---';
 
 # Fixture: label ASC order (apple < cherry < mango < zebra) is the reverse of
 # join_col ASC order (k1 < k2 < k3 < k4), making sort/page bugs visible.
@@ -1366,27 +1366,27 @@ Readonly::Scalar my $OP_SIZE => 2;
 
 # Phase 1: SORTED-FULL — full label ASC result; first=apple, last=zebra.
 {
-	my $full = $j23->selectall_arrayref(order_by => 'label');
+	my $full = $j23->selectall_arrayref(sort_by => 'label');
 	is($full->[0]{label}, 'apple',
 		'S23-P1a: sorted full result → apple first (label ASC)');			# T163
 	is($full->[-1]{label}, 'zebra',
 		'S23-P1b: sorted full result → zebra last (label ASC)');			# T164
 }
 
-# Phase 2: SORTED-PAGE-1 — order_by=label ASC + offset=0, limit=2 → apple, cherry.
+# Phase 2: SORTED-PAGE-1 — sort_by=label ASC + offset=0, limit=2 → apple, cherry.
 {
-	my $pg1 = $j23->selectall_arrayref(order_by => 'label', offset => 0, limit => $OP_SIZE);
+	my $pg1 = $j23->selectall_arrayref(sort_by => 'label', offset => 0, limit => $OP_SIZE);
 	is(scalar @{$pg1}, $OP_SIZE,
 		'S23-P2a: sorted page 1 → 2 rows');						# T165
 	is($pg1->[0]{label}, 'apple',
 		'S23-P2b: sorted page 1 starts at apple (sort preserved at page boundary)');	# T166
 }
 
-# Phase 3: SORTED-PAGE-2 — order_by=label ASC + offset=2, limit=2 → mango, zebra.
+# Phase 3: SORTED-PAGE-2 — sort_by=label ASC + offset=2, limit=2 → mango, zebra.
 # This proves the sort is applied before pagination (not after), so page 2 sees
 # the NEXT two labels in sorted order, not the next two join_col values.
 {
-	my $pg2 = $j23->selectall_arrayref(order_by => 'label', offset => $OP_SIZE, limit => $OP_SIZE);
+	my $pg2 = $j23->selectall_arrayref(sort_by => 'label', offset => $OP_SIZE, limit => $OP_SIZE);
 	is(scalar @{$pg2}, $OP_SIZE,
 		'S23-P3a: sorted page 2 → 2 rows');						# T167
 	is($pg2->[0]{label}, 'mango',

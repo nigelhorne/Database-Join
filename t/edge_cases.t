@@ -1728,44 +1728,44 @@ subtest 'limit/offset: offset far beyond row count returns empty arrayref' => su
 };
 
 # ===========================================================================
-# S18: order_by -- hostile inputs
+# S18: sort_by -- hostile inputs
 # ===========================================================================
 
-subtest 'order_by: unknown column name carps but does not crash' => sub {
-	# An order_by column that is not in the merged view should emit a carp
+subtest 'sort_by: unknown column name carps but does not crash' => sub {
+	# An sort_by column that is not in the merged view should emit a carp
 	# warning and fall back to default ordering, not croak.
 	my ($j) = _minimal_join();
 	my $rows;
-	warning_like { $rows = $j->selectall_arrayref(order_by => '__no_such_col__') }
-		qr/order_by|column|unknown/i, 'unknown order_by column emits carp';
-	ok ref($rows) eq 'ARRAY', 'results still returned despite bad order_by column';
+	warning_like { $rows = $j->selectall_arrayref(sort_by => '__no_such_col__') }
+		qr/sort_by|column|unknown/i, 'unknown sort_by column emits carp';
+	ok ref($rows) eq 'ARRAY', 'results still returned despite bad sort_by column';
 };
 
-subtest 'order_by: invalid direction string carps and falls back' => sub {
+subtest 'sort_by: invalid direction string carps and falls back' => sub {
 	# Only ASC and DESC are valid directions; anything else must be rejected.
 	my ($j) = _minimal_join();
 	my $rows;
-	warning_like { $rows = $j->selectall_arrayref(order_by => ['name', 'SIDEWAYS']) }
-		qr/order_by|direction|asc|desc/i, 'invalid direction string emits carp';
-	ok ref($rows) eq 'ARRAY', 'results still returned despite bad order_by direction';
+	warning_like { $rows = $j->selectall_arrayref(sort_by => ['name', 'SIDEWAYS']) }
+		qr/sort_by|direction|asc|desc/i, 'invalid direction string emits carp';
+	ok ref($rows) eq 'ARRAY', 'results still returned despite bad sort_by direction';
 };
 
-subtest 'order_by: undef order_by is silently ignored' => sub {
+subtest 'sort_by: undef sort_by is silently ignored' => sub {
 	my ($j) = _minimal_join();
 	my $rows;
-	lives_ok { $rows = $j->selectall_arrayref(order_by => undef) }
-		'undef order_by does not crash';
-	ok ref($rows) eq 'ARRAY', 'results returned when order_by is undef';
+	lives_ok { $rows = $j->selectall_arrayref(sort_by => undef) }
+		'undef sort_by does not crash';
+	ok ref($rows) eq 'ARRAY', 'results returned when sort_by is undef';
 };
 
-subtest 'order_by: arrayref with 3 elements is silently tolerated (extra element ignored)' => sub {
+subtest 'sort_by: arrayref with 3 elements is silently tolerated (extra element ignored)' => sub {
 	# Perl's list assignment [col, dir, EXTRA] assigns only the first two elements
 	# to ($req_col, $req_dir); the third is silently discarded.  No croak or carp.
 	my ($j) = _minimal_join();
 	my $rows;
-	lives_ok { $rows = $j->selectall_arrayref(order_by => ['name', 'DESC', 'EXTRA']) }
-		'order_by arrayref with 3 elements does not crash';
-	ok ref($rows) eq 'ARRAY', 'results still returned for over-long order_by arrayref';
+	lives_ok { $rows = $j->selectall_arrayref(sort_by => ['name', 'DESC', 'EXTRA']) }
+		'sort_by arrayref with 3 elements does not crash';
+	ok ref($rows) eq 'ARRAY', 'results still returned for over-long sort_by arrayref';
 };
 
 # ===========================================================================

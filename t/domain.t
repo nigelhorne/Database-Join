@@ -1827,7 +1827,7 @@ note '--- Section 24: offset parameter domain ---';
 }
 
 # ==========================================================================
-# Section 25: `order_by` parameter domain
+# Section 25: `sort_by` parameter domain
 #
 # Valid domain:
 #   EP string:          any column in columns(); sort cmp ASC.
@@ -1846,7 +1846,7 @@ note '--- Section 24: offset parameter domain ---';
 # backend=>'sqlite'.
 # ==========================================================================
 
-note '--- Section 25: order_by parameter domain ---';
+note '--- Section 25: sort_by parameter domain ---';
 
 # EP absent: default join_col ASC.
 {
@@ -1860,8 +1860,8 @@ note '--- Section 25: order_by parameter domain ---';
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
 	my $rows = $j->selectall_arrayref();
-	is($rows->[0]{$JC}, 'k1', 'order_by: absent → join_col ASC (EP absent, default)');
-	is($rows->[2]{$JC}, 'k3', 'order_by: absent → last row is k3 (join_col ASC confirmed)');
+	is($rows->[0]{$JC}, 'k1', 'sort_by: absent → join_col ASC (EP absent, default)');
+	is($rows->[2]{$JC}, 'k3', 'sort_by: absent → last row is k3 (join_col ASC confirmed)');
 }
 
 # EP string form: sort ASC by named column.
@@ -1875,9 +1875,9 @@ note '--- Section 25: order_by parameter domain ---';
 		],
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => 'label');
-	is($rows->[0]{label}, 'apple', "order_by 'label' string form: apple first (EP string ASC)");
-	is($rows->[2]{label}, 'zebra', "order_by 'label' string form: zebra last");
+	my $rows = $j->selectall_arrayref(sort_by => 'label');
+	is($rows->[0]{label}, 'apple', "sort_by 'label' string form: apple first (EP string ASC)");
+	is($rows->[2]{label}, 'zebra', "sort_by 'label' string form: zebra last");
 }
 
 # EP array ['col', 'ASC']: explicit ascending, same result as string form.
@@ -1890,8 +1890,8 @@ note '--- Section 25: order_by parameter domain ---';
 		],
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => ['label', 'ASC']);
-	is($rows->[0]{label}, 'apple', "order_by ['label','ASC']: apple first (EP array ASC)");
+	my $rows = $j->selectall_arrayref(sort_by => ['label', 'ASC']);
+	is($rows->[0]{label}, 'apple', "sort_by ['label','ASC']: apple first (EP array ASC)");
 }
 
 # EP array ['col', 'DESC']: descending.
@@ -1904,9 +1904,9 @@ note '--- Section 25: order_by parameter domain ---';
 		],
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => ['label', 'DESC']);
-	is($rows->[0]{label}, 'zebra', "order_by ['label','DESC']: zebra first (EP array DESC)");
-	is($rows->[1]{label}, 'apple', "order_by ['label','DESC']: apple last");
+	my $rows = $j->selectall_arrayref(sort_by => ['label', 'DESC']);
+	is($rows->[0]{label}, 'zebra', "sort_by ['label','DESC']: zebra first (EP array DESC)");
+	is($rows->[1]{label}, 'apple', "sort_by ['label','DESC']: apple last");
 }
 
 # EP join_col DESC: reverse of the default ordering.
@@ -1919,9 +1919,9 @@ note '--- Section 25: order_by parameter domain ---';
 		],
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => [$JC, 'DESC']);
-	is($rows->[0]{$JC}, 'k2', "order_by [join_col,'DESC']: k2 first (EP join_col DESC)");
-	is($rows->[1]{$JC}, 'k1', "order_by [join_col,'DESC']: k1 last");
+	my $rows = $j->selectall_arrayref(sort_by => [$JC, 'DESC']);
+	is($rows->[0]{$JC}, 'k2', "sort_by [join_col,'DESC']: k2 first (EP join_col DESC)");
+	is($rows->[1]{$JC}, 'k1', "sort_by [join_col,'DESC']: k1 last");
 }
 
 # EP invalid column: column not in columns() → carp + fallback to join_col ASC.
@@ -1930,12 +1930,12 @@ note '--- Section 25: order_by parameter domain ---';
 	my $j = Database::Join->new(databases => [$p, $s], join_column => $JC);
 	my $rows;
 	my $warns = _capture_warnings {
-		$rows = $j->selectall_arrayref(order_by => 'nonexistent_col')
+		$rows = $j->selectall_arrayref(sort_by => 'nonexistent_col')
 	};
-	ok((grep { /order_by/i } @{$warns}),
-		'order_by nonexistent col: carp emitted (EP invalid column)');
+	ok((grep { /sort_by/i } @{$warns}),
+		'sort_by nonexistent col: carp emitted (EP invalid column)');
 	is($rows->[0]{$JC}, 'k1',
-		'order_by invalid col: fallback to join_col ASC (k1 first)');
+		'sort_by invalid col: fallback to join_col ASC (k1 first)');
 }
 
 # EP invalid direction: 'UP' is not ASC or DESC → carp + ASC used.
@@ -1950,12 +1950,12 @@ note '--- Section 25: order_by parameter domain ---';
 	my $j = Database::Join->new(databases => [$p], join_column => $JC);
 	my $rows;
 	my $warns = _capture_warnings {
-		$rows = $j->selectall_arrayref(order_by => ['label', 'UP'])
+		$rows = $j->selectall_arrayref(sort_by => ['label', 'UP'])
 	};
-	ok((grep { /UP|direction|order_by/i } @{$warns}),
-		"order_by direction 'UP': carp emitted (EP invalid direction)");
+	ok((grep { /UP|direction|sort_by/i } @{$warns}),
+		"sort_by direction 'UP': carp emitted (EP invalid direction)");
 	is($rows->[0]{label}, 'apple',
-		"order_by invalid direction: ASC fallback → apple first");
+		"sort_by invalid direction: ASC fallback → apple first");
 }
 
 # BVA empty arrayref []: undef col, carp + join_col fallback.
@@ -1964,12 +1964,12 @@ note '--- Section 25: order_by parameter domain ---';
 	my $j = Database::Join->new(databases => [$p, $s], join_column => $JC);
 	my $rows;
 	my $warns = _capture_warnings {
-		$rows = $j->selectall_arrayref(order_by => [])
+		$rows = $j->selectall_arrayref(sort_by => [])
 	};
-	ok((grep { /order_by/i } @{$warns}),
-		'order_by []: empty arrayref → undef col → carp (BVA empty arrayref)');
+	ok((grep { /sort_by/i } @{$warns}),
+		'sort_by []: empty arrayref → undef col → carp (BVA empty arrayref)');
 	is(ref($rows), 'ARRAY',
-		'order_by []: arrayref still returned (fallback result valid)');
+		'sort_by []: arrayref still returned (fallback result valid)');
 }
 
 # EP single-element arrayref ['col']: direction defaults to ASC.
@@ -1982,9 +1982,9 @@ note '--- Section 25: order_by parameter domain ---';
 		],
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => ['label']);
+	my $rows = $j->selectall_arrayref(sort_by => ['label']);
 	is($rows->[0]{label}, 'apple',
-		"order_by ['label'] single-element: direction defaults to ASC (EP single-element)");
+		"sort_by ['label'] single-element: direction defaults to ASC (EP single-element)");
 }
 
 # ==========================================================================
@@ -2095,19 +2095,19 @@ note '--- Section 26: parallel parameter domain ---';
 # ==========================================================================
 # Section 27: 0.007.0 combinatorial boundary interactions
 #
-# Tests that verify interactions between order_by, limit, and offset work
+# Tests that verify interactions between sort_by, limit, and offset work
 # correctly together and across both array and SQLite backends.
 #
-# C1: order_by + limit → sorted result truncated to limit rows.
-# C2: order_by + offset → sorted result with leading rows skipped.
-# C3: limit + offset (no order_by) → correct page window (join_col ASC default).
-# C4: order_by + limit + offset → exact page from sorted result.
-# C5: SQLite backend: order_by + limit → SQL ORDER BY + LIMIT correct.
+# C1: sort_by + limit → sorted result truncated to limit rows.
+# C2: sort_by + offset → sorted result with leading rows skipped.
+# C3: limit + offset (no sort_by) → correct page window (join_col ASC default).
+# C4: sort_by + limit + offset → exact page from sorted result.
+# C5: SQLite backend: sort_by + limit → SQL ORDER BY + LIMIT correct.
 # ==========================================================================
 
 note '--- Section 27: 0.007.0 combinatorial boundary interactions ---';
 
-# C1: order_by + limit: sorted by label ASC, truncated to 2 of 3 rows.
+# C1: sort_by + limit: sorted by label ASC, truncated to 2 of 3 rows.
 {
 	my $p = DomainDA->new(
 		cols => [$JC, 'label'],
@@ -2118,13 +2118,13 @@ note '--- Section 27: 0.007.0 combinatorial boundary interactions ---';
 		],
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => 'label', limit => 2);
-	is(scalar @{$rows}, 2, 'C1: order_by+limit → 2 rows (limit applied after sort)');
+	my $rows = $j->selectall_arrayref(sort_by => 'label', limit => 2);
+	is(scalar @{$rows}, 2, 'C1: sort_by+limit → 2 rows (limit applied after sort)');
 	is($rows->[0]{label}, 'apple', 'C1: first is apple (label ASC + limit)');
 	is($rows->[1]{label}, 'mango', 'C1: second is mango (label ASC + limit)');
 }
 
-# C2: order_by + offset: sorted by label ASC, first row skipped.
+# C2: sort_by + offset: sorted by label ASC, first row skipped.
 {
 	my $p = DomainDA->new(
 		cols => [$JC, 'label'],
@@ -2135,13 +2135,13 @@ note '--- Section 27: 0.007.0 combinatorial boundary interactions ---';
 		],
 	);
 	my $j    = Database::Join->new(databases => [$p], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => 'label', offset => 1);
-	is(scalar @{$rows}, 2, 'C2: order_by+offset=1 → 2 remaining rows');
+	my $rows = $j->selectall_arrayref(sort_by => 'label', offset => 1);
+	is(scalar @{$rows}, 2, 'C2: sort_by+offset=1 → 2 remaining rows');
 	is($rows->[0]{label}, 'mango', 'C2: first after offset=1 is mango (apple skipped)');
 	is($rows->[1]{label}, 'zebra', 'C2: second is zebra');
 }
 
-# C3: limit + offset (no order_by): join_col ASC default; correct page window.
+# C3: limit + offset (no sort_by): join_col ASC default; correct page window.
 {
 	my $p = DomainDA->new(
 		cols => [$JC, 'v'],
@@ -2160,7 +2160,7 @@ note '--- Section 27: 0.007.0 combinatorial boundary interactions ---';
 	is($rows->[1]{v}, 'fourth', 'C3: page-2 second row is "fourth"');
 }
 
-# C4: order_by + limit + offset: exact middle page from label-sorted result.
+# C4: sort_by + limit + offset: exact middle page from label-sorted result.
 {
 	my $p = DomainDA->new(
 		cols => [$JC, 'label'],
@@ -2174,13 +2174,13 @@ note '--- Section 27: 0.007.0 combinatorial boundary interactions ---';
 	my $j = Database::Join->new(databases => [$p], join_column => $JC);
 	# label ASC order: apple, cherry, mango, zebra
 	# offset=1, limit=2: skip apple → [cherry, mango]
-	my $rows = $j->selectall_arrayref(order_by => 'label', offset => 1, limit => 2);
-	is(scalar @{$rows}, 2,            'C4: order_by+limit+offset → 2 middle rows');
+	my $rows = $j->selectall_arrayref(sort_by => 'label', offset => 1, limit => 2);
+	is(scalar @{$rows}, 2,            'C4: sort_by+limit+offset → 2 middle rows');
 	is($rows->[0]{label}, 'cherry',   'C4: first middle row is cherry (label ASC, after apple)');
 	is($rows->[1]{label}, 'mango',    'C4: second middle row is mango');
 }
 
-# C5: SQLite backend + order_by + limit → SQL ORDER BY + LIMIT produces correct page.
+# C5: SQLite backend + sort_by + limit → SQL ORDER BY + LIMIT produces correct page.
 {
 	my $p = DomainDA->new(
 		cols => [$JC, 'label'],
@@ -2195,8 +2195,8 @@ note '--- Section 27: 0.007.0 combinatorial boundary interactions ---';
 		join_column => $JC,
 		backend     => 'sqlite',
 	);
-	my $rows = $j->selectall_arrayref(order_by => 'label', limit => 2);
-	is(scalar @{$rows}, 2,           'C5 SQLite: order_by+limit → 2 rows via SQL ORDER BY + LIMIT');
+	my $rows = $j->selectall_arrayref(sort_by => 'label', limit => 2);
+	is(scalar @{$rows}, 2,           'C5 SQLite: sort_by+limit → 2 rows via SQL ORDER BY + LIMIT');
 	is($rows->[0]{label}, 'apple',   'C5 SQLite: first row is apple (label ASC)');
 	is($rows->[1]{label}, 'cherry',  'C5 SQLite: second row is cherry');
 }

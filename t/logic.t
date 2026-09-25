@@ -16,7 +16,7 @@
 #   L11  Contradiction trapping (impossible states croak immediately)
 #   L12  remove_column: join_column is irremovable (contradiction proof)
 #   L13  _copy_criteria deep-copy isolation (post-construction mutation proof)
-#   L23  $ob_override boolean gate truth table (join_col vs non-join-col order_by)
+#   L23  $ob_override boolean gate truth table (join_col vs non-join-col sort_by)
 #   L24  Non-commutativity of offset ∘ limit (offset applied before limit)
 #   L25  Schwarzian undef coercion (undef ob_col value sorted as empty string)
 #   L26  reverse correctness for join_col DESC (O(R) reverse == explicit Schwarzian)
@@ -1146,15 +1146,15 @@ subtest 'L16d: limit + offset yields an exact page' => sub {
 };
 
 # ===========================================================================
-# L17: order_by Column-Routing Invariant
+# L17: sort_by Column-Routing Invariant
 #
-# Major Premise: order_by column must be in _col_db OR equal to join_column.
+# Major Premise: sort_by column must be in _col_db OR equal to join_column.
 # Minor Premise (L17a): unknown column  ⟹  carp  ∧  result sorted by join_col ASC.
 # Minor Premise (L17b): valid column + ASC  ⟹  ascending cmp order.
 # Minor Premise (L17c): valid column + DESC  ⟹  descending cmp order.
 # ===========================================================================
 
-subtest 'L17a: unknown order_by column carps and falls back to join_col ascending' => sub {
+subtest 'L17a: unknown sort_by column carps and falls back to join_col ascending' => sub {
 	plan tests => 3;
 
 	# Syllogism: col ∉ _col_db ∧ col ≠ join_col  ⟹  carp  ∧  $ob_col = join_col.
@@ -1169,8 +1169,8 @@ subtest 'L17a: unknown order_by column carps and falls back to join_col ascendin
 	);
 	my $j = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
 	my $rows;
-	warning_like { $rows = $j->selectall_arrayref(order_by => '__nosuchcol__') }
-		qr/order_by|column|unknown/i, 'L17a: unknown order_by column emits carp';
+	warning_like { $rows = $j->selectall_arrayref(sort_by => '__nosuchcol__') }
+		qr/sort_by|column|unknown/i, 'L17a: unknown sort_by column emits carp';
 	is(scalar @{$rows}, 3, 'L17a: all 3 rows still returned');
 	is_deeply([ map { $_->{entry} } @{$rows} ], ['A','B','C'],
 		'L17a: fallback sorts by join_col (entry) ascending');
@@ -1189,9 +1189,9 @@ subtest 'L17b: valid column + ASC yields ascending cmp order' => sub {
 		],
 	);
 	my $j = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
-	my $rows = $j->selectall_arrayref(order_by => ['name', 'ASC']);
+	my $rows = $j->selectall_arrayref(sort_by => ['name', 'ASC']);
 	is_deeply([ map { $_->{name} } @{$rows} ], ['B','C','Z'],
-		'L17b: ASC order_by name sorts B < C < Z');
+		'L17b: ASC sort_by name sorts B < C < Z');
 };
 
 subtest 'L17c: valid column + DESC yields descending cmp order' => sub {
@@ -1207,9 +1207,9 @@ subtest 'L17c: valid column + DESC yields descending cmp order' => sub {
 		],
 	);
 	my $j = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
-	my $rows = $j->selectall_arrayref(order_by => ['name', 'DESC']);
+	my $rows = $j->selectall_arrayref(sort_by => ['name', 'DESC']);
 	is_deeply([ map { $_->{name} } @{$rows} ], ['Z','C','B'],
-		'L17c: DESC order_by name sorts Z > C > B');
+		'L17c: DESC sort_by name sorts Z > C > B');
 };
 
 # ===========================================================================
@@ -1546,9 +1546,9 @@ subtest 'L22c: monotonicity -- max timestamp governs the result' => sub {
 # provides the final order.
 #
 # Truth table:
-#   order_by targets join_col  => ob_col == join_col => ob_override = FALSE
+#   sort_by targets join_col  => ob_col == join_col => ob_override = FALSE
 #                              => result in join_col ASC order
-#   order_by targets non-join col => ob_col != join_col => ob_override = TRUE
+#   sort_by targets non-join col => ob_col != join_col => ob_override = TRUE
 #                                 => result in ob_col order (not join_col order)
 # ===========================================================================
 
@@ -1558,9 +1558,9 @@ Readonly::Array my @L23_ROWS => (
 	{ entry => 'k2', label => 'banana' },
 );
 
-subtest 'L23a: ob_override=FALSE (order_by==join_col) => initial sort is final order' => sub {
+subtest 'L23a: ob_override=FALSE (sort_by==join_col) => initial sort is final order' => sub {
 	plan tests => 3;
-	# No order_by => ob_col defaults to join_col => ob_override=FALSE.
+	# No sort_by => ob_col defaults to join_col => ob_override=FALSE.
 	# The merge loop iterates `sort keys %key_set`, producing join_col ASC.
 	# Conclusion: first row has smallest join_col value.
 	my $da = LogicDA->new(cols => ['entry','label'], rows => [@L23_ROWS]);
@@ -1570,14 +1570,14 @@ subtest 'L23a: ob_override=FALSE (order_by==join_col) => initial sort is final o
 		backend     => 'array',
 	);
 	my $rows = $j->selectall_arrayref();
-	is($rows->[0]{entry}, 'k1', 'L23a: no order_by => join_col ASC => k1 first');
+	is($rows->[0]{entry}, 'k1', 'L23a: no sort_by => join_col ASC => k1 first');
 	is($rows->[1]{entry}, 'k2', 'L23a: second is k2');
 	is($rows->[2]{entry}, 'k3', 'L23a: third is k3 (gate FALSE path confirmed)');
 };
 
-subtest 'L23b: ob_override=TRUE (order_by!=join_col) => Schwarzian is sole sorter' => sub {
+subtest 'L23b: ob_override=TRUE (sort_by!=join_col) => Schwarzian is sole sorter' => sub {
 	plan tests => 3;
-	# order_by = 'label' => ob_col = 'label' != 'entry' => ob_override=TRUE.
+	# sort_by = 'label' => ob_col = 'label' != 'entry' => ob_override=TRUE.
 	# Initial sort skipped; Schwarzian on 'label' defines final order.
 	# label order: apple < banana < cherry (k3 < k2 < k1 in join_col -- the opposite!).
 	# Conclusion: result is in label ASC order, not join_col ASC order.
@@ -1587,7 +1587,7 @@ subtest 'L23b: ob_override=TRUE (order_by!=join_col) => Schwarzian is sole sorte
 		join_column => 'entry',
 		backend     => 'array',
 	);
-	my $rows = $j->selectall_arrayref(order_by => 'label');
+	my $rows = $j->selectall_arrayref(sort_by => 'label');
 	is($rows->[0]{label}, 'apple',  'L23b: Schwarzian => apple first (gate TRUE path)');
 	is($rows->[1]{label}, 'banana', 'L23b: banana second');
 	is($rows->[2]{label}, 'cherry', 'L23b: cherry third (not join_col ASC order)');
@@ -1670,7 +1670,7 @@ subtest 'L25a: undef ob_col coerced to "" -- sorts before non-empty strings' => 
 		],
 	);
 	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
-	my $rows = $j->selectall_arrayref(order_by => 'label');
+	my $rows = $j->selectall_arrayref(sort_by => 'label');
 	is($rows->[0]{entry}, 'k1', 'L25a: undef label coerced to "" sorts first');
 	is($rows->[2]{entry}, 'k3', 'L25a: gamma sorts last');
 };
@@ -1687,7 +1687,7 @@ subtest 'L25b: mixed undef/non-undef ob_col produces no crash (coercion is safe)
 	);
 	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
 	my $rows;
-	my $ok = eval { $rows = $j->selectall_arrayref(order_by => 'score'); 1 };
+	my $ok = eval { $rows = $j->selectall_arrayref(sort_by => 'score'); 1 };
 	ok($ok && ref($rows) eq 'ARRAY', 'L25b: undef coercion in Schwarzian does not crash');
 };
 
@@ -1724,7 +1724,7 @@ subtest 'L26a: join_col DESC == reverse(join_col ASC) -- O(R) reverse correctnes
 	my $j_asc   = Database::Join->new(databases => [$da_asc],  join_column => 'entry', backend => 'array');
 	my $j_desc  = Database::Join->new(databases => [$da_desc], join_column => 'entry', backend => 'array');
 	my $asc_res  = $j_asc->selectall_arrayref();
-	my $desc_res = $j_desc->selectall_arrayref(order_by => ['entry', 'DESC']);
+	my $desc_res = $j_desc->selectall_arrayref(sort_by => ['entry', 'DESC']);
 	# Reverse of ASC == DESC.
 	is($desc_res->[0]{entry}, $asc_res->[2]{entry}, 'L26a: DESC[0] == reverse of ASC[last]');
 	is($desc_res->[1]{entry}, $asc_res->[1]{entry}, 'L26a: DESC[1] == ASC[1] (middle unchanged)');
@@ -1743,7 +1743,7 @@ subtest 'L26b: join_col DESC != join_col ASC (reversal is non-trivial on 3+ rows
 	my $j_asc   = Database::Join->new(databases => [$da_asc],  join_column => 'entry', backend => 'array');
 	my $j_desc  = Database::Join->new(databases => [$da_desc], join_column => 'entry', backend => 'array');
 	my $asc_res  = $j_asc->selectall_arrayref();
-	my $desc_res = $j_desc->selectall_arrayref(order_by => ['entry', 'DESC']);
+	my $desc_res = $j_desc->selectall_arrayref(sort_by => ['entry', 'DESC']);
 	isnt($desc_res->[0]{entry}, $asc_res->[0]{entry},
 		'L26b: DESC first != ASC first (reversal is non-trivial)');
 	is($desc_res->[0]{entry}, 'k3',

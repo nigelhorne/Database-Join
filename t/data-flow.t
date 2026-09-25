@@ -1593,7 +1593,7 @@ subtest '_validate_pagination D→U: valid offset flows into splice, skips leadi
 };
 
 # ===========================================================================
-# Section 18: order_by early-parse DU in array backend (_joined_query_array)
+# Section 18: sort_by early-parse DU in array backend (_joined_query_array)
 #
 # P2/P3/P4 optimisation: $ob_col/$ob_dir/$ob_override are parsed ONCE before
 # the merge loop.  $ob_override drives the loop iteration strategy (sorted vs
@@ -1601,7 +1601,7 @@ subtest '_validate_pagination D→U: valid offset flows into splice, skips leadi
 # block, used, then K'd lexically.
 # ===========================================================================
 
-subtest 'order_by absent: $ob_col=join_col, $ob_dir=ASC, sort keys used (stable ordering)' => sub {
+subtest 'sort_by absent: $ob_col=join_col, $ob_dir=ASC, sort keys used (stable ordering)' => sub {
 	# D: $ob_col = $join_col, $ob_dir = 'ASC', $ob_override = false (defaults).
 	# U: `sort keys %key_set` applied in merge loop → join_col ASC order.
 	# No Schwarzian pass fired.
@@ -1614,11 +1614,11 @@ subtest 'order_by absent: $ob_col=join_col, $ob_dir=ASC, sort keys used (stable 
 	);
 	my $j    = Database::Join->new(databases => [$da], join_column => $JC);
 	my $rows = $j->selectall_arrayref();
-	is $rows->[0]{entry}, $K_A, 'no order_by: first row is join_col ASC (sort keys path)';
-	is $rows->[1]{entry}, $K_B, 'no order_by: second row is join_col ASC';
+	is $rows->[0]{entry}, $K_A, 'no sort_by: first row is join_col ASC (sort keys path)';
+	is $rows->[1]{entry}, $K_B, 'no sort_by: second row is join_col ASC';
 };
 
-subtest 'order_by non-join col ASC: $ob_override=true, @tagged D→sort→U→K, result ASC' => sub {
+subtest 'sort_by non-join col ASC: $ob_override=true, @tagged D→sort→U→K, result ASC' => sub {
 	# D: $ob_col = 'val', $ob_override = true → keys %key_set (unsorted) in loop.
 	# D: @tagged = map { [$_, $_->{val} // ''] } @result (Schwarzian decoration).
 	# U: sort { $a->[1] cmp $b->[1] } @tagged (sort on extracted key).
@@ -1632,12 +1632,12 @@ subtest 'order_by non-join col ASC: $ob_override=true, @tagged D→sort→U→K,
 		],
 	);
 	my $j    = Database::Join->new(databases => [$da], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => 'val');
+	my $rows = $j->selectall_arrayref(sort_by => 'val');
 	is $rows->[0]{val}, 'apple', 'non-join-col ASC: Schwarzian puts "apple" first';
 	is $rows->[1]{val}, 'zebra', 'non-join-col ASC: Schwarzian puts "zebra" second';
 };
 
-subtest 'order_by non-join col DESC: @tagged D→sort DESC→U→K, result DESC' => sub {
+subtest 'sort_by non-join col DESC: @tagged D→sort DESC→U→K, result DESC' => sub {
 	# Same D→U→K chain as ASC but sort block uses $b->[1] cmp $a->[1].
 	my $da = DFMinimalDA->new(
 		cols => ['entry', 'val'],
@@ -1647,12 +1647,12 @@ subtest 'order_by non-join col DESC: @tagged D→sort DESC→U→K, result DESC'
 		],
 	);
 	my $j    = Database::Join->new(databases => [$da], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => ['val', 'DESC']);
+	my $rows = $j->selectall_arrayref(sort_by => ['val', 'DESC']);
 	is $rows->[0]{val}, 'zebra', 'non-join-col DESC: Schwarzian puts "zebra" first';
 	is $rows->[1]{val}, 'apple', 'non-join-col DESC: Schwarzian puts "apple" second';
 };
 
-subtest 'order_by join_col DESC: $ob_override=false, reverse @result (O(R) not O(R log R))' => sub {
+subtest 'sort_by join_col DESC: $ob_override=false, reverse @result (O(R) not O(R log R))' => sub {
 	# D: $ob_col = join_col, $ob_dir = 'DESC', $ob_override = false.
 	# Merge loop uses `sort keys %key_set` producing ASC order.
 	# U: `@result = reverse @result` flips to DESC — no Schwarzian, no re-sort.
@@ -1665,7 +1665,7 @@ subtest 'order_by join_col DESC: $ob_override=false, reverse @result (O(R) not O
 		],
 	);
 	my $j    = Database::Join->new(databases => [$da], join_column => $JC);
-	my $rows = $j->selectall_arrayref(order_by => ['entry', 'DESC']);
+	my $rows = $j->selectall_arrayref(sort_by => ['entry', 'DESC']);
 	is $rows->[0]{entry}, $K_B, 'join_col DESC: reverse puts $K_B first';
 	is $rows->[1]{entry}, $K_A, 'join_col DESC: reverse puts $K_A second';
 };
@@ -1714,7 +1714,7 @@ subtest '$order_expr D→U: non-join col → _sql_quote_identifier(ob_col) alias
 		join_column => $JC,
 		backend     => 'sqlite',
 	);
-	my $rows = $j->selectall_arrayref(order_by => 'val');
+	my $rows = $j->selectall_arrayref(sort_by => 'val');
 	is $rows->[0]{val}, 'apple',
 		'SQLite backend: $order_expr for non-join col → correct ORDER BY (apple < zebra)';
 	is $rows->[1]{val}, 'zebra',
@@ -1723,7 +1723,7 @@ subtest '$order_expr D→U: non-join col → _sql_quote_identifier(ob_col) alias
 
 subtest '@page_bind D→U: LIMIT + OFFSET + ORDER BY all flow through to SQL execute()' => sub {
 	# DU chain: @page_bind D'd by LIMIT/OFFSET push; U'd in $sth->execute(@bind_vals, @page_bind).
-	# order_by D'd, U'd in $order_expr, appended to $sql.
+	# sort_by D'd, U'd in $order_expr, appended to $sql.
 	# Combined: ORDER BY + LIMIT + OFFSET produces an exact page of sorted results.
 	my $da = DFMinimalDA->new(
 		cols => ['entry', 'val'],
@@ -1738,8 +1738,8 @@ subtest '@page_bind D→U: LIMIT + OFFSET + ORDER BY all flow through to SQL exe
 		join_column => $JC,
 		backend     => 'sqlite',
 	);
-	# order_by val ASC, offset 1, limit 1 → second item alphabetically = 'mango'
-	my $rows = $j->selectall_arrayref(order_by => 'val', offset => 1, limit => 1);
+	# sort_by val ASC, offset 1, limit 1 → second item alphabetically = 'mango'
+	my $rows = $j->selectall_arrayref(sort_by => 'val', offset => 1, limit => 1);
 	is scalar @{$rows}, 1,
 		'@page_bind D→U: LIMIT 1 limits result to 1 row';
 	is $rows->[0]{val}, 'mango',
@@ -1966,7 +1966,7 @@ subtest '@bind_vals D~: IN [] pushes nothing, 1=0 term makes WHERE always-false'
 # ===========================================================================
 # Section 23: D~ annotation verification for _sqlite_join create_table path
 #
-# When create_table is set, $limit/$offset/$order_by are D'd at the top of
+# When create_table is set, $limit/$offset/$sort_by are D'd at the top of
 # _sqlite_join and validated, but then abandoned at the early return.
 # The annotation is proven harmless: the caller never supplies these values
 # for the create_table path, so _validate_pagination is a no-op, and the
@@ -1995,13 +1995,13 @@ subtest 'D~ ($limit/$offset on create_table path): array backend ignores bad tmp
 	is scalar @{$rows}, 1, 'limit=1 still applied on array path despite D~ in sqlite path';
 };
 
-subtest 'D~ ($order_by on create_table path): order_by parsed but not used when create_table set' => sub {
+subtest 'D~ ($sort_by on create_table path): sort_by parsed but not used when create_table set' => sub {
 	# White-box: the annotated D~ is in _sqlite_join when create_table is defined.
 	# The only external trigger is the dbi_source() materialisation path, which is
 	# an internal call.  We verify the absence of any crash or corruption by running
-	# the SQLite backend with order_by — the create_table branch does not fire for
+	# the SQLite backend with sort_by — the create_table branch does not fire for
 	# a regular selectall_arrayref, so the D~ never occurs in practice.
-	# This test asserts the normal path (no create_table) uses order_by correctly.
+	# This test asserts the normal path (no create_table) uses sort_by correctly.
 	my $da = DFCountDA->new(
 		cols => ['entry', 'val'],
 		rows => [
@@ -2014,9 +2014,9 @@ subtest 'D~ ($order_by on create_table path): order_by parsed but not used when 
 		join_column => $JC,
 		backend     => 'sqlite',
 	);
-	my $rows = $j->selectall_arrayref(order_by => 'val');
+	my $rows = $j->selectall_arrayref(sort_by => 'val');
 	is $rows->[0]{val}, 'apple',
-		'$order_by D→U on normal sqlite path (no create_table): ORDER BY val ASC correct';
+		'$sort_by D→U on normal sqlite path (no create_table): ORDER BY val ASC correct';
 	is $rows->[1]{val}, 'zebra',
-		'second row correct: $order_by DU chain not broken by D~ annotation';
+		'second row correct: $sort_by DU chain not broken by D~ annotation';
 };

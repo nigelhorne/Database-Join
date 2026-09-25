@@ -1573,12 +1573,12 @@ Readonly::Array my @VP_ROWS => (
 }
 
 # ==========================================================================
-# Section 24: order_by parse in _joined_query_array -- 9 CFG paths
+# Section 24: sort_by parse in _joined_query_array -- 9 CFG paths
 #
-# The order_by parse block (before the merge loop) has these branches:
-#   defined $order_by?
-#     TRUE:  ref eq 'ARRAY' → ($req_col,$req_dir)=@{$order_by}  [PATH-ob-3]
-#                           → ($req_col,$req_dir)=($order_by,'ASC')  [PATH-ob-2]
+# The sort_by parse block (before the merge loop) has these branches:
+#   defined $sort_by?
+#     TRUE:  ref eq 'ARRAY' → ($req_col,$req_dir)=@{$sort_by}  [PATH-ob-3]
+#                           → ($req_col,$req_dir)=($sort_by,'ASC')  [PATH-ob-2]
 #            valid req_dir? → unchanged  [all valid-dir paths]
 #                          → carp + 'ASC'  [PATH-ob-4]
 #            req_col in view? → (ob_col,ob_dir)=($req_col,$req_dir)  [PATH-ob-6,7,8,9]
@@ -1586,9 +1586,9 @@ Readonly::Array my @VP_ROWS => (
 #     FALSE: default ob_col=join_col, ob_dir=ASC  [PATH-ob-1]
 #   ob_override = ($ob_col ne $join_col)
 #
-# PATH-ob-1: order_by undef → defaults to join_col ASC
-# PATH-ob-2: order_by is a plain string → req_dir defaults to 'ASC'
-# PATH-ob-3: order_by is an arrayref [col, dir]
+# PATH-ob-1: sort_by undef → defaults to join_col ASC
+# PATH-ob-2: sort_by is a plain string → req_dir defaults to 'ASC'
+# PATH-ob-3: sort_by is an arrayref [col, dir]
 # PATH-ob-4: req_dir not in {ASC,DESC} → carp + ASC
 # PATH-ob-5: req_col not in _col_db and != join_col → carp + join_col fallback
 # PATH-ob-6: valid non-join col, ASC → ob_override=TRUE → Schwarzian ASC
@@ -1597,7 +1597,7 @@ Readonly::Array my @VP_ROWS => (
 # PATH-ob-9: req_col == join_col, DESC → ob_override=FALSE, ob_dir=DESC → reverse
 # ==========================================================================
 
-note '--- Section 24: order_by parse in _joined_query_array paths ---';
+note '--- Section 24: sort_by parse in _joined_query_array paths ---';
 
 # Fixture: join_col order (k1<k2<k3) differs from label order (alpha<beta<gamma).
 #   join_col ASC:  k1(gamma), k2(beta), k3(alpha)  -- k1 is first
@@ -1613,79 +1613,79 @@ Readonly::Array my @OB_ROWS => (
 sub _ob_da  { PathDA->new(cols => [$JC, 'label'], rows => [@OB_ROWS]) }
 sub _ob_join { Database::Join->new(databases => [_ob_da()], join_column => $JC, backend => 'array') }
 
-# PATH-ob-1: order_by undef → block skipped; ob_col=join_col, ob_dir='ASC';
+# PATH-ob-1: sort_by undef → block skipped; ob_col=join_col, ob_dir='ASC';
 #   merge loop uses `sort keys %key_set`; @result is already join_col ASC.
 {
 	my $rows = _ob_join()->selectall_arrayref();
 	is($rows->[0]{$JC}, 'k1',
-		'order_by PATH-ob-1: undef → join_col ASC default → k1 first');
+		'sort_by PATH-ob-1: undef → join_col ASC default → k1 first');
 }
 
-# PATH-ob-2: order_by is a plain string → code path: not arrayref → $req_dir = 'ASC'.
+# PATH-ob-2: sort_by is a plain string → code path: not arrayref → $req_dir = 'ASC'.
 #   Result is label ASC: alpha(k3) first.
 {
-	my $rows = _ob_join()->selectall_arrayref(order_by => 'label');
+	my $rows = _ob_join()->selectall_arrayref(sort_by => 'label');
 	is($rows->[0]{label}, 'alpha',
-		'order_by PATH-ob-2: string form → req_dir defaults to ASC → alpha first');
+		'sort_by PATH-ob-2: string form → req_dir defaults to ASC → alpha first');
 }
 
-# PATH-ob-3: order_by is an arrayref → code path: ref eq 'ARRAY' → @{$order_by} deconstruct.
+# PATH-ob-3: sort_by is an arrayref → code path: ref eq 'ARRAY' → @{$sort_by} deconstruct.
 #   Same label ASC semantics as PATH-ob-2 but different parse branch.
 {
-	my $rows = _ob_join()->selectall_arrayref(order_by => ['label', 'ASC']);
+	my $rows = _ob_join()->selectall_arrayref(sort_by => ['label', 'ASC']);
 	is($rows->[0]{label}, 'alpha',
-		'order_by PATH-ob-3: arrayref form [col,ASC] → arrayref branch taken → alpha first');
+		'sort_by PATH-ob-3: arrayref form [col,ASC] → arrayref branch taken → alpha first');
 }
 
 # PATH-ob-4: req_dir is not 'ASC' or 'DESC' → carp emitted; ASC used as fallback.
 {
 	my ($rows, $w);
-	$w = _capture_warn { $rows = _ob_join()->selectall_arrayref(order_by => ['label', 'RANDOM']) };
-	ok((grep { /direction|RANDOM|order_by/i } @{$w}),
-		'order_by PATH-ob-4: invalid direction → carp emitted');
+	$w = _capture_warn { $rows = _ob_join()->selectall_arrayref(sort_by => ['label', 'RANDOM']) };
+	ok((grep { /direction|RANDOM|sort_by/i } @{$w}),
+		'sort_by PATH-ob-4: invalid direction → carp emitted');
 	is($rows->[0]{label}, 'alpha',
-		'order_by PATH-ob-4: ASC fallback applied → alpha first');
+		'sort_by PATH-ob-4: ASC fallback applied → alpha first');
 }
 
 # PATH-ob-5: req_col not in _col_db AND req_col != join_col → carp; join_col fallback.
 {
 	my ($rows, $w);
-	$w = _capture_warn { $rows = _ob_join()->selectall_arrayref(order_by => 'nonexistent') };
-	ok((grep { /order_by|nonexistent|column/i } @{$w}),
-		'order_by PATH-ob-5: unknown column → carp emitted');
+	$w = _capture_warn { $rows = _ob_join()->selectall_arrayref(sort_by => 'nonexistent') };
+	ok((grep { /sort_by|nonexistent|column/i } @{$w}),
+		'sort_by PATH-ob-5: unknown column → carp emitted');
 	is($rows->[0]{$JC}, 'k1',
-		'order_by PATH-ob-5: join_col ASC fallback → k1 first');
+		'sort_by PATH-ob-5: join_col ASC fallback → k1 first');
 }
 
 # PATH-ob-6: valid non-join col, ASC → ob_override=TRUE; Schwarzian ASC.
 #   Same result as PATH-ob-2 but confirms this path goes through Schwarzian (ob_override=TRUE).
 {
-	my $rows = _ob_join()->selectall_arrayref(order_by => ['label', 'ASC']);
+	my $rows = _ob_join()->selectall_arrayref(sort_by => ['label', 'ASC']);
 	is($rows->[0]{label}, 'alpha',
-		'order_by PATH-ob-6: valid non-join col ASC → ob_override=TRUE, Schwarzian ASC → alpha first');
+		'sort_by PATH-ob-6: valid non-join col ASC → ob_override=TRUE, Schwarzian ASC → alpha first');
 }
 
 # PATH-ob-7: valid non-join col, DESC → ob_override=TRUE; Schwarzian DESC.
 {
-	my $rows = _ob_join()->selectall_arrayref(order_by => ['label', 'DESC']);
+	my $rows = _ob_join()->selectall_arrayref(sort_by => ['label', 'DESC']);
 	is($rows->[0]{label}, 'gamma',
-		'order_by PATH-ob-7: valid non-join col DESC → Schwarzian DESC → gamma first');
+		'sort_by PATH-ob-7: valid non-join col DESC → Schwarzian DESC → gamma first');
 }
 
 # PATH-ob-8: req_col == join_col, explicit ASC → ob_override=FALSE (join_col == join_col);
 #   ob_dir='ASC'; no Schwarzian; no reverse; @result already in join_col ASC order.
 {
-	my $rows = _ob_join()->selectall_arrayref(order_by => [$JC, 'ASC']);
+	my $rows = _ob_join()->selectall_arrayref(sort_by => [$JC, 'ASC']);
 	is($rows->[0]{$JC}, 'k1',
-		'order_by PATH-ob-8: join_col explicit ASC → ob_override=FALSE → join_col ASC, k1 first');
+		'sort_by PATH-ob-8: join_col explicit ASC → ob_override=FALSE → join_col ASC, k1 first');
 }
 
 # PATH-ob-9: req_col == join_col, DESC → ob_override=FALSE, ob_dir='DESC';
 #   merge loop iterates `sort keys` giving ASC; then `reverse @result` gives DESC.
 {
-	my $rows = _ob_join()->selectall_arrayref(order_by => [$JC, 'DESC']);
+	my $rows = _ob_join()->selectall_arrayref(sort_by => [$JC, 'DESC']);
 	is($rows->[0]{$JC}, 'k3',
-		'order_by PATH-ob-9: join_col DESC → ob_override=FALSE, reverse applied → k3 first');
+		'sort_by PATH-ob-9: join_col DESC → ob_override=FALSE, reverse applied → k3 first');
 }
 
 # ==========================================================================

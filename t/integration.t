@@ -1576,9 +1576,9 @@ subtest 'limit+offset: SQLite path row count equals array path row count' => sub
 diag('section 20 done') if $ENV{TEST_VERBOSE};
 
 # ===========================================================================
-# SECTION 21 -- order_by: ascending and descending sort (4 subtests)
+# SECTION 21 -- sort_by: ascending and descending sort (4 subtests)
 #
-# order_by => 'col' sorts ascending; order_by => ['col', 'DESC'] descending.
+# sort_by => 'col' sorts ascending; sort_by => ['col', 'DESC'] descending.
 # The SQLite backend generates an ORDER BY clause; the array backend uses
 # Perl string cmp.  Using single-character keys (A, B, C) means both paths
 # agree: string comparison and SQL TEXT comparison produce the same ordering.
@@ -1589,7 +1589,7 @@ Readonly::Scalar my $S21_B_KEY => 'B';
 Readonly::Scalar my $S21_C_KEY => 'C';
 
 # Rows deliberately inserted in non-sorted order (C, A, B) to verify that
-# order_by is reordering and not just preserving insertion order.
+# sort_by is reordering and not just preserving insertion order.
 my $s21_db_a = InMemDA->new(
 	cols    => [$JC, 'name'],
 	rows    => [
@@ -1609,29 +1609,29 @@ my $s21_db_b = InMemDA->new(
 	updated => 5_000_000,
 );
 
-subtest 'order_by: array path returns rows in ascending column order' => sub {
+subtest 'sort_by: array path returns rows in ascending column order' => sub {
 	plan tests => 1;
 	my $j = Database::Join->new(
 		databases => [$s21_db_a, $s21_db_b], join_column => $JC,
 		backend   => 'array',
 	);
-	my @keys = map { $_->{$JC} } @{ $j->selectall_arrayref(order_by => $JC) };
+	my @keys = map { $_->{$JC} } @{ $j->selectall_arrayref(sort_by => $JC) };
 	is_deeply(\@keys, [$S21_A_KEY, $S21_B_KEY, $S21_C_KEY],
-		'order_by ascending on the array path sorts A < B < C');
+		'sort_by ascending on the array path sorts A < B < C');
 };
 
-subtest 'order_by: array path returns rows in descending column order' => sub {
+subtest 'sort_by: array path returns rows in descending column order' => sub {
 	plan tests => 1;
 	my $j = Database::Join->new(
 		databases => [$s21_db_a, $s21_db_b], join_column => $JC,
 		backend   => 'array',
 	);
-	my @keys = map { $_->{$JC} } @{ $j->selectall_arrayref(order_by => [$JC, 'DESC']) };
+	my @keys = map { $_->{$JC} } @{ $j->selectall_arrayref(sort_by => [$JC, 'DESC']) };
 	is_deeply(\@keys, [$S21_C_KEY, $S21_B_KEY, $S21_A_KEY],
-		'order_by descending on the array path sorts C > B > A');
+		'sort_by descending on the array path sorts C > B > A');
 };
 
-subtest 'order_by: SQLite path ascending matches array path result order' => sub {
+subtest 'sort_by: SQLite path ascending matches array path result order' => sub {
 	plan tests => 1;
 	my $j_arr = Database::Join->new(
 		databases => [$s21_db_a, $s21_db_b], join_column => $JC, backend => 'array',
@@ -1639,13 +1639,13 @@ subtest 'order_by: SQLite path ascending matches array path result order' => sub
 	my $j_sql = Database::Join->new(
 		databases => [$s21_db_a, $s21_db_b], join_column => $JC, backend => 'sqlite',
 	);
-	my @arr = map { $_->{$JC} } @{ $j_arr->selectall_arrayref(order_by => $JC) };
-	my @sql = map { $_->{$JC} } @{ $j_sql->selectall_arrayref(order_by => $JC) };
+	my @arr = map { $_->{$JC} } @{ $j_arr->selectall_arrayref(sort_by => $JC) };
+	my @sql = map { $_->{$JC} } @{ $j_sql->selectall_arrayref(sort_by => $JC) };
 	is_deeply(\@sql, \@arr,
-		'order_by ascending: SQLite path produces the same key sequence as array path');
+		'sort_by ascending: SQLite path produces the same key sequence as array path');
 };
 
-subtest 'order_by: SQLite path descending matches array path result order' => sub {
+subtest 'sort_by: SQLite path descending matches array path result order' => sub {
 	plan tests => 1;
 	my $j_arr = Database::Join->new(
 		databases => [$s21_db_a, $s21_db_b], join_column => $JC, backend => 'array',
@@ -1653,10 +1653,10 @@ subtest 'order_by: SQLite path descending matches array path result order' => su
 	my $j_sql = Database::Join->new(
 		databases => [$s21_db_a, $s21_db_b], join_column => $JC, backend => 'sqlite',
 	);
-	my @arr = map { $_->{$JC} } @{ $j_arr->selectall_arrayref(order_by => [$JC, 'DESC']) };
-	my @sql = map { $_->{$JC} } @{ $j_sql->selectall_arrayref(order_by => [$JC, 'DESC']) };
+	my @arr = map { $_->{$JC} } @{ $j_arr->selectall_arrayref(sort_by => [$JC, 'DESC']) };
+	my @sql = map { $_->{$JC} } @{ $j_sql->selectall_arrayref(sort_by => [$JC, 'DESC']) };
 	is_deeply(\@sql, \@arr,
-		'order_by descending: SQLite path produces the same key sequence as array path');
+		'sort_by descending: SQLite path produces the same key sequence as array path');
 };
 
 diag('section 21 done') if $ENV{TEST_VERBOSE};

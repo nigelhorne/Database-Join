@@ -1,5 +1,9 @@
 Revision history for Database::Join
 
+0.007.1
+	[ Bug Fixes ]
+	'order_by' is rather SQL like, 'sort_by' is clearer
+
 0.007.0	Thu Sep 24 09:56:58 PM EDT 2026
 	[ Enhancements ]
 	- Schema type consistency validation: new() and add_database() now call the
