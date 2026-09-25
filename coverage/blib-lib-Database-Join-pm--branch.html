@@ -88,45 +88,45 @@ https://pjcj.net
 <tr><td class="h"><a id="L2500">2500</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $val eq &#39;HASH&#39; ? :</td></tr>
 <tr><td class="h"><a id="L2537">2537</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless defined $key</td></tr>
 <tr><td class="h"><a id="L2552">2552</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $backend eq &quot;array&quot;</td></tr>
-<tr><td class="h"><a id="L2589">2589</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $limit)</td></tr>
-<tr><td class="h"><a id="L2590">2590</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (not $limit =~ /^\d+$/ or $limit &lt; 1)</td></tr>
-<tr><td class="h"><a id="L2597">2597</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $offset)</td></tr>
-<tr><td class="h"><a id="L2598">2598</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless ($offset =~ /^\d+$/)</td></tr>
-<tr><td class="h"><a id="L2614">2614</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $limit or defined $offset</td></tr>
-<tr><td class="h"><a id="L2628">2628</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless %{$base;}</td></tr>
-<tr><td class="h"><a id="L2652">2652</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if not %{$indexed[0];} and $join_type ne &quot;outer&quot; and not exists $per_db-&gt;[0]{$local_jc_0_early} and not $sec_has_criteria</td></tr>
-<tr><td class="h"><a id="L2665">2665</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($self-&gt;{&#39;_parallel&#39;} and $n &gt; 2) { }</td></tr>
-<tr><td class="h"><a id="L2666">2666</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">eval {
+<tr><td class="h"><a id="L2593">2593</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $limit)</td></tr>
+<tr><td class="h"><a id="L2594">2594</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (not $limit =~ /^\d+\z/a or $limit &lt; 1)</td></tr>
+<tr><td class="h"><a id="L2602">2602</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $offset)</td></tr>
+<tr><td class="h"><a id="L2603">2603</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless ($offset =~ /^\d+\z/a)</td></tr>
+<tr><td class="h"><a id="L2619">2619</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $limit or defined $offset</td></tr>
+<tr><td class="h"><a id="L2633">2633</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless %{$base;}</td></tr>
+<tr><td class="h"><a id="L2657">2657</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if not %{$indexed[0];} and $join_type ne &quot;outer&quot; and not exists $per_db-&gt;[0]{$local_jc_0_early} and not $sec_has_criteria</td></tr>
+<tr><td class="h"><a id="L2670">2670</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($self-&gt;{&#39;_parallel&#39;} and $n &gt; 2) { }</td></tr>
+<tr><td class="h"><a id="L2671">2671</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">eval {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;require threads;
 1
 }
 } ? :</td></tr>
-<tr><td class="h"><a id="L2667">2667</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($HAS_THREADS) { }</td></tr>
-<tr><td class="h"><a id="L2678">2678</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $key</td></tr>
-<tr><td class="h"><a id="L2710">2710</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">exists $crit-&gt;{$local_jc} ? :</td></tr>
-<tr><td class="h"><a id="L2726">2726</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($had_criteria[$i] or $join_type eq &#39;inner&#39;) { }</td></tr>
+<tr><td class="h"><a id="L2672">2672</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($HAS_THREADS) { }</td></tr>
+<tr><td class="h"><a id="L2683">2683</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if defined $key</td></tr>
+<tr><td class="h"><a id="L2715">2715</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">exists $crit-&gt;{$local_jc} ? :</td></tr>
+<tr><td class="h"><a id="L2731">2731</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($had_criteria[$i] or $join_type eq &#39;inner&#39;) { }</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif ($join_type eq &#39;outer&#39;) { }</td></tr>
-<tr><td class="h"><a id="L2731">2731</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless exists $indexed[$i]{$k}</td></tr>
-<tr><td class="h"><a id="L2750">2750</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$sec_local_jc[$i] &amp;&amp; $sec_local_jc[$i] ne $join_col ? :</td></tr>
-<tr><td class="h"><a id="L2767">2767</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $order_by)</td></tr>
-<tr><td class="h"><a id="L2768">2768</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $order_by eq &#39;ARRAY&#39; ? :</td></tr>
-<tr><td class="h"><a id="L2770">2770</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless ($req_dir eq &quot;ASC&quot; or $req_dir eq &quot;DESC&quot;)</td></tr>
-<tr><td class="h"><a id="L2774">2774</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($req_col ne $join_col and not exists $self-&gt;{&#39;_col_db&#39;}{$req_col}) { }</td></tr>
-<tr><td class="h"><a id="L2790">2790</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$ob_override ? :</td></tr>
-<tr><td class="h"><a id="L2799">2799</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $sec_arr and @{$sec_arr;}</td></tr>
-<tr><td class="h"><a id="L2809">2809</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($sec_rename[$i]) { }</td></tr>
-<tr><td class="h"><a id="L2813">2813</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($k eq $local_jc) { }</td></tr>
+<tr><td class="h"><a id="L2736">2736</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless exists $indexed[$i]{$k}</td></tr>
+<tr><td class="h"><a id="L2755">2755</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$sec_local_jc[$i] &amp;&amp; $sec_local_jc[$i] ne $join_col ? :</td></tr>
+<tr><td class="h"><a id="L2772">2772</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $order_by)</td></tr>
+<tr><td class="h"><a id="L2773">2773</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $order_by eq &#39;ARRAY&#39; ? :</td></tr>
+<tr><td class="h"><a id="L2775">2775</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless ($req_dir eq &quot;ASC&quot; or $req_dir eq &quot;DESC&quot;)</td></tr>
+<tr><td class="h"><a id="L2779">2779</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($req_col ne $join_col and not exists $self-&gt;{&#39;_col_db&#39;}{$req_col}) { }</td></tr>
+<tr><td class="h"><a id="L2795">2795</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$ob_override ? :</td></tr>
+<tr><td class="h"><a id="L2804">2804</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $sec_arr and @{$sec_arr;}</td></tr>
+<tr><td class="h"><a id="L2814">2814</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($sec_rename[$i]) { }</td></tr>
+<tr><td class="h"><a id="L2818">2818</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($k eq $local_jc) { }</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif (my $pub = $renames-&gt;{$k}) { }</td></tr>
-<tr><td class="h"><a id="L2825">2825</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $pub = $renames-&gt;{$k}) { }</td></tr>
-<tr><td class="h"><a id="L2835">2835</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if @{$removed;}</td></tr>
-<tr><td class="h"><a id="L2848">2848</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($ob_override) { }</td></tr>
+<tr><td class="h"><a id="L2830">2830</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $pub = $renames-&gt;{$k}) { }</td></tr>
+<tr><td class="h"><a id="L2840">2840</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if @{$removed;}</td></tr>
+<tr><td class="h"><a id="L2853">2853</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($ob_override) { }</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif ($ob_dir eq &#39;DESC&#39;) { }</td></tr>
-<tr><td class="h"><a id="L2853">2853</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($ob_dir eq &#39;DESC&#39;) { }</td></tr>
-<tr><td class="h"><a id="L2867">2867</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $offset and $offset &gt; 0)</td></tr>
-<tr><td class="h"><a id="L2870">2870</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $limit and $limit &lt; scalar @result)</td></tr>
-<tr><td class="h"><a id="L2889">2889</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($cache-&gt;{&#39;n&#39;} // 0) != $n</td></tr>
-<tr><td class="h"><a id="L2892">2892</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless do {
+<tr><td class="h"><a id="L2858">2858</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($ob_dir eq &#39;DESC&#39;) { }</td></tr>
+<tr><td class="h"><a id="L2872">2872</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $offset and $offset &gt; 0)</td></tr>
+<tr><td class="h"><a id="L2875">2875</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (defined $limit and $limit &lt; scalar @result)</td></tr>
+<tr><td class="h"><a id="L2894">2894</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($cache-&gt;{&#39;n&#39;} // 0) != $n</td></tr>
+<tr><td class="h"><a id="L2897">2897</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless do {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;local $@;
 eval {
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do {
@@ -134,11 +134,11 @@ eval {
 }
 }
 }</td></tr>
-<tr><td class="h"><a id="L2902">2902</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless defined $current_ts</td></tr>
-<tr><td class="h"><a id="L2903">2903</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $current_ts != $cached_ts</td></tr>
-<tr><td class="h"><a id="L3423">3423</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $criteria and %{$criteria;}</td></tr>
-<tr><td class="h"><a id="L3428">3428</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $criteria-&gt;{$_} eq &#39;HASH&#39; ? :</td></tr>
-<tr><td class="h"><a id="L3441">3441</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $filters and %{$filters;}</td></tr>
+<tr><td class="h"><a id="L2907">2907</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless defined $current_ts</td></tr>
+<tr><td class="h"><a id="L2908">2908</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $current_ts != $cached_ts</td></tr>
+<tr><td class="h"><a id="L3428">3428</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $criteria and %{$criteria;}</td></tr>
+<tr><td class="h"><a id="L3433">3433</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $criteria-&gt;{$_} eq &#39;HASH&#39; ? :</td></tr>
+<tr><td class="h"><a id="L3446">3446</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $filters and %{$filters;}</td></tr>
 </table>
 </body>
 </html>
