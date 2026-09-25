@@ -2699,27 +2699,64 @@ sub _joined_query_array :Protected {
 	# the full blessed hashref (including all DA refs) into each thread.
 	# Falls back to sequential when: threads module is unavailable, n <= 2, or
 	# parallel => 0 (the default).
+	#
+	# Windows / ithreads safety: cloned DBI handles inside DA objects are not
+	# thread-safe.  Pre-initialise every secondary slot to {} so that if a thread
+	# fails the slot holds a valid (empty) hashref rather than undef, which would
+	# corrupt the inner-join key-set resolution.  Any secondary whose thread does
+	# not deliver a valid hashref is re-fetched sequentially after all joins
+	# complete, preserving correctness on every platform.
+	$indexed[$_] = {} for 1 .. $n - 1;
+
 	if ($self->{_parallel} && $n > 2) {
 		$HAS_THREADS //= do { local $@; eval { require threads; 1 } ? 1 : 0 };
 		if ($HAS_THREADS) {
-			my @thr = map {
-				my ($i, $db, $crit, $local_jc) = (
-					$_, $self->{_dbs}[$_], $per_db->[$_],
-					$self->{_join_map}{$_} // $join_col,
+			my @thr;
+			for my $i (1 .. $n - 1) {
+				my ($db, $crit, $local_jc) = (
+					$self->{_dbs}[$i], $per_db->[$i],
+					$self->{_join_map}{$i} // $join_col,
 				);
-				threads->create(sub {
-					my $rows = $db->selectall_arrayref($crit) // [];
-					my %idx;
-					for my $row (@{$rows}) {
-						my $key = $row->{$local_jc};
-						push @{$idx{$key}}, $row if defined $key;
-					}
-					return ($i, \%idx);
-				});
-			} 1 .. $n - 1;
+				# Wrap thread creation: it can fail if the DA cannot be cloned
+				# (e.g. DBI handles on Windows).  On failure we skip the push so
+				# the sequential fallback below handles that secondary.
+				local $@;
+				my $t = eval {
+					threads->create(sub {
+						# eval inside the thread: prevents a DA exception from
+						# killing the thread and returning an empty list to join().
+						local $@;
+						my $rows = eval { $db->selectall_arrayref($crit) } // [];
+						my %idx;
+						for my $row (@{$rows}) {
+							my $key = $row->{$local_jc};
+							push @{$idx{$key}}, $row if defined $key;
+						}
+						return ($i, \%idx);
+					});
+				};
+				push @thr, $t if $t;
+			}
+
+			my %done;
 			for my $t (@thr) {
-				my ($i, $idx) = $t->join();
-				$indexed[$i] = $idx // {};  # {} on thread failure (DA croaked)
+				# eval on join: a thread that died (e.g. uncaught exception)
+				# causes join() to rethrow on some platforms.
+				local $@;
+				my ($i, $idx);
+				eval { ($i, $idx) = $t->join() };
+				if (defined $i && ref($idx) eq 'HASH') {
+					$indexed[$i] = $idx;
+					$done{$i}    = 1;
+				}
+			}
+
+			# Re-fetch sequentially any secondary not delivered by a thread.
+			# This covers: thread creation failure, thread death, or an empty
+			# result that may indicate a non-thread-safe DA (e.g. DBI on Windows).
+			for my $i (1 .. $n - 1) {
+				next if $done{$i};
+				$indexed[$i] = $self->_fetch_indexed($i, $per_db->[$i]);
 			}
 		} else {
 			carp 'Database::Join: parallel => 1 requires the threads module; falling back to sequential';
