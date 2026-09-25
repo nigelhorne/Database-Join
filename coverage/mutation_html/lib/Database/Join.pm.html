@@ -660,7 +660,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class="">  319: =item Sort order
 </span><span class="">  320: 
 </span><span class="">  321: Results are sorted ascending by C&lt;join_column&gt; by default.  Pass
-</span><span class="">  322: C&lt;&lt; order_by =&gt; &#39;colname&#39; &gt;&gt; (or C&lt;&lt; order_by =&gt; [&#39;colname&#39;, &#39;DESC&#39;] &gt;&gt;)
+</span><span class="">  322: C&lt;&lt; sort_by =&gt; &#39;colname&#39; &gt;&gt; (or C&lt;&lt; sort_by =&gt; [&#39;colname&#39;, &#39;DESC&#39;] &gt;&gt;)
 </span><span class="">  323: to any query method to override this.  The array path uses string comparison
 </span><span class="">  324: (C&lt;cmp&gt;); for accurate numeric ordering on large datasets use the SQLite
 </span><span class="">  325: backend, which sorts natively by type.
@@ -1548,11 +1548,11 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1207:     my $rows = $join-&gt;selectall_arrayref(tier  =&gt; &#39;gold&#39;);
 </span><span class=""> 1208:     my $rows = $join-&gt;selectall_arrayref(score =&gt; { &#39;&gt;&#39; =&gt; 80 });
 </span><span class=""> 1209:     my $rows = $join-&gt;selectall_arrayref(&#39;C001&#39;);  # positional: entry =&gt; &#39;C001&#39;
-</span><span class=""> 1210:     my $rows = $join-&gt;selectall_arrayref(order_by =&gt; &#39;name&#39;);
-</span><span class=""> 1211:     my $rows = $join-&gt;selectall_arrayref(tier =&gt; &#39;gold&#39;, order_by =&gt; [&#39;score&#39;, &#39;DESC&#39;]);
+</span><span class=""> 1210:     my $rows = $join-&gt;selectall_arrayref(sort_by =&gt; &#39;name&#39;);
+</span><span class=""> 1211:     my $rows = $join-&gt;selectall_arrayref(tier =&gt; &#39;gold&#39;, sort_by =&gt; [&#39;score&#39;, &#39;DESC&#39;]);
 </span><span class=""> 1212:     my $rows = $join-&gt;selectall_arrayref(limit =&gt; 10);
 </span><span class=""> 1213:     my $rows = $join-&gt;selectall_arrayref(limit =&gt; 10, offset =&gt; 20);
-</span><span class=""> 1214:     my $rows = $join-&gt;selectall_arrayref(tier =&gt; &#39;gold&#39;, order_by =&gt; &#39;name&#39;, limit =&gt; 5);
+</span><span class=""> 1214:     my $rows = $join-&gt;selectall_arrayref(tier =&gt; &#39;gold&#39;, sort_by =&gt; &#39;name&#39;, limit =&gt; 5);
 </span><span class=""> 1215: 
 </span><span class=""> 1216: =head3 DESCRIPTION
 </span><span class=""> 1217: 
@@ -1582,13 +1582,13 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1241:       Hashref of operators        -- e.g. { &#39;&gt;&#39; =&gt; 80 }
 </span><span class=""> 1242: 
 </span><span class=""> 1243:     Optional parameters (mixed in with any of the above):
-</span><span class=""> 1244:       order_by =&gt; &#39;colname&#39;            -- sort ascending by that column
-</span><span class=""> 1245:       order_by =&gt; [&#39;colname&#39;, &#39;DESC&#39;]  -- sort descending
-</span><span class=""> 1246:       order_by =&gt; [&#39;colname&#39;, &#39;ASC&#39;]   -- sort ascending (explicit)
+</span><span class=""> 1244:       sort_by =&gt; &#39;colname&#39;            -- sort ascending by that column
+</span><span class=""> 1245:       sort_by =&gt; [&#39;colname&#39;, &#39;DESC&#39;]  -- sort descending
+</span><span class=""> 1246:       sort_by =&gt; [&#39;colname&#39;, &#39;ASC&#39;]   -- sort ascending (explicit)
 </span><span class=""> 1247:       limit    =&gt; N                    -- return at most N rows (positive integer)
 </span><span class=""> 1248:       offset   =&gt; M                   -- skip the first M rows (non-negative integer)
 </span><span class=""> 1249: 
-</span><span class=""> 1250:     The column named in order_by must be present in the merged view (i.e. it
+</span><span class=""> 1250:     The column named in sort_by must be present in the merged view (i.e. it
 </span><span class=""> 1251:     must appear in columns()).  An unknown column or an invalid direction emits
 </span><span class=""> 1252:     a carp warning and falls back to the default join_column ascending sort.
 </span><span class=""> 1253: 
@@ -1597,7 +1597,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1256:     the first qualifying row.  An invalid limit or offset emits a carp warning
 </span><span class=""> 1257:     and the parameter is ignored (treated as absent).
 </span><span class=""> 1258: 
-</span><span class=""> 1259:     DOMAIN -- order_by:
+</span><span class=""> 1259:     DOMAIN -- sort_by:
 </span><span class=""> 1260:       EP absent:          result sorted by join_column ASC (default).
 </span><span class=""> 1261:       EP string:          any column name in columns(); sorts ASC by that column.
 </span><span class=""> 1262:       EP [&#39;col&#39;,&#39;ASC&#39;]:   explicit ascending; equivalent to the string form.
@@ -1632,7 +1632,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1291: =head4 Output
 </span><span class=""> 1292: 
 </span><span class=""> 1293:     Arrayref of hashrefs; one hashref per qualifying merged row.
-</span><span class=""> 1294:     Sorted ascending by join_column by default; caller-controlled via order_by.
+</span><span class=""> 1294:     Sorted ascending by join_column by default; caller-controlled via sort_by.
 </span><span class=""> 1295:     At most C&lt;limit&gt; rows when limit is given; the first C&lt;offset&gt; rows are
 </span><span class=""> 1296:     skipped when offset is given.
 </span><span class=""> 1297:     Returns a reference to an empty array when no rows match.
@@ -1660,11 +1660,11 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1319:     warn_unknown_column (carp)
 </span><span class=""> 1320:         -- A criterion key names a column not present in any component database;
 </span><span class=""> 1321:            the criterion is silently dropped and all rows are returned.
-</span><span class=""> 1322:     order_by column unknown (carp)
-</span><span class=""> 1323:         -- The column given in order_by is not in the merged view; the result
+</span><span class=""> 1322:     sort_by column unknown (carp)
+</span><span class=""> 1323:         -- The column given in sort_by is not in the merged view; the result
 </span><span class=""> 1324:            is returned in the default join_column ascending order instead.
-</span><span class=""> 1325:     order_by direction invalid (carp)
-</span><span class=""> 1326:         -- The direction given in order_by is not &#39;ASC&#39; or &#39;DESC&#39;; ASC is used.
+</span><span class=""> 1325:     sort_by direction invalid (carp)
+</span><span class=""> 1326:         -- The direction given in sort_by is not &#39;ASC&#39; or &#39;DESC&#39;; ASC is used.
 </span><span class=""> 1327:     limit invalid (carp)
 </span><span class=""> 1328:         -- The value given for limit is not a positive integer; it is ignored.
 </span><span class=""> 1329:     offset invalid (carp)
@@ -1686,10 +1686,10 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1345: sub selectall_arrayref {
 </span><span class=""> 1346: 	my ($self, @args) = @_;
 </span><span class=""> 1347: 	my $params   = $self-&gt;_parse_query_args(undef, @args);
-</span><span class=""> 1348: 	my $order_by = delete $params-&gt;{order_by};
+</span><span class=""> 1348: 	my $sort_by = delete $params-&gt;{sort_by};
 </span><span class=""> 1349: 	my $limit    = delete $params-&gt;{limit};
 </span><span class=""> 1350: 	my $offset   = delete $params-&gt;{offset};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1351: 	return $self-&gt;_joined_query($params, order_by =&gt; $order_by, limit =&gt; $limit, offset =&gt; $offset);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1351: 	return $self-&gt;_joined_query($params, sort_by =&gt; $sort_by, limit =&gt; $limit, offset =&gt; $offset);
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1352: }
 </span><span class=""> 1353: 
 </span><span class=""> 1354: =head2 selectall_array
@@ -1739,10 +1739,10 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1398: sub selectall_array {
 </span><span class=""> 1399: 	my ($self, @args) = @_;
 </span><span class=""> 1400: 	my $params   = $self-&gt;_parse_query_args(undef, @args);
-</span><span class=""> 1401: 	my $order_by = delete $params-&gt;{order_by};
+</span><span class=""> 1401: 	my $sort_by = delete $params-&gt;{sort_by};
 </span><span class=""> 1402: 	my $limit    = delete $params-&gt;{limit};
 </span><span class=""> 1403: 	my $offset   = delete $params-&gt;{offset};
-</span><span class=""> 1404: 	my $rows     = $self-&gt;_joined_query($params, order_by =&gt; $order_by, limit =&gt; $limit, offset =&gt; $offset);
+</span><span class=""> 1404: 	my $rows     = $self-&gt;_joined_query($params, sort_by =&gt; $sort_by, limit =&gt; $limit, offset =&gt; $offset);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1405: 	return wantarray ? @{$rows} : $rows-&gt;[0];
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1406: }
 </span><span class=""> 1407: 
@@ -1792,10 +1792,10 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1451: sub fetchrow_hashref {
 </span><span class=""> 1452: 	my ($self, @args) = @_;
 </span><span class=""> 1453: 	my $params   = $self-&gt;_parse_query_args(undef, @args);
-</span><span class=""> 1454: 	my $order_by = delete $params-&gt;{order_by};
+</span><span class=""> 1454: 	my $sort_by = delete $params-&gt;{sort_by};
 </span><span class=""> 1455: 	delete $params-&gt;{limit};   # fetchrow_hashref always returns one row; limit is meaningless
 </span><span class=""> 1456: 	delete $params-&gt;{offset};  # offset would change which row is &quot;first&quot;; not supported here
-</span><span class=""> 1457: 	my $rows     = $self-&gt;_joined_query($params, order_by =&gt; $order_by);
+</span><span class=""> 1457: 	my $rows     = $self-&gt;_joined_query($params, sort_by =&gt; $sort_by);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 1458: 	return $rows-&gt;[0];
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 1459: }
 </span><span class=""> 1460: 
@@ -1842,7 +1842,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 1501: sub count {
 </span><span class=""> 1502: 	my ($self, @args) = @_;
 </span><span class=""> 1503: 	my $params = $self-&gt;_parse_query_args(undef, @args);
-</span><span class=""> 1504: 	delete $params-&gt;{order_by};  # row ordering is irrelevant for a count
+</span><span class=""> 1504: 	delete $params-&gt;{sort_by};  # row ordering is irrelevant for a count
 </span><span class=""> 1505: 	delete $params-&gt;{limit};     # count returns total matching rows, not a page
 </span><span class=""> 1506: 	delete $params-&gt;{offset};
 </span><span class=""> 1507: 	# On the SQLite path, push COUNT(*) into SQL to avoid fetching all rows.
@@ -2667,10 +2667,10 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 2326: 		# {id} field; using the cached value avoids re-introspecting the blessed
 </span><span class=""> 2327: 		# hash on every call and isolates the coupling to a single known site.
 </span><span class=""> 2328: 		my $params   = $self-&gt;_parse_query_args($self-&gt;{_autoload_pk}, @_);
-</span><span class=""> 2329: 		my $order_by = delete $params-&gt;{order_by};
+</span><span class=""> 2329: 		my $sort_by = delete $params-&gt;{sort_by};
 </span><span class=""> 2330: 		my $limit    = delete $params-&gt;{limit};
 </span><span class=""> 2331: 		my $offset   = delete $params-&gt;{offset};
-</span><span class=""> 2332: 		my $rows     = $self-&gt;_joined_query($params, order_by =&gt; $order_by, limit =&gt; $limit, offset =&gt; $offset);
+</span><span class=""> 2332: 		my $rows     = $self-&gt;_joined_query($params, sort_by =&gt; $sort_by, limit =&gt; $limit, offset =&gt; $offset);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2333: 		return map { $_-&gt;{$col} } @{$rows} if wantarray;
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2334: 		return @{$rows} ? $rows-&gt;[0]{$col} : undef;
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2335: 	}
@@ -2923,7 +2923,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 2582: #
 </span><span class=""> 2583: # Purpose: Dispatcher &acirc;&#128;&#148; routes to the array (in-memory) or SQLite join backend
 </span><span class=""> 2584: #          based on $self-&gt;{_backend}.  %opts are passed through to the backend
-</span><span class=""> 2585: #          (currently: order_by, limit, offset).
+</span><span class=""> 2585: #          (currently: sort_by, limit, offset).
 </span><span class=""> 2586: sub _joined_query :Protected {
 </span><span class=""> 2587: 	my ($self, $params, %opts) = @_;
 </span><span class=""> 2588: 	my $backend = $self-&gt;{_backend};
@@ -2988,7 +2988,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 2647: 
 </span><span class=""> 2648: sub _joined_query_array :Protected {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2649 → 2668 → 2675</span></span> 2649: 	my ($self, $params, %opts) = @_;
-</span><span class=""> 2650: 	my $order_by = $opts{order_by};
+</span><span class=""> 2650: 	my $sort_by = $opts{sort_by};
 </span><span class=""> 2651: 	my $limit    = $opts{limit};
 </span><span class=""> 2652: 	my $offset   = $opts{offset};
 </span><span class=""> 2653: 
@@ -3183,27 +3183,27 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 2836: 	# query.  Lazily built here and invalidated to undef by remove_column().
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2837 → 2846 → 2860</span></span> 2837: 	my $removed = ($self-&gt;{_removed_list} //= [keys %{ $self-&gt;{_removed_cols} }]);
 </span><span class=""> 2838: 
-</span><span class=""> 2839: 	# Parse order_by once before the merge loop so we can decide whether the
+</span><span class=""> 2839: 	# Parse sort_by once before the merge loop so we can decide whether the
 </span><span class=""> 2840: 	# initial O(K log K) sort of %key_set is necessary.
-</span><span class=""> 2841: 	# When order_by targets a column other than the join_col, that initial sort
+</span><span class=""> 2841: 	# When sort_by targets a column other than the join_col, that initial sort
 </span><span class=""> 2842: 	# is overridden by the final Schwarzian pass -- skip it to save a full sort.
-</span><span class=""> 2843: 	# When order_by is absent or targets the join_col, the initial sort IS the
+</span><span class=""> 2843: 	# When sort_by is absent or targets the join_col, the initial sort IS the
 </span><span class=""> 2844: 	# final order and must be kept.
 </span><span class=""> 2845: 	my ($ob_col, $ob_dir) = ($join_col, &#39;ASC&#39;);
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2846: 	if (defined $order_by) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2847: 		my ($req_col, $req_dir) = ref($order_by) eq &#39;ARRAY&#39; ? @{$order_by} : ($order_by, &#39;ASC&#39;);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2846: 	if (defined $sort_by) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2847: 		my ($req_col, $req_dir) = ref($sort_by) eq &#39;ARRAY&#39; ? @{$sort_by} : ($sort_by, &#39;ASC&#39;);
 </span><span class=""> 2848: 		$req_dir = uc($req_dir // &#39;ASC&#39;);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2849: 		unless ($req_dir eq &#39;ASC&#39; || $req_dir eq &#39;DESC&#39;) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2850: 			carp &quot;Database::Join: order_by direction &#39;$req_dir&#39; is not supported; using ASC&quot;;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2850: 			carp &quot;Database::Join: sort_by direction &#39;$req_dir&#39; is not supported; using ASC&quot;;
 </span><span class=""> 2851: 			$req_dir = &#39;ASC&#39;;
 </span><span class=""> 2852: 		}
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2853: 		if ($req_col ne $join_col &amp;&amp; !exists $self-&gt;{_col_db}{$req_col}) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2854: 			carp &quot;Database::Join: order_by column &#39;$req_col&#39; is not in the merged view; result sorted by join_column&quot;;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2854: 			carp &quot;Database::Join: sort_by column &#39;$req_col&#39; is not in the merged view; result sorted by join_column&quot;;
 </span><span class=""> 2855: 		} else {
 </span><span class=""> 2856: 			($ob_col, $ob_dir) = ($req_col, $req_dir);
 </span><span class=""> 2857: 		}
 </span><span class=""> 2858: 	}
-</span><span class=""> 2859: 	# True when order_by targets a non-join column: the initial sort is redundant.
+</span><span class=""> 2859: 	# True when sort_by targets a non-join column: the initial sort is redundant.
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2860 → 2869 → 2927</span></span> 2860: 	my $ob_override = ($ob_col ne $join_col);
 </span><span class=""> 2861: 
 </span><span class=""> 2862: 	# Build one merged result row for every primary-database row that qualifies.
@@ -3211,7 +3211,7 @@ Approximate LCSAJ segments: 211<br>
 </span><span class=""> 2864: 	# secondary rows, the last one wins (consistent with construction-time
 </span><span class=""> 2865: 	# last-database-wins column routing).
 </span><span class=""> 2866: 	my @result;
-</span><span class=""> 2867: 	# When order_by will override the join_col order, iterate keys unsorted (O(K))
+</span><span class=""> 2867: 	# When sort_by will override the join_col order, iterate keys unsorted (O(K))
 </span><span class=""> 2868: 	# instead of sorted (O(K log K)); the Schwarzian pass at the end reorders.
 </span><span class=""> 2869: 	for my $key ($ob_override ? keys %key_set : sort keys %key_set) {
 </span><span class=""> 2870: 		# Iterate directly over the arrayref: avoids copying primary rows into a
@@ -3529,7 +3529,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 3152: sub _sqlite_join :Protected {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">3153 → 3180 → 3191</span></span> 3153: 	my ($self, $params, %opts) = @_;
 </span><span class=""> 3154: 	my $count_only   = $opts{count_only} // 0;
-</span><span class=""> 3155: 	my $order_by     = $opts{order_by};
+</span><span class=""> 3155: 	my $sort_by     = $opts{sort_by};
 </span><span class=""> 3156: 	my $limit        = $opts{limit};
 </span><span class=""> 3157: 	my $offset       = $opts{offset};
 </span><span class=""> 3158: 	my $create_table = $opts{create_table};  # when set, materialize into a real table
@@ -3618,7 +3618,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 3241: 		}
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3242: 		if (!$can_count || $total &lt;= $self-&gt;{_max_array_rows}) {
 </span><p> <b> Mutants (Total: 4, Killed: 4, Survived: 0)</b><p><span class=""> 3243: 			my $rows = $self-&gt;_joined_query_array($params,
-</span><span class=""> 3244: 				order_by =&gt; $order_by, limit =&gt; $limit, offset =&gt; $offset);
+</span><span class=""> 3244: 				sort_by =&gt; $sort_by, limit =&gt; $limit, offset =&gt; $offset);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3245: 			return $count_only ? scalar @{$rows} : $rows;
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 3246: 		}
 </span><span class=""> 3247: 	}
@@ -3808,7 +3808,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 3402: 	# Executed BEFORE ORDER BY / LIMIT / OFFSET because they are irrelevant here &acirc;&#128;&#148;
 </span><span class=""> 3403: 	# the parent join will impose its own ordering and pagination per-call.
 </span><span class=""> 3404: 	# _sql_quote_identifier guards against any injection via the table name.
-</span><span class=""> 3405: 	# D~: $order_by, $limit, $offset are dead stores on this path.  They were
+</span><span class=""> 3405: 	# D~: $sort_by, $limit, $offset are dead stores on this path.  They were
 </span><span class=""> 3406: 	# parsed and validated above (shared with the normal query path) but the
 </span><span class=""> 3407: 	# caller of create_table always passes undef for these, so _validate_pagination
 </span><span class=""> 3408: 	# is a no-op and the variables are harmlessly abandoned at this return.
@@ -3823,20 +3823,20 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 3417: 	}
 </span><span class=""> 3418: 
 </span><span class=""> 3419: 	# ORDER BY: default is join_column ascending.  Caller may override via
-</span><span class=""> 3420: 	# order_by =&gt; &#39;col&#39; or order_by =&gt; [&#39;col&#39;, &#39;DESC&#39;].
+</span><span class=""> 3420: 	# sort_by =&gt; &#39;col&#39; or sort_by =&gt; [&#39;col&#39;, &#39;DESC&#39;].
 </span><span class=""> 3421: 	# For the join column on an outer join, reference the COALESCE alias.
 </span><span class=""> 3422: 	# For any other column, reference the published SELECT-list alias &acirc;&#128;&#148;
 </span><span class=""> 3423: 	# SQLite resolves ORDER BY aliases from the SELECT clause.
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">3424 → 3425 → 3438</span></span> 3424: 	my ($ob_col, $ob_dir) = ($join_col, &#39;ASC&#39;);
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3425: 	if (defined $order_by) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3426: 		my ($req_col, $req_dir) = ref($order_by) eq &#39;ARRAY&#39; ? @{$order_by} : ($order_by, &#39;ASC&#39;);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3425: 	if (defined $sort_by) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3426: 		my ($req_col, $req_dir) = ref($sort_by) eq &#39;ARRAY&#39; ? @{$sort_by} : ($sort_by, &#39;ASC&#39;);
 </span><span class=""> 3427: 		$req_dir = uc($req_dir // &#39;ASC&#39;);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3428: 		unless ($req_dir eq &#39;ASC&#39; || $req_dir eq &#39;DESC&#39;) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3429: 			carp &quot;Database::Join: order_by direction &#39;$req_dir&#39; is not supported; using ASC&quot;;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3429: 			carp &quot;Database::Join: sort_by direction &#39;$req_dir&#39; is not supported; using ASC&quot;;
 </span><span class=""> 3430: 			$req_dir = &#39;ASC&#39;;
 </span><span class=""> 3431: 		}
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3432: 		if ($req_col ne $join_col &amp;&amp; !exists $self-&gt;{_col_db}{$req_col}) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3433: 			carp &quot;Database::Join: order_by column &#39;$req_col&#39; is not in the merged view; result sorted by join_column&quot;;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3433: 			carp &quot;Database::Join: sort_by column &#39;$req_col&#39; is not in the merged view; result sorted by join_column&quot;;
 </span><span class=""> 3434: 		} else {
 </span><span class=""> 3435: 			($ob_col, $ob_dir) = ($req_col, $req_dir);
 </span><span class=""> 3436: 		}
