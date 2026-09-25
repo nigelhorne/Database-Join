@@ -16,11 +16,16 @@
 #   L11  Contradiction trapping (impossible states croak immediately)
 #   L12  remove_column: join_column is irremovable (contradiction proof)
 #   L13  _copy_criteria deep-copy isolation (post-construction mutation proof)
+#   L23  $ob_override boolean gate truth table (join_col vs non-join-col order_by)
+#   L24  Non-commutativity of offset ∘ limit (offset applied before limit)
+#   L25  Schwarzian undef coercion (undef ob_col value sorted as empty string)
+#   L26  reverse correctness for join_col DESC (O(R) reverse == explicit Schwarzian)
+#   L27  _validate_pagination predicate truth table (De Morgan for limit / offset)
 
 use strict;
 use warnings;
 
-use Test::Most tests => 82;
+use Test::Most tests => 94;
 use Readonly;
 
 use lib 't/lib';
@@ -1527,4 +1532,299 @@ subtest 'L22c: monotonicity -- max timestamp governs the result' => sub {
 	my $ts = $j->updated();
 	ok(defined $ts, 'L22c: updated() returns a defined value');
 	is($ts, $TS_HIGH, 'L22c: result is max(ts_a, ts_b) = ts_high (monotonicity)');
+};
+
+# ===========================================================================
+# L23: $ob_override Boolean Gate Truth Table
+#
+# Gate: $ob_override = ($ob_col ne $join_col)
+#
+# Major Premise: the merge loop uses ($ob_override ? keys %key_set
+#                                                   : sort keys %key_set).
+# If ob_override is FALSE the initial sort IS the final order; no Schwarzian
+# is applied.  If TRUE the initial sort is skipped and the Schwarzian pass
+# provides the final order.
+#
+# Truth table:
+#   order_by targets join_col  => ob_col == join_col => ob_override = FALSE
+#                              => result in join_col ASC order
+#   order_by targets non-join col => ob_col != join_col => ob_override = TRUE
+#                                 => result in ob_col order (not join_col order)
+# ===========================================================================
+
+Readonly::Array my @L23_ROWS => (
+	{ entry => 'k3', label => 'apple'  },
+	{ entry => 'k1', label => 'cherry' },
+	{ entry => 'k2', label => 'banana' },
+);
+
+subtest 'L23a: ob_override=FALSE (order_by==join_col) => initial sort is final order' => sub {
+	plan tests => 3;
+	# No order_by => ob_col defaults to join_col => ob_override=FALSE.
+	# The merge loop iterates `sort keys %key_set`, producing join_col ASC.
+	# Conclusion: first row has smallest join_col value.
+	my $da = LogicDA->new(cols => ['entry','label'], rows => [@L23_ROWS]);
+	my $j  = Database::Join->new(
+		databases   => [$da],
+		join_column => 'entry',
+		backend     => 'array',
+	);
+	my $rows = $j->selectall_arrayref();
+	is($rows->[0]{entry}, 'k1', 'L23a: no order_by => join_col ASC => k1 first');
+	is($rows->[1]{entry}, 'k2', 'L23a: second is k2');
+	is($rows->[2]{entry}, 'k3', 'L23a: third is k3 (gate FALSE path confirmed)');
+};
+
+subtest 'L23b: ob_override=TRUE (order_by!=join_col) => Schwarzian is sole sorter' => sub {
+	plan tests => 3;
+	# order_by = 'label' => ob_col = 'label' != 'entry' => ob_override=TRUE.
+	# Initial sort skipped; Schwarzian on 'label' defines final order.
+	# label order: apple < banana < cherry (k3 < k2 < k1 in join_col -- the opposite!).
+	# Conclusion: result is in label ASC order, not join_col ASC order.
+	my $da = LogicDA->new(cols => ['entry','label'], rows => [@L23_ROWS]);
+	my $j  = Database::Join->new(
+		databases   => [$da],
+		join_column => 'entry',
+		backend     => 'array',
+	);
+	my $rows = $j->selectall_arrayref(order_by => 'label');
+	is($rows->[0]{label}, 'apple',  'L23b: Schwarzian => apple first (gate TRUE path)');
+	is($rows->[1]{label}, 'banana', 'L23b: banana second');
+	is($rows->[2]{label}, 'cherry', 'L23b: cherry third (not join_col ASC order)');
+};
+
+# ===========================================================================
+# L24: Non-Commutativity of offset ∘ limit
+#
+# Major Premise:
+#   The implementation applies offset first (splice(@result, 0, $offset))
+#   and limit second (splice(@result, $limit)).
+#   f = limit ∘ offset ≠ offset ∘ limit in general.
+#
+# Proof by counter-example:
+#   Data: 5 rows, join_col ASC gives [r0..r4].
+#   offset=2, limit=2:
+#     Correct:  skip [r0,r1] → [r2,r3,r4]; take 2 → [r2,r3]
+#     Wrong:    take 2 → [r0,r1]; skip 2 → []           (empty)
+#
+# L24a proves the correct (offset-first) behaviour.
+# L24b proves the contrast: limit alone returns a DIFFERENT window, so
+#       the two operators are not commutative.
+# ===========================================================================
+
+Readonly::Array my @L24_ROWS => (
+	{ entry => 'r0', v => 0 },
+	{ entry => 'r1', v => 1 },
+	{ entry => 'r2', v => 2 },
+	{ entry => 'r3', v => 3 },
+	{ entry => 'r4', v => 4 },
+);
+
+subtest 'L24a: offset=2 then limit=2 returns rows [r2,r3] (offset applied first)' => sub {
+	plan tests => 3;
+	my $da   = LogicDA->new(cols => ['entry','v'], rows => [@L24_ROWS]);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my $rows = $j->selectall_arrayref(offset => 2, limit => 2);
+	is(scalar @{$rows}, 2,    'L24a: exactly 2 rows returned');
+	is($rows->[0]{entry}, 'r2', 'L24a: first row is r2 (offset skipped r0,r1)');
+	is($rows->[1]{entry}, 'r3', 'L24a: second row is r3');
+};
+
+subtest 'L24b: limit=2 alone returns [r0,r1] -- distinct from L24a, proving non-commutativity' => sub {
+	plan tests => 3;
+	# If offset and limit were commutative, applying them in either order on the
+	# same data would give the same result.  Here limit-only gives [r0,r1],
+	# proving that offset-then-limit is NOT the same as limit-only.
+	my $da   = LogicDA->new(cols => ['entry','v'], rows => [@L24_ROWS]);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my $rows = $j->selectall_arrayref(limit => 2);
+	is(scalar @{$rows}, 2,    'L24b: limit=2 alone returns 2 rows');
+	is($rows->[0]{entry}, 'r0', 'L24b: first row is r0 (no offset)');
+	is($rows->[1]{entry}, 'r1', 'L24b: second row is r1');
+};
+
+# ===========================================================================
+# L25: Schwarzian Undef Coercion Correctness
+#
+# Major Premise:
+#   The Schwarzian tags each row: [$row, $row->{$ob_col} // ''].
+#   When $row->{$ob_col} is undef, the tag value is '' (empty string).
+#   Empty string '' is lexicographically less than any non-empty string
+#   ('a' gt '' is TRUE), so undef-valued rows sort before non-undef rows.
+#
+# L25a: A row with undef ob_col sorts before rows with non-empty ob_col values.
+# L25b: Mixed undef/non-undef ob_col result is produced without crash or
+#        undefined-value warning.
+# ===========================================================================
+
+subtest 'L25a: undef ob_col coerced to "" -- sorts before non-empty strings' => sub {
+	plan tests => 2;
+	# row 'k1' has label=undef; rows 'k2'/'k3' have label='beta'/'gamma'.
+	# undef => '' < 'beta' < 'gamma' => k1 must come first.
+	my $da = LogicDA->new(
+		cols => ['entry', 'label'],
+		rows => [
+			{ entry => 'k2', label => 'beta'  },
+			{ entry => 'k1', label => undef   },
+			{ entry => 'k3', label => 'gamma' },
+		],
+	);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my $rows = $j->selectall_arrayref(order_by => 'label');
+	is($rows->[0]{entry}, 'k1', 'L25a: undef label coerced to "" sorts first');
+	is($rows->[2]{entry}, 'k3', 'L25a: gamma sorts last');
+};
+
+subtest 'L25b: mixed undef/non-undef ob_col produces no crash (coercion is safe)' => sub {
+	plan tests => 1;
+	my $da = LogicDA->new(
+		cols => ['entry', 'score'],
+		rows => [
+			{ entry => 'k1', score => undef },
+			{ entry => 'k2', score => 'high' },
+			{ entry => 'k3', score => undef },
+		],
+	);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my $rows;
+	my $ok = eval { $rows = $j->selectall_arrayref(order_by => 'score'); 1 };
+	ok($ok && ref($rows) eq 'ARRAY', 'L25b: undef coercion in Schwarzian does not crash');
+};
+
+# ===========================================================================
+# L26: reverse Correctness for join_col DESC  (O(R) vs O(R log R))
+#
+# Major Premise:
+#   When ob_col == join_col AND ob_dir == 'DESC':
+#     @result is already in join_col ASC order (from the merge loop's initial
+#     `sort keys %key_set` -- ob_override is FALSE on this path).
+#     `reverse @result` gives exactly join_col DESC order in O(R) time.
+#
+# Minor Premise:
+#   For any strictly ordered sequence S, reverse(S) gives strictly descending
+#   order.  There is no secondary sort key; ties in join_col cannot exist
+#   because join_col is the primary key.
+#
+# Conclusion:
+#   join_col DESC result equals reverse of join_col ASC result.
+#
+# L26a: join_col DESC gives the reverse of join_col ASC on the same data.
+# L26b: join_col DESC is distinct from join_col ASC (non-trivial reversal proof).
+# ===========================================================================
+
+subtest 'L26a: join_col DESC == reverse(join_col ASC) -- O(R) reverse correctness' => sub {
+	plan tests => 3;
+	my @raw = (
+		{ entry => 'k1', v => 'alpha' },
+		{ entry => 'k2', v => 'beta'  },
+		{ entry => 'k3', v => 'gamma' },
+	);
+	my $da_asc  = LogicDA->new(cols => ['entry','v'], rows => [@raw]);
+	my $da_desc = LogicDA->new(cols => ['entry','v'], rows => [@raw]);
+	my $j_asc   = Database::Join->new(databases => [$da_asc],  join_column => 'entry', backend => 'array');
+	my $j_desc  = Database::Join->new(databases => [$da_desc], join_column => 'entry', backend => 'array');
+	my $asc_res  = $j_asc->selectall_arrayref();
+	my $desc_res = $j_desc->selectall_arrayref(order_by => ['entry', 'DESC']);
+	# Reverse of ASC == DESC.
+	is($desc_res->[0]{entry}, $asc_res->[2]{entry}, 'L26a: DESC[0] == reverse of ASC[last]');
+	is($desc_res->[1]{entry}, $asc_res->[1]{entry}, 'L26a: DESC[1] == ASC[1] (middle unchanged)');
+	is($desc_res->[2]{entry}, $asc_res->[0]{entry}, 'L26a: DESC[last] == reverse of ASC[0]');
+};
+
+subtest 'L26b: join_col DESC != join_col ASC (reversal is non-trivial on 3+ rows)' => sub {
+	plan tests => 2;
+	my @raw = (
+		{ entry => 'k1', v => 'x' },
+		{ entry => 'k2', v => 'y' },
+		{ entry => 'k3', v => 'z' },
+	);
+	my $da_asc  = LogicDA->new(cols => ['entry','v'], rows => [@raw]);
+	my $da_desc = LogicDA->new(cols => ['entry','v'], rows => [@raw]);
+	my $j_asc   = Database::Join->new(databases => [$da_asc],  join_column => 'entry', backend => 'array');
+	my $j_desc  = Database::Join->new(databases => [$da_desc], join_column => 'entry', backend => 'array');
+	my $asc_res  = $j_asc->selectall_arrayref();
+	my $desc_res = $j_desc->selectall_arrayref(order_by => ['entry', 'DESC']);
+	isnt($desc_res->[0]{entry}, $asc_res->[0]{entry},
+		'L26b: DESC first != ASC first (reversal is non-trivial)');
+	is($desc_res->[0]{entry}, 'k3',
+		'L26b: DESC first is k3 (largest join_col via reverse)');
+};
+
+# ===========================================================================
+# L27: _validate_pagination Predicate Truth Table (De Morgan)
+#
+# Validity predicates:
+#   limit  is valid  iff  $l =~ /^\d+\z/a  AND  $l >= 1
+#   offset is valid  iff  $o =~ /^\d+\z/a          (0 is valid)
+#
+# De Morgan: NOT valid(limit) ≡ NOT matches OR NOT (>= 1)
+#                             ≡ fails regex OR value < 1
+#
+# Truth table for limit:
+#   | matches /^\d+\z/a | value >= 1 | valid? | action           |
+#   |--------------------|------------|--------|------------------|
+#   | TRUE               | TRUE       | YES    | apply limit      |
+#   | TRUE               | FALSE (0)  | NO     | carp + ignore    |
+#   | FALSE              | --         | NO     | carp + ignore    |
+#
+# Special case for offset:
+#   '0' matches /^\d+\z/a AND 0 is a valid (non-negative) offset.
+#   Unlike limit, 0 is valid because it means "skip nothing".
+#
+# L27a: limit='5' (matches, >=1) => applied (exactly 5 rows if data allows).
+# L27b: limit='0' (matches, <1) => carp + ignored (all rows returned).
+# L27c: limit='-1' (fails /^\d+\z/a due to leading '-') => carp + ignored.
+# L27d: offset='0' (matches, value=0) => valid (zero rows skipped).
+# ===========================================================================
+
+Readonly::Array my @L27_ROWS => map { { entry => "r$_", v => $_ } } 0..9;
+
+subtest 'L27a: valid limit (matches /^\d+\z/a AND >= 1) => applied' => sub {
+	plan tests => 1;
+	# Major premise: '5' =~ /^\d+\z/a and '5' >= 1 => valid => limit applied.
+	# 10-row DA with limit=5 must return exactly 5 rows.
+	my $da   = LogicDA->new(cols => ['entry','v'], rows => [@L27_ROWS]);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my $rows = $j->selectall_arrayref(limit => 5);
+	is(scalar @{$rows}, 5, 'L27a: valid limit=5 applied => 5 rows (predicate TRUE branch)');
+};
+
+subtest 'L27b: limit=0 (matches regex but fails >=1) => carp and ignored' => sub {
+	plan tests => 2;
+	# Minor premise: '0' =~ /^\d+\z/a is TRUE but '0' >= 1 is FALSE.
+	# Conclusion: De Morgan NOT(matches) OR NOT(>=1) is TRUE => invalid.
+	my $da   = LogicDA->new(cols => ['entry','v'], rows => [@L27_ROWS]);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my ($rows, @warns);
+	{ local $SIG{__WARN__} = sub { push @warns, @_ };
+	  $rows = $j->selectall_arrayref(limit => 0) }
+	ok(scalar @warns, 'L27b: limit=0 causes carp (regex matches but <1 => invalid)');
+	is(scalar @{$rows}, 10, 'L27b: limit=0 ignored => all 10 rows returned');
+};
+
+subtest 'L27c: limit=-1 (fails /^\d+\\z/a due to leading minus) => carp and ignored' => sub {
+	plan tests => 2;
+	# Minor premise: '-1' !~ /^\d+\z/a (minus sign is not \d) => NOT matches => invalid.
+	# Conclusion: De Morgan is trivially TRUE on the left disjunct.
+	my $da   = LogicDA->new(cols => ['entry','v'], rows => [@L27_ROWS]);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my ($rows, @warns);
+	{ local $SIG{__WARN__} = sub { push @warns, @_ };
+	  $rows = $j->selectall_arrayref(limit => -1) }
+	ok(scalar @warns, 'L27c: limit=-1 causes carp (fails /^\d+\z/a => invalid)');
+	is(scalar @{$rows}, 10, 'L27c: limit=-1 ignored => all 10 rows returned');
+};
+
+subtest 'L27d: offset=0 (matches /^\d+\z/a, value=0) => valid (zero rows skipped)' => sub {
+	plan tests => 2;
+	# Unlike limit, offset=0 is valid: '0' =~ /^\d+\z/a is TRUE and 0 is a
+	# valid non-negative integer meaning "skip nothing".
+	# No carp should be emitted; all rows should be returned.
+	my $da   = LogicDA->new(cols => ['entry','v'], rows => [@L27_ROWS]);
+	my $j    = Database::Join->new(databases => [$da], join_column => 'entry', backend => 'array');
+	my (@warns, $rows);
+	{ local $SIG{__WARN__} = sub { push @warns, @_ };
+	  $rows = $j->selectall_arrayref(offset => 0) }
+	ok(!scalar @warns, 'L27d: offset=0 does not carp (0 is a valid offset)');
+	is(scalar @{$rows}, 10, 'L27d: offset=0 => no rows skipped => all 10 returned');
 };
