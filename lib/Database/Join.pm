@@ -1262,20 +1262,20 @@ A single plain scalar argument is interpreted as the C<join_column> value
       EP ['col','ASC']:   explicit ascending; equivalent to the string form.
       EP ['col','DESC']:  descending sort by the named column.
       EP ['col']:         single-element arrayref; direction defaults to ASC.
-      EP []:              empty arrayref; column is undef → carp + join_col ASC fallback.
-      EP invalid column:  column not in columns() → carp + join_col ASC fallback.
-      EP invalid dir:     direction not 'ASC' or 'DESC' → carp + ASC used.
+      EP []:              empty arrayref; column is undef -> carp + join_col ASC fallback.
+      EP invalid column:  column not in columns() -> carp + join_col ASC fallback.
+      EP invalid dir:     direction not 'ASC' or 'DESC' -> carp + ASC used.
       Sort is lexicographic (cmp); use backend=>'sqlite' for numeric ORDER BY.
 
     DOMAIN -- limit:
       EP absent:          no truncation; all qualifying rows are returned.
-      EP 0:               not a positive integer → carp + ignored (all rows returned).
+      EP 0:               not a positive integer -> carp + ignored (all rows returned).
       BVA min valid = 1:  exactly 1 row returned.
-      BVA at count:       limit == total rows → all rows returned (no truncation).
-      BVA above count:    limit > total rows → all rows returned.
+      BVA at count:       limit == total rows -> all rows returned (no truncation).
+      BVA above count:    limit > total rows -> all rows returned.
       EP invalid:         negative integer, float string, or non-numeric string
-                          → carp + ignored (all rows returned).
-      Valid domain:       integers in [1, ∞); matched by /^\d+\z/a with value >= 1.
+                          => carp + ignored (all rows returned).
+      Valid domain:       integers in [1, INF); matched by /^\d+\z/a with value >= 1.
 
     DOMAIN -- offset:
       EP absent:          no rows skipped; result starts from row 0.
@@ -1285,8 +1285,8 @@ A single plain scalar argument is interpreted as the C<join_column> value
       BVA offset=N:       all N rows skipped; empty result returned.
       BVA offset>N:       all rows skipped; empty result returned.
       EP invalid:         negative integer, float string, or non-numeric string
-                          → carp + ignored (no rows skipped).
-      Valid domain:       integers in [0, ∞); matched by /^\d+\z/a.
+                          => carp + ignored (no rows skipped).
+      Valid domain:       integers in [0, INF); matched by /^\d+\z/a.
 
 =head4 Output
 

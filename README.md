@@ -1011,10 +1011,11 @@ sub dbi_source {
 ```
 
 The zero-copy ATTACH path is always used when a component database implements
-`dbi_source()`.  Query-time criteria are applied as parameterised SQL `WHERE`
-clauses against the ATTACHed source table, so no row-level copy is needed even
-when the current call includes column filters.  (Prior to 0.005.0 any
-query-time criteria forced a spill; that restriction was removed in 0.005.0.)
+`dbi_source()`.  Query-time criteria are applied as parameterised SQL
+`WHERE` clauses against the ATTACHed source table, so no row-level copy is
+needed even when the current call includes column filters.  (Prior to 0.005.0
+any query-time criteria forced a spill; that restriction was removed in
+0.005.0.)
 
 **Result identity**
 
@@ -1082,6 +1083,38 @@ limit and offset are applied after ordering.  offset without limit skips
 rows but returns all remaining rows.  limit without offset starts from
 the first qualifying row.  An invalid limit or offset emits a carp warning
 and the parameter is ignored (treated as absent).
+
+DOMAIN -- order_by:
+  EP absent:          result sorted by join_column ASC (default).
+  EP string:          any column name in columns(); sorts ASC by that column.
+  EP ['col','ASC']:   explicit ascending; equivalent to the string form.
+  EP ['col','DESC']:  descending sort by the named column.
+  EP ['col']:         single-element arrayref; direction defaults to ASC.
+  EP []:              empty arrayref; column is undef -> carp + join_col ASC fallback.
+  EP invalid column:  column not in columns() -> carp + join_col ASC fallback.
+  EP invalid dir:     direction not 'ASC' or 'DESC' -> carp + ASC used.
+  Sort is lexicographic (cmp); use backend=>'sqlite' for numeric ORDER BY.
+
+DOMAIN -- limit:
+  EP absent:          no truncation; all qualifying rows are returned.
+  EP 0:               not a positive integer -> carp + ignored (all rows returned).
+  BVA min valid = 1:  exactly 1 row returned.
+  BVA at count:       limit == total rows -> all rows returned (no truncation).
+  BVA above count:    limit > total rows -> all rows returned.
+  EP invalid:         negative integer, float string, or non-numeric string
+                      => carp + ignored (all rows returned).
+  Valid domain:       integers in [1, INF); matched by /^\d+\z/a with value >= 1.
+
+DOMAIN -- offset:
+  EP absent:          no rows skipped; result starts from row 0.
+  BVA min valid = 0:  no rows skipped (zero is a valid non-negative integer).
+  BVA offset=1:       first row skipped; result starts from row 1.
+  BVA offset=N-1:     N-1 rows skipped; only the last row returned.
+  BVA offset=N:       all N rows skipped; empty result returned.
+  BVA offset>N:       all rows skipped; empty result returned.
+  EP invalid:         negative integer, float string, or non-numeric string
+                      => carp + ignored (no rows skipped).
+  Valid domain:       integers in [0, INF); matched by /^\d+\z/a.
 ```
 
 ##### Output
