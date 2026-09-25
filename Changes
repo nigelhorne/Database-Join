@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.007.1
+0.007.1	Fri Sep 25 08:17:24 AM EDT 2026
 	[ Bug Fixes ]
 	'order_by' is rather SQL like, 'sort_by' is clearer
 

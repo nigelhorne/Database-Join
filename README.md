@@ -4,7 +4,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 ## Version
 
-Version 0.007.0
+Version 0.007.1
 
 ## Synopsis
 
@@ -262,7 +262,7 @@ preserve both values under distinct names instead.
 - Sort order
 
     Results are sorted ascending by `join_column` by default.  Pass
-    `order_by => 'colname'` (or `order_by => ['colname', 'DESC']`)
+    `sort_by => 'colname'` (or `sort_by => ['colname', 'DESC']`)
     to any query method to override this.  The array path uses string comparison
     (`cmp`); for accurate numeric ordering on large datasets use the SQLite
     backend, which sorts natively by type.
@@ -1033,11 +1033,11 @@ my $rows = $join->selectall_arrayref();
 my $rows = $join->selectall_arrayref(tier  => 'gold');
 my $rows = $join->selectall_arrayref(score => { '>' => 80 });
 my $rows = $join->selectall_arrayref('C001');  # positional: entry => 'C001'
-my $rows = $join->selectall_arrayref(order_by => 'name');
-my $rows = $join->selectall_arrayref(tier => 'gold', order_by => ['score', 'DESC']);
+my $rows = $join->selectall_arrayref(sort_by => 'name');
+my $rows = $join->selectall_arrayref(tier => 'gold', sort_by => ['score', 'DESC']);
 my $rows = $join->selectall_arrayref(limit => 10);
 my $rows = $join->selectall_arrayref(limit => 10, offset => 20);
-my $rows = $join->selectall_arrayref(tier => 'gold', order_by => 'name', limit => 5);
+my $rows = $join->selectall_arrayref(tier => 'gold', sort_by => 'name', limit => 5);
 ```
 
 #### Description
@@ -1069,13 +1069,13 @@ Values may be:
   Hashref of operators        -- e.g. { '>' => 80 }
 
 Optional parameters (mixed in with any of the above):
-  order_by => 'colname'            -- sort ascending by that column
-  order_by => ['colname', 'DESC']  -- sort descending
-  order_by => ['colname', 'ASC']   -- sort ascending (explicit)
+  sort_by => 'colname'            -- sort ascending by that column
+  sort_by => ['colname', 'DESC']  -- sort descending
+  sort_by => ['colname', 'ASC']   -- sort ascending (explicit)
   limit    => N                    -- return at most N rows (positive integer)
   offset   => M                   -- skip the first M rows (non-negative integer)
 
-The column named in order_by must be present in the merged view (i.e. it
+The column named in sort_by must be present in the merged view (i.e. it
 must appear in columns()).  An unknown column or an invalid direction emits
 a carp warning and falls back to the default join_column ascending sort.
 
@@ -1084,7 +1084,7 @@ rows but returns all remaining rows.  limit without offset starts from
 the first qualifying row.  An invalid limit or offset emits a carp warning
 and the parameter is ignored (treated as absent).
 
-DOMAIN -- order_by:
+DOMAIN -- sort_by:
   EP absent:          result sorted by join_column ASC (default).
   EP string:          any column name in columns(); sorts ASC by that column.
   EP ['col','ASC']:   explicit ascending; equivalent to the string form.
@@ -1121,7 +1121,7 @@ DOMAIN -- offset:
 
 ```
 Arrayref of hashrefs; one hashref per qualifying merged row.
-Sorted ascending by join_column by default; caller-controlled via order_by.
+Sorted ascending by join_column by default; caller-controlled via sort_by.
 At most C<limit> rows when limit is given; the first C<offset> rows are
 skipped when offset is given.
 Returns a reference to an empty array when no rows match.
@@ -1153,11 +1153,11 @@ for my $row (@{$vip}) {
 warn_unknown_column (carp)
     -- A criterion key names a column not present in any component database;
        the criterion is silently dropped and all rows are returned.
-order_by column unknown (carp)
-    -- The column given in order_by is not in the merged view; the result
+sort_by column unknown (carp)
+    -- The column given in sort_by is not in the merged view; the result
        is returned in the default join_column ascending order instead.
-order_by direction invalid (carp)
-    -- The direction given in order_by is not 'ASC' or 'DESC'; ASC is used.
+sort_by direction invalid (carp)
+    -- The direction given in sort_by is not 'ASC' or 'DESC'; ASC is used.
 limit invalid (carp)
     -- The value given for limit is not a positive integer; it is ignored.
 offset invalid (carp)
