@@ -324,10 +324,12 @@ to any query method to override this.  The array path uses string comparison
 (C<cmp>); for accurate numeric ordering on large datasets use the SQLite
 backend, which sorts natively by type.
 
-=item count() fetches all rows
+=item count() on the array backend fetches all rows
 
-C<count()> executes the full join and counts the resulting rows in Perl.  It
-does not push a C<COUNT(*)> query down to the databases.
+On the array backend, C<count()> executes the full in-memory join and counts
+the resulting rows in Perl; no C<COUNT(*)> is pushed to the component
+databases.  On the SQLite backend, C<count()> executes a C<SELECT COUNT(*)>
+SQL query against the cached join tables, avoiding a full row transfer.
 
 =back
 
@@ -1183,10 +1185,12 @@ Example implementation:
 
     1;
 
-The zero-copy ATTACH path is only used when there are no query-time criteria
-for that database in the current call.  When criteria exist, the database is
-queried via C<selectall_arrayref> as usual and the resulting rows are inserted
-into the temporary file.
+The zero-copy ATTACH path is always used when a component database implements
+C<dbi_source()>.  Query-time criteria are applied as parameterised SQL
+C<WHERE> clauses against the ATTACHed source table, so no row-level copy is
+needed even when the current call includes column filters.  (Prior to 0.005.0
+any query-time criteria forced a spill; that restriction was removed in
+0.005.0.)
 
 B<Result identity>
 
@@ -1465,8 +1469,9 @@ sub fetchrow_hashref {
 
 Returns the number of merged rows that satisfy the given criteria.
 
-The full join is performed and the resulting rows are counted in Perl; no
-C<COUNT(*)> is pushed down to the component databases.
+On the array backend, the full in-memory join is performed and the resulting
+rows are counted in Perl.  On the SQLite backend, a C<SELECT COUNT(*)> SQL
+query is executed against the cached join tables, avoiding a full row fetch.
 
 =head3 API SPECIFICATION
 
