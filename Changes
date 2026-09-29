@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.008.0
+0.008.0  2026-09-28
 	[ Enhancements ]
 	- each_row(\&callback, ...): new streaming-style select method that calls
 	  the callback once per merged row, then returns the count of rows visited.
@@ -11,6 +11,13 @@ Revision history for Database::Join
 	  memory-efficient processing of large result sets, use the SQLite backend.
 	  Mirrors the Database::Abstraction 0.46 each_row() API.
 	- Bump minimum Database::Abstraction requirement to 0.46.
+	- selectall_hashref(): deprecated alias for selectall_arrayref(), added for
+	  drop-in compatibility with callers written against Database::Abstraction's
+	  deprecated API.  Emits a carp deprecation warning on each call.
+	- selectall_hash(): deprecated alias for selectall_array(), same rationale.
+	  Emits a carp deprecation warning on each call.
+	- query() croak message now explicitly names Database::Abstraction::Query and
+	  explains why the chained builder cannot be applied to a merged view.
 	[ Bug fixes ]
 	- Fix: dbi_source() probe in _build_sqlite_cache and _sqlite_join now uses an
 	  isolated scope (local $SIG{__WARN__} = sub {}; local $@) around the eval

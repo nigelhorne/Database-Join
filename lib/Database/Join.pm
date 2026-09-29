@@ -56,7 +56,7 @@ Readonly::Hash my %MESSAGES => (
 	error_col_conflict	=> 'Column "%s" exists in multiple databases; use the owning database directly or rename the column',
 	error_remove_join_col	=> 'Cannot remove join_column "%s"; it is required for the join',
 	warn_unknown_column	=> 'Column "%s" is not present in any configured database; criterion ignored',
-	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join; call selectall_arrayref / fetchrow_hashref directly',
+	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join (Database::Abstraction::Query targets a single DA, not the merged view); use selectall_arrayref, selectall_array, fetchrow_hashref, count, or each_row instead',
 	error_execute_unsupported => 'execute() raw SQL is not supported on Database::Join',
 	error_unknown_message	=> 'Unknown message key "%s"',
 	error_invalid_prefix	=> 'collision_prefix[%d] must be a plain string, not a reference; passing a reference would leak a heap address into column names',
@@ -1406,6 +1406,34 @@ sub selectall_array {
 	return wantarray ? @{$rows} : $rows->[0];
 }
 
+=head2 selectall_hashref
+
+Deprecated alias for L</selectall_arrayref>, present for compatibility with
+callers written against C<Database::Abstraction>'s deprecated API.  Use
+C<selectall_arrayref> in new code.
+
+=cut
+
+sub selectall_hashref {
+	my $self = shift;
+	carp 'Database::Join::selectall_hashref is deprecated; use selectall_arrayref';
+	return $self->selectall_arrayref(@_);
+}
+
+=head2 selectall_hash
+
+Deprecated alias for L</selectall_array>, present for compatibility with
+callers written against C<Database::Abstraction>'s deprecated API.  Use
+C<selectall_array> in new code.
+
+=cut
+
+sub selectall_hash {
+	my $self = shift;
+	carp 'Database::Join::selectall_hash is deprecated; use selectall_array';
+	return $self->selectall_array(@_);
+}
+
 =head2 fetchrow_hashref
 
 =head3 SYNOPSIS
@@ -2263,11 +2291,13 @@ sub remove_column {
 
 =head2 query
 
-Not supported.  C<Database::Join> does not implement the chained query
-builder.  Calling this method will always C<croak> with an explanatory message.
+Not supported.  C<Database::Join> does not implement the
+C<Database::Abstraction::Query> chained builder because the builder's
+C<.all()> / C<.first()> methods would be targeting a single component DA
+rather than the merged view.  Calling this method will always C<croak>.
 
-Use C<selectall_arrayref>, C<selectall_array>, C<fetchrow_hashref>, or
-C<count> instead.
+Use C<selectall_arrayref>, C<selectall_array>, C<fetchrow_hashref>,
+C<count>, or C<each_row> against the C<Database::Join> object instead.
 
 =cut
 
