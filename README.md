@@ -4,7 +4,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 ## Version
 
-Version 0.008.0
+Version 0.008.1
 
 ## Synopsis
 

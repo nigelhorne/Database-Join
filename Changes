@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.008.1
+0.008.1	Tue Sep 29 07:14:50 AM EDT 2026
 	[ Enhancements ]
 	- set_logger() now accepts the named-pair form set_logger(logger => $obj),
 	  matching the Database::Abstraction API.  Non-blessed values (log-level
