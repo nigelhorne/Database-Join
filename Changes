@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.008.0  2026-09-28
+0.008.0	Mon Sep 28 09:41:08 PM EDT 2026
 	[ Enhancements ]
 	- each_row(\&callback, ...): new streaming-style select method that calls
 	  the callback once per merged row, then returns the count of rows visited.
