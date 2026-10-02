@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.008.2
+0.008.2	Fri Oct  2 12:43:58 PM EDT 2026
 	[ Enhancements ]
 	- base_criteria constructor parameter: a hashref of column-name => value pairs
 	  that is ANDed into every query automatically.  Criteria are routed to the
