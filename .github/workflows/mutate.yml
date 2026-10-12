@@ -7,11 +7,11 @@ permissions:
 # on: [push, pull_request]
 on:
   schedule:
-    - cron: '12 23 26 * *'
+    - cron: "12 23 26 * *"
   workflow_dispatch:
     inputs:
       full:
-        description: 'Mutate every file, not only those changed in the last code commit'
+        description: "Mutate every file, not only those changed in the last code commit"
         type: boolean
         default: false
 
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
-      - uses: shogo82148/actions-setup-perl@v1.44.0
+      - uses: shogo82148/actions-setup-perl@v1.44.2
 
       - run: cpanm --verbose --skip-satisfied --installdeps .
       - run: prove -l t/

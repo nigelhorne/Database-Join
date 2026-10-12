@@ -4,7 +4,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 ## Version
 
-Version 0.008.2
+Version 0.009.0
 
 ## Synopsis
 
@@ -1414,6 +1414,132 @@ printf "%d total, %d gold-tier, %d high-scorers\n",
 #### Messages
 
 Same messages as `selectall_arrayref`.
+
+### Aggregate
+
+#### Synopsis
+
+```perl
+my $rows = $join->aggregate(
+    by       => ['tier'],
+    measures => [
+        { col => 'score', fn => 'sum', as => 'total' },
+        {                 fn => 'count', as => 'n'   },
+    ],
+    having   => { total => { '>' => 100 } },
+    sort_by  => ['total', 'DESC'],
+    limit    => 10,
+);
+# => [ { tier => 'gold', total => 183, n => 2 }, ... ]
+```
+
+#### Description
+
+Groups the merged view by one or more published column names and computes
+aggregate measures over each group.
+
+On the SQLite backend (`backend => 'sqlite'`) and the `auto` backend,
+the aggregation is pushed into the existing SQLite cache as a `GROUP BY`
+query - rows never pass through Perl.  The `auto` backend always takes this
+path for aggregation, skipping the row-count threshold probe (aggregation
+makes the row count irrelevant).
+
+On the array backend (`backend => 'array'`), merged rows are fetched in
+full and folded in Perl.  This materialises the complete matching result set.
+
+The two paths return the same rows for the same input, except for two
+documented differences: `min`/`max` on a column declared `TEXT` but
+storing numbers (SQL compares lexically; Perl detects numerics), and
+`sum`/`avg` with non-numeric values (SQL coerces to 0.0; Perl skips and
+warns via `warn_aggregate_non_numeric`).
+
+`Database::Join` has no `no_fixate` and no CHI cache (unlike
+`Database::Abstraction`); aggregation results are not cached between calls.
+
+#### Api Specification
+
+##### Input
+
+Reserved keys extracted before the rest is treated as WHERE criteria:
+
+```perl
+by       => arrayref of published column names (default: [] = grand total)
+measures => arrayref of measure hashrefs (required, non-empty)
+having   => hashref of post-aggregation criteria
+sort_by  => 'col' or ['col', 'DESC']
+limit    => positive integer
+offset   => non-negative integer
+```
+
+Every other key is pre-aggregation criteria routed exactly as
+`selectall_arrayref` routes criteria.
+
+Measure hashref keys:
+
+```perl
+fn  => function name (sum|avg|min|max|count|count_distinct), case-insensitive
+col => published column name (required for all functions except bare count)
+as  => result key (required; must match C</^\w+\z/>; unique; not a by name)
+```
+
+`having` uses the same operator vocabulary as `selectall_arrayref`:
+`%SAFE_SQL_OPS` (>, <, >=, <=, !=, =, LIKE, NOT LIKE),
+`%SAFE_LIST_OPS` (IN, NOT IN), `%SAFE_NOARG_OPS` (IS NULL, IS NOT NULL),
+a bare scalar (= ?), and `-or`/`-and` groupings.  Write `-between` as
+two operators and `LIKE` explicitly.
+
+##### Output
+
+Always an arrayref of hashrefs (never `undef`).  `[]` when no group
+qualifies and `by` is non-empty.  When `by` is omitted or `[]` and no
+rows match, returns one all-normalised row (grand total of zero).
+
+Key order per row: `by` columns in declaration order, then measure aliases
+in declaration order.
+
+#### Example
+
+```perl
+# Total score and row count per tier, highest total first
+my $rows = $join->aggregate(
+    by       => ['tier'],
+    measures => [
+        { col => 'score', fn => 'sum',   as => 'total' },
+        {                 fn => 'count', as => 'n'     },
+    ],
+    sort_by  => ['total', 'DESC'],
+);
+for my $r (@{$rows}) {
+    printf "%s: total=%s n=%s\n", $r->{tier}, $r->{total}, $r->{n};
+}
+```
+
+#### Pseudocode
+
+```perl
+1. get_params(undef, @args) -- hashref or kv-pairs only (no positional key)
+2. croak error_join_criterion if 'join =>' present
+3. _validate_aggregate_spec extracts by/measures/having/sort_by/limit/offset
+4. array backend:
+     rows   = _joined_query_array(remaining criteria, no sort/limit/offset)
+     groups = _fold_aggregate(rows, spec)
+     groups = [grep { _match_criteria($_, having) } @groups] if having
+     _normalise_aggregate(groups, spec.measures)
+     _sort_and_page(groups, spec)
+   sqlite/auto backend:
+     _sqlite_aggregate(remaining criteria, spec)
+5. return groups
+```
+
+#### Messages
+
+`error_aggregate_measures_required`, `error_aggregate_measure_ref`,
+`error_aggregate_fn_unknown`, `error_aggregate_col_required`,
+`error_aggregate_col_unknown`, `error_aggregate_as_required`,
+`error_aggregate_as_invalid`, `error_aggregate_as_duplicate`,
+`error_aggregate_as_collision`, `error_aggregate_by_invalid`,
+`error_aggregate_having_key`, `error_aggregate_having_operator`,
+`warn_aggregate_sort_key`, `warn_aggregate_non_numeric`.
 
 ### Each\_Row
 
