@@ -3110,7 +3110,7 @@ sub _validate_pagination :Protected {
 	#             coercion would silently treat as 0, bypassing the >= 1 guard.
 	if (defined $limit) {
 		if ($limit !~ /^\d+\z/a || $limit < 1) {
-			carp "Database::Join: limit must be a positive integer; ignored";
+			carp('Database::Join: limit must be a positive integer; ignored');
 			undef $limit;
 		}
 	}
@@ -3119,7 +3119,7 @@ sub _validate_pagination :Protected {
 	# Same \z / /a rationale as limit above.
 	if (defined $offset) {
 		if ($offset !~ /^\d+\z/a) {
-			carp "Database::Join: offset must be a non-negative integer; ignored";
+			carp('Database::Join: offset must be a non-negative integer; ignored');
 			undef $offset;
 		}
 	}
