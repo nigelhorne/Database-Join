@@ -49,6 +49,8 @@ t/lib/Database/test2.pm
 t/lib/Database/xljoin_a.pm
 t/lib/Database/xljoin_b.pm
 t/aggregate.t
+t/redis.t
+t/redis_live.t
 t/logic.t
 t/path.t
 t/pod.t
