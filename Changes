@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.009.0  2026-10-12
+0.009.0
 	[ Enhancements ]
 	- aggregate(): group the merged view by one or more published column names and
 	  compute aggregate measures (sum/avg/min/max/count/count_distinct) over each

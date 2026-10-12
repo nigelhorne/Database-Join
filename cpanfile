@@ -27,8 +27,10 @@ on 'test' => sub {
 	requires 'Test::Memory::Cycle';
 	requires 'Test::Mockingbird', '0.13';
 	requires 'Test::Most';
+	requires 'Test::Needs';
 	requires 'Test::NoWarnings';
 	requires 'Test::Returns', '0.04';
+	requires 'Test::Warn';
 	requires 'Test::Without::Module';
 	requires 'Text::xSV::Slurp';
 };

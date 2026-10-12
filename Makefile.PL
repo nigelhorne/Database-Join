@@ -43,8 +43,10 @@ WriteMakefile(
 		'Test::Memory::Cycle'   => 0,
 		'Test::Mockingbird'     => 0.13,
 		'Test::Most'            => 0,
+		'Test::Needs'           => 0,
 		'Test::NoWarnings'      => 0,
 		'Test::Returns'         => '0.04',
+		'Test::Warn'            => 0,
 		'Test::Without::Module' => 0,
 		'Text::xSV::Slurp'      => 0,
 	}, META_MERGE => {

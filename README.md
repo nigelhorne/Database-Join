@@ -112,6 +112,28 @@ my $name = $join->name(entry => 'C001');
 my @tiers = $join->tier();
 ```
 
+**aggregate(): GROUP BY across the merged view**
+
+```perl
+# Count and total score per tier, highest total first
+my $rows = $join->aggregate(
+    by       => ['tier'],
+    measures => [
+        { col => 'score', fn => 'sum',   as => 'total' },
+        {                 fn => 'count', as => 'n'     },
+    ],
+    sort_by  => ['total', 'DESC'],
+    having   => { total => { '>' => 100 } },
+);
+# => [ { tier => 'gold', total => 183, n => 2 }, ... ]
+
+# Grand total across the whole view (no 'by' key)
+my $summary = $join->aggregate(
+    measures => [{ fn => 'count', as => 'n' }],
+);
+# => [ { n => 42 } ]
+```
+
 **SQLite join backend for large datasets**
 
 ```perl
@@ -440,6 +462,62 @@ preserve both values under distinct names instead.
     **Fix:** Model the joined table as a separate `Database::Abstraction` object and
     add it to the `databases => []` list.  Use `join_column` or `join_map` to
     specify the shared key.
+
+- aggregate(): omitting `by` gives a grand total, not an error
+
+    Calling `aggregate()` without a `by` key (or with `by => []`) does
+    _not_ croak.  It returns a single-element arrayref containing one row with
+    all the computed measure aliases.  This is a grand total over the entire view
+    (possibly filtered by any extra criteria you pass).
+
+    ```perl
+    my $total = $join->aggregate(measures => [{ fn => 'count', as => 'n' }]);
+    # $total->[0]{n} is the total row count
+    ```
+
+    If you expected multiple rows and got one, you probably forgot the `by` key.
+
+- aggregate(): non-numeric values behave differently across backends
+
+    On the array backend (`backend => 'array'`), any non-numeric value in a
+    column targeted by `sum` or `avg` is _skipped_ (not counted, not coerced),
+    and a `carp` warning `warn_aggregate_non_numeric` is emitted.  On the SQLite
+    backend, non-numeric values are silently coerced to `0.0` via SQL `CAST`.
+    The two backends therefore produce different numeric totals when the data
+    contains non-numeric values.  Clean your data first if you need consistent
+    results across backends, or choose a backend explicitly.
+
+- aggregate(): `BETWEEN` is not supported in `having`
+
+    The `having` hashref uses the same operator vocabulary as `selectall_arrayref`,
+    which does not include `BETWEEN`.  Write a range as two explicit constraints:
+
+    ```perl
+    # Correct
+    having => { total => { '>=' => 10, '<=' => 50 } }
+
+    # Wrong -- will croak with error_aggregate_having_operator
+    having => { total => { BETWEEN => [10, 50] } }
+    ```
+
+- aggregate(): `count` without `col` counts all rows, not distinct non-NULL values
+
+    A measure with `fn => 'count'` and no `col` key emits `COUNT(*)` on the
+    SQLite backend (or counts every row in Perl).  This counts rows that have
+    `undef`/NULL in other columns too.  To count only rows where a specific
+    column is non-NULL, or to count distinct values, use `count_distinct`:
+
+    ```perl
+    # Count rows with a non-NULL 'score' (one way -- use a pre-filter)
+    measures => [{ col => 'score', fn => 'count_distinct', as => 'distinct_scores' }]
+    ```
+
+- aggregate(): the result is never cached
+
+    Unlike `selectall_arrayref` (which benefits from the SQLite file cache on
+    repeated identical calls), `aggregate()` always re-executes.  If your
+    aggregation is expensive and the data changes infrequently, cache the result
+    yourself using `updated()` as a staleness signal.
 
 ## Methods
 
@@ -2199,36 +2277,77 @@ else:
 
 ## Encoding
 
-All text that passes through `Database::Join` at the Perl layer (column names,
-criteria values, merged row values) is treated as opaque strings.
-`Database::Join` does not inspect, encode, or transform string content.
+`Database::Join` is a routing and merge layer written in pure Perl.  It never
+inspects, re-encodes, or transforms the _content_ of strings -- only their
+identity (via `eq` / hash-key equality) and, on the array backend, their
+numeric interpretation (via `looks_like_number`).
 
 - Column names
 
-    Column names are plain ASCII strings as returned by `Database::Abstraction::columns()`.
-    Non-ASCII column names are accepted but not tested; behaviour depends on the
-    underlying DA and database driver.
+    Column names are exactly what each component `Database::Abstraction` object
+    returns from its own `columns()` method.  `Database::Join` compares them with
+    `eq` (byte-level equality) and builds its internal routing index from them.
+    ASCII column names (letters, digits, underscore) are safe everywhere.
+    Non-ASCII column names work as long as every component database returns them
+    in the same byte encoding and your Perl source file is loaded in the same
+    encoding.  Mixed encodings between component databases are not supported.
+
+- Join-key values (the join\_column)
+
+    The join-column value is used as a hash key internally (`$hash{$key}`).
+    Perl uses byte-level equality for hash keys, so any value that round-trips
+    correctly through your component databases works as a join key, including
+    non-ASCII strings, emoji, and other Unicode text, as long as all component
+    databases return the same bytes for the same conceptual key.
+
+    ```perl
+    # A Japanese city name as a join key works fine
+    my $rows = $join->selectall_arrayref(entry => "\x{6771}\x{4EAC}");
+    ```
 
 - Criteria values and row data
 
-    Values are passed verbatim between callers and component DAs.  Full UTF-8 is
-    safe as long as the underlying `Database::Abstraction` objects and their
-    database drivers handle UTF-8 correctly.  `Database::Join` neither encodes
-    nor decodes any value.
+    Criterion values and merged row values are passed verbatim between the caller
+    and the component databases.  `Database::Join` does not examine them.  Full
+    UTF-8 text (including multi-byte characters, accented letters, CJK ideographs,
+    and emoji) round-trips safely provided the underlying component databases handle
+    UTF-8 correctly.
 
-- SQLite backend
+    ```perl
+    # Emoji in a criterion value -- works if the DA supports it
+    my $rows = $join->selectall_arrayref(mood => "\x{1F600}");
+    ```
 
-    When the SQLite path is active, values are inserted into the temporary SQLite
-    database via DBI placeholders (never string interpolation), so binary-safe
-    round-tripping depends on `DBD::SQLite`'s character encoding settings.
-    By default `DBD::SQLite` operates in UTF-8 mode, which is correct for text
-    data.  Binary blobs are not explicitly tested.
+- SQLite backend: UTF-8 round-trip guarantee
+
+    When the SQLite path is active (`backend => 'sqlite'` or `'auto'`),
+    values are inserted into the temporary `DBD::SQLite` database exclusively
+    through DBI prepared-statement placeholders -- never by string interpolation.
+    `DBD::SQLite` operates in UTF-8 mode by default (`sqlite_unicode => 1`
+    in newer releases), so multi-byte UTF-8 text round-trips without corruption.
+    Binary blobs containing null bytes may not round-trip correctly; use the array
+    backend if you need binary-safe joins.
+
+- Sorting on the array backend uses Perl string comparison
+
+    The array backend sorts with Perl's `cmp` (byte-level lexicographic order).
+    This is correct for pure-ASCII data and for consistently-encoded UTF-8 data
+    where byte order matches Unicode code-point order (e.g. sorting within a
+    single script).  For locale-aware sorting (e.g. sorting German umlauts in
+    German alphabetical order) switch to the SQLite backend, which delegates to
+    SQLite's `ORDER BY` (locale support depends on how SQLite was compiled).
+
+- Measure aliases in aggregate()
+
+    The `as` alias for each measure must match `/^\w+\z/a` -- ASCII word
+    characters only (letters, digits, underscore).  Full Unicode identifiers
+    are not supported as aliases.
 
 - i18n messages
 
-    All internal error and warning messages route through the `i18n` object
-    (if one is supplied) via a `translate($key, @args)` call.  The translation
-    dictionary controls the final encoding of those strings.
+    All internal error and warning messages route through the optional `i18n`
+    object via a `translate($key, @args)` call.  The translation dictionary
+    controls the final encoding and character set of those user-visible strings.
 
 ## Messages
 
@@ -2791,6 +2910,75 @@ filters       : ℕ ⇸ CRITERIA         -- after Init
 -- bc_slice acts as an inner-join partner (same as filters).
 ```
 
+### Aggregate
+
+```
+─── AggregateSpec ─────────────────────────────────────────────────
+MEASURE ::= { fn : AGGFN; col : NAME?; as : ALIAS }
+AGGFN   ::= sum | avg | min | max | count | count_distinct
+ALIAS   ::= \w+
+SPEC    ::= { by : seq NAME; measures : seq MEASURE;
+              having : CRITERIA?;
+              sort_by : NAME × {ASC,DESC}?; limit : ℕ?; offset : ℕ? }
+─────────────────────────────────────────────────────────────────
+-- Pre-conditions (checked by _validate_aggregate_spec):
+∀ m : measures •
+    m.fn ∈ {sum, avg, min, max, count, count_distinct}
+    ∧ (m.fn ≠ count ∨ m.fn = count_distinct ⟹ m.col ≠ ∅)
+    ∧ m.as matches /^\w+\z/
+∀ name : by • name ∈ dom col_db
+∀ m : measures • m.col ≠ ∅ ⟹ m.col ∈ dom col_db
+# aliases are unique and do not collide with 'by' names:
+∀ i,j : 0 ‥ #measures-1 • i ≠ j ⟹ measures(i).as ≠ measures(j).as
+∀ m : measures; b : by • m.as ≠ b
+
+─── Aggregate ─────────────────────────────────────────────────────
+ΞDatabase_Join               -- state unchanged (Xi-transition)
+criteria?  : CRITERIA        -- pre-aggregation WHERE
+spec?      : SPEC
+result!    : seq GROUP_ROW
+─────────────────────────────────────────────────────────────────
+-- GROUP_ROW has exactly the by-columns plus the measure aliases.
+-- Group key: tuple of by-column values from a merged row.
+group_key(row, by) == { b : by • b ↦ row(b) }
+
+-- Fold function on the array backend:
+fold(rows, spec) ==
+    let G = { k : IMAGE(group_key(r, by) | r : rows) • k ↦ {} }
+    for r : rows:
+        G[group_key(r, by)] += r   -- accumulate per measure.fn
+    for g : dom G:
+        G[g] = { b : by • b ↦ g(b) }
+             ∪ { m : measures • m.as ↦ apply(m.fn, m.col, G[g].rows) }
+    result_pre = ran G
+
+-- apply: maps aggregate function to its computed value.
+apply(count, ∅, rows)         == #rows
+apply(count_distinct, col, rows) == #{ r : rows • r(col) }
+apply(sum, col, rows)         == Σ { r : rows | is_num(r(col)) • r(col) }
+apply(avg, col, rows)         == sum(col, rows) / #{ r | is_num(r(col)) }
+apply(min, col, rows)         == min { r : rows • r(col) }
+apply(max, col, rows)         == max { r : rows • r(col) }
+
+-- Post-aggregation HAVING filter:
+result_having = [ g : result_pre | matches_having(g, spec.having) ]
+
+-- Grand total (by = []):
+#by = 0 ⟹ #result! = 1
+#by > 0 ∧ #result_having = 0 ⟹ result! = []
+
+-- Final result:
+result! = sort_and_page(result_having, spec)
+
+-- Backend dispatch:
+backend ∈ {sqlite, auto} ⟹ aggregation pushed to SQLite GROUP BY
+backend = array           ⟹ fold() applied in Perl
+
+-- Correctness invariant (both paths return identical rows):
+∀ criteria?, spec? •
+    _sqlite_aggregate(criteria?, spec?) = _fold_aggregate(rows(criteria?), spec?)
+```
+
 ### Selectall\_Arrayref
 
 ```
@@ -2922,9 +3110,11 @@ triggers that cause transitions (arrows), and important side-effects.
 ### FSM 1: Object Lifecycle
 
 Governs the structural state of a `Database::Join` instance.
-Query methods (`selectall_arrayref`, `fetchrow_hashref`, `count`,
-`columns`, `schema`, `updated`) are schema-preserving (Xi-transitions) and
-are not shown because they do not change state.
+Query methods (`selectall_arrayref`, `selectall_array`, `fetchrow_hashref`,
+`count`, `aggregate`, `each_row`, `columns`, `schema`, `updated`) are
+schema-preserving (Xi-transitions) and are not shown because they do not change
+state.  `aggregate()` additionally triggers the SQLite cache lifecycle (FSM 2)
+when the backend is `'sqlite'` or `'auto'`, just like any other query method.
 
 ```perl
 [pre-creation]
