@@ -4829,6 +4829,115 @@ B<Fix:> Check that the directory given by C<tmpdir> (or the system temp
 directory if C<tmpdir> was not set) is writable and has sufficient free space.
 Verify that C<DBD::SQLite> 1.70 or later is installed.
 
+=item C<error_aggregate_measures_required>
+
+B<When:> C<aggregate()> is called without a C<measures> key, or with
+C<measures => []>.
+
+B<Fix:> Pass a non-empty arrayref: C<< measures => [{ fn => 'count', as => 'n' }] >>.
+
+=item C<error_aggregate_measure_ref>
+
+B<When:> One of the elements in the C<measures> arrayref is not a hashref (it
+is a scalar, arrayref, or other non-hash reference).
+
+B<Fix:> Every element of C<measures> must be a plain hashref with at least
+C<fn> and C<as> keys.
+
+=item C<error_aggregate_fn_unknown>
+
+B<When:> The C<fn> value in a measure hashref is not one of: C<sum>, C<avg>,
+C<min>, C<max>, C<count>, C<count_distinct> (case-insensitive).
+
+B<Fix:> Use a supported function name.  C<median>, C<stddev> and window
+functions are not implemented.
+
+=item C<error_aggregate_col_required>
+
+B<When:> The C<col> field is missing from a measure whose C<fn> requires a
+column (any function except plain C<count>).
+
+B<Fix:> Add C<< col => 'column_name' >> to the measure hashref.  C<count>
+without C<col> emits C<COUNT(*)>; all other functions require a column.
+
+=item C<error_aggregate_col_unknown>
+
+B<When:> The C<col> in a measure, or a name in C<by>, refers to a column that
+is not in the merged view (either never existed or was hidden with
+C<remove_column>).
+
+B<Fix:> Check C<< $join->columns() >> for the correct published name.
+C<collision_prefix>-renamed columns are accessed as C<"prefix.col">.
+
+=item C<error_aggregate_as_required>
+
+B<When:> A measure hashref has no C<as> key, or its value is C<undef> or the
+empty string.
+
+B<Fix:> Every measure must have a non-empty C<as> alias: C<< as => 'total' >>.
+
+=item C<error_aggregate_as_invalid>
+
+B<When:> A measure alias (C<as>) contains characters other than word
+characters (C<\w>: letters, digits, underscore).
+
+B<Fix:> Use a plain word for the alias: C<< as => 'total' >>, not
+C<< as => 'total score' >> or C<< as => 'total-score' >>.
+
+=item C<error_aggregate_as_duplicate>
+
+B<When:> Two or more measures share the same C<as> alias.
+
+B<Fix:> Choose a unique alias for each measure.
+
+=item C<error_aggregate_as_collision>
+
+B<When:> A measure's C<as> alias is the same as one of the C<by> column names.
+
+B<Fix:> Choose an alias that does not match any grouping dimension.
+
+=item C<error_aggregate_by_invalid>
+
+B<When:> The C<by> parameter is present but is not an arrayref.
+
+B<Fix:> Pass an arrayref (possibly empty for a grand total):
+C<< by => ['region'] >> or C<< by => [] >>.
+
+=item C<error_aggregate_having_key>
+
+B<When:> A key in the C<having> hashref is not one of the C<by> column names,
+a measure alias, C<-or>, or C<-and>.
+
+B<Fix:> Only filter on names that appear in the aggregate output.
+
+=item C<error_aggregate_having_operator>
+
+B<When:> An operator hashref inside C<having> uses an operator that is not in
+C<%SAFE_SQL_OPS>, C<%SAFE_LIST_OPS>, or C<%SAFE_NOARG_OPS>.
+
+B<Fix:> Use a supported operator.  C<BETWEEN> is not supported; write it as
+two constraints: C<< { '>=' => $lo, '<=' => $hi } >>.
+
+=item C<warn_aggregate_sort_key> (carp)
+
+B<When:> The column or alias named by C<sort_by> in C<aggregate()> is not one
+of the C<by> columns or measure aliases.
+
+B<Fix:> Use a column name from C<by> or a measure alias from C<measures>.
+The sort falls back to the default group ordering (C<by> columns ascending).
+
+=item C<warn_aggregate_non_numeric> (carp)
+
+B<When:> The array backend encounters one or more non-numeric values in a
+column that is the target of a C<sum> or C<avg> measure.  The SQLite backend
+coerces non-numeric values to C<0.0> via C<CAST> and emits no warning.
+
+B<Fix:> Clean the data before joining, or switch to the SQLite backend if
+coercion to zero is acceptable.
+
+    # Example: the warning names the column, the count, and the first bad value
+    # "aggregate: column "score" has 2 non-numeric value(s), skipped, e.g. "n/a""
+
 =back
 
 =head1 REPOSITORY

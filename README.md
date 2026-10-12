@@ -2325,6 +2325,117 @@ can be localised by supplying an `i18n` object to `new`.
     directory if `tmpdir` was not set) is writable and has sufficient free space.
     Verify that `DBD::SQLite` 1.70 or later is installed.
 
+- `error_aggregate_measures_required`
+
+    **When:** `aggregate()` is called without a `measures` key, or with
+    `measures =` \[\]>.
+
+    **Fix:** Pass a non-empty arrayref: `measures => [{ fn => 'count', as => 'n' }]`.
+
+- `error_aggregate_measure_ref`
+
+    **When:** One of the elements in the `measures` arrayref is not a hashref (it
+    is a scalar, arrayref, or other non-hash reference).
+
+    **Fix:** Every element of `measures` must be a plain hashref with at least
+    `fn` and `as` keys.
+
+- `error_aggregate_fn_unknown`
+
+    **When:** The `fn` value in a measure hashref is not one of: `sum`, `avg`,
+    `min`, `max`, `count`, `count_distinct` (case-insensitive).
+
+    **Fix:** Use a supported function name.  `median`, `stddev` and window
+    functions are not implemented.
+
+- `error_aggregate_col_required`
+
+    **When:** The `col` field is missing from a measure whose `fn` requires a
+    column (any function except plain `count`).
+
+    **Fix:** Add `col => 'column_name'` to the measure hashref.  `count`
+    without `col` emits `COUNT(*)`; all other functions require a column.
+
+- `error_aggregate_col_unknown`
+
+    **When:** The `col` in a measure, or a name in `by`, refers to a column that
+    is not in the merged view (either never existed or was hidden with
+    `remove_column`).
+
+    **Fix:** Check `$join->columns()` for the correct published name.
+    `collision_prefix`-renamed columns are accessed as `"prefix.col"`.
+
+- `error_aggregate_as_required`
+
+    **When:** A measure hashref has no `as` key, or its value is `undef` or the
+    empty string.
+
+    **Fix:** Every measure must have a non-empty `as` alias: `as => 'total'`.
+
+- `error_aggregate_as_invalid`
+
+    **When:** A measure alias (`as`) contains characters other than word
+    characters (`\w`: letters, digits, underscore).
+
+    **Fix:** Use a plain word for the alias: `as => 'total'`, not
+    `as => 'total score'` or `as => 'total-score'`.
+
+- `error_aggregate_as_duplicate`
+
+    **When:** Two or more measures share the same `as` alias.
+
+    **Fix:** Choose a unique alias for each measure.
+
+- `error_aggregate_as_collision`
+
+    **When:** A measure's `as` alias is the same as one of the `by` column names.
+
+    **Fix:** Choose an alias that does not match any grouping dimension.
+
+- `error_aggregate_by_invalid`
+
+    **When:** The `by` parameter is present but is not an arrayref.
+
+    **Fix:** Pass an arrayref (possibly empty for a grand total):
+    `by => ['region']` or `by => []`.
+
+- `error_aggregate_having_key`
+
+    **When:** A key in the `having` hashref is not one of the `by` column names,
+    a measure alias, `-or`, or `-and`.
+
+    **Fix:** Only filter on names that appear in the aggregate output.
+
+- `error_aggregate_having_operator`
+
+    **When:** An operator hashref inside `having` uses an operator that is not in
+    `%SAFE_SQL_OPS`, `%SAFE_LIST_OPS`, or `%SAFE_NOARG_OPS`.
+
+    **Fix:** Use a supported operator.  `BETWEEN` is not supported; write it as
+    two constraints: `{ '>=' => $lo, '<=' => $hi }`.
+
+- `warn_aggregate_sort_key` (carp)
+
+    **When:** The column or alias named by `sort_by` in `aggregate()` is not one
+    of the `by` columns or measure aliases.
+
+    **Fix:** Use a column name from `by` or a measure alias from `measures`.
+    The sort falls back to the default group ordering (`by` columns ascending).
+
+- `warn_aggregate_non_numeric` (carp)
+
+    **When:** The array backend encounters one or more non-numeric values in a
+    column that is the target of a `sum` or `avg` measure.  The SQLite backend
+    coerces non-numeric values to `0.0` via `CAST` and emits no warning.
+
+    **Fix:** Clean the data before joining, or switch to the SQLite backend if
+    coercion to zero is acceptable.
+
+    ```
+    # Example: the warning names the column, the count, and the first bad value
+    # "aggregate: column "score" has 2 non-numeric value(s), skipped, e.g. "n/a""
+    ```
+
 ## Repository
 
 [https://github.com/nigelhorne/Database-Join](https://github.com/nigelhorne/Database-Join)
