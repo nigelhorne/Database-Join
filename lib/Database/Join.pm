@@ -42,7 +42,23 @@ Readonly::Hash my %SAFE_NOARG_OPS => map { $_ => 1 } ('IS NULL', 'IS NOT NULL');
 # Valid aggregate functions for aggregate().  Lower-cased at validation time.
 Readonly::Hash my %AGGREGATE_FNS => map { $_ => 1 } qw(sum avg min max count count_distinct);
 
-our $VERSION = '0.009.0';
+# Valid operator names for the mandatory_filters {col, op, val} predicate format.
+Readonly::Hash my %MANDATORY_FILTER_OPS => map { $_ => 1 }
+	qw(eq ne lt lte gt gte like contains);
+
+# SQL operator string for each mandatory_filter op (used in _sqlite_criteria).
+Readonly::Hash my %MANDATORY_OP_SQL => (
+	eq       => '=',
+	ne       => '!=',
+	lt       => '<',
+	lte      => '<=',
+	gt       => '>',
+	gte      => '>=',
+	like     => 'LIKE',
+	contains => 'LIKE',
+);
+
+our $VERSION = '0.010.0';
 
 # Package-level cache for threads availability.  undef = not yet checked;
 # 1 = available; 0 = not available.  Checked lazily on the first parallel
@@ -83,6 +99,9 @@ Readonly::Hash my %MESSAGES => (
 	error_aggregate_having_operator   => 'aggregate: operator "%s" in having for key "%s" is not supported',
 	warn_aggregate_sort_key           => 'aggregate: sort_by names "%s", which is not a group-by column or measure alias',
 	warn_aggregate_non_numeric        => 'aggregate: column "%s" has %d non-numeric value(s), skipped, e.g. "%s"',
+	error_mandatory_filter_ref        => 'mandatory_filters[%d] must be a hashref with col, op, and val keys',
+	error_mandatory_filter_col        => 'mandatory_filters[%d]: column "%s" is not in the merged view',
+	error_mandatory_filter_op         => 'mandatory_filters[%d]: op "%s" is not supported; use eq, ne, lt, lte, gt, gte, like, or contains',
 );
 
 =head1 NAME
@@ -91,7 +110,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 =head1 VERSION
 
-Version 0.009.0
+Version 0.010.0
 
 =head1 SYNOPSIS
 
@@ -846,6 +865,7 @@ sub new {
 			max_array_rows    => { type => 'integer',  optional => 1, default => 10_000 },
 			tmpdir            => { type => 'string',   optional => 1 },
 			parallel          => { type => 'integer',  optional => 1, default => 0 },
+			mandatory_filters => { type => 'arrayref', optional => 1 },
 			logger		=> { type => 'object',   optional => 1 },
 			i18n		=> { type => 'object',   optional => 1 },
 		},
@@ -906,10 +926,34 @@ sub new {
 		_max_array_rows   => $p->{max_array_rows},
 		_tmpdir           => $p->{tmpdir} // File::Spec->tmpdir,
 		_parallel         => $p->{parallel} // 0,
+		_mandatory_filters => [],   # validated and replaced below after _build_col_index
 	}, $class;
 
 	$self->_build_col_index();
 	$self->_validate_schema_types();
+
+	# mandatory_filters: validate and store each {col, op, val} predicate.
+	# These predicates are immutable row-level security guards that are applied
+	# on every query regardless of what the caller passes at query time.
+	# Security: deep-copied so post-construction mutation of the caller's arrayref
+	# cannot widen or remove the mandatory constraints.
+	if (my $mf = $p->{mandatory_filters}) {
+		my @validated;
+		for my $j (0 .. $#{$mf}) {
+			my $pred = $mf->[$j];
+			croak $self->_err('error_mandatory_filter_ref', $j)
+				unless ref($pred) eq 'HASH'
+				    && exists $pred->{col}
+				    && exists $pred->{op}
+				    && exists $pred->{val};
+			croak $self->_err('error_mandatory_filter_col', $j, $pred->{col})
+				unless exists $self->{_col_db}{ $pred->{col} };
+			croak $self->_err('error_mandatory_filter_op', $j, $pred->{op})
+				unless $MANDATORY_FILTER_OPS{ $pred->{op} };
+			push @validated, { %{$pred} };   # shallow copy
+		}
+		$self->{_mandatory_filters} = \@validated;
+	}
 
 	# base_criteria: partition by column ownership into _filters.
 	# Security: _copy_criteria() deep-copies before partitioning so
@@ -1545,10 +1589,14 @@ A single plain scalar argument is interpreted as the C<join_column> value
 sub selectall_arrayref {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
-	my $sort_by = delete $params->{sort_by};
+	my $sort_by  = delete $params->{sort_by};
 	my $limit    = delete $params->{limit};
 	my $offset   = delete $params->{offset};
-	return $self->_joined_query($params, sort_by => $sort_by, limit => $limit, offset => $offset);
+	my $distinct = delete $params->{distinct};
+	my $columns  = delete $params->{columns};
+	return $self->_joined_query($params,
+		sort_by  => $sort_by, limit => $limit, offset => $offset,
+		distinct => $distinct, columns => $columns);
 }
 
 =head2 selectall_array
@@ -1598,10 +1646,14 @@ Same messages as C<selectall_arrayref>.
 sub selectall_array {
 	my ($self, @args) = @_;
 	my $params   = $self->_parse_query_args(undef, @args);
-	my $sort_by = delete $params->{sort_by};
+	my $sort_by  = delete $params->{sort_by};
 	my $limit    = delete $params->{limit};
 	my $offset   = delete $params->{offset};
-	my $rows     = $self->_joined_query($params, sort_by => $sort_by, limit => $limit, offset => $offset);
+	my $distinct = delete $params->{distinct};
+	my $columns  = delete $params->{columns};
+	my $rows     = $self->_joined_query($params,
+		sort_by  => $sort_by, limit => $limit, offset => $offset,
+		distinct => $distinct, columns => $columns);
 	return wantarray ? @{$rows} : $rows->[0];
 }
 
@@ -3128,9 +3180,11 @@ sub _validate_pagination :Protected {
 
 sub _joined_query_array :Protected {
 	my ($self, $params, %opts) = @_;
-	my $sort_by = $opts{sort_by};
+	my $sort_by  = $opts{sort_by};
 	my $limit    = $opts{limit};
 	my $offset   = $opts{offset};
+	my $distinct = $opts{distinct};
+	my $columns  = $opts{columns};
 
 	# Fast path: skip Sub::Protected dispatch entirely when no pagination params are
 	# supplied (the common case).  Saves one method-lookup overhead per query.
@@ -3397,6 +3451,20 @@ sub _joined_query_array :Protected {
 		}
 	}
 
+	# Apply mandatory_filters (row-level security predicates).
+	# These are construction-time guards applied on every query after the merge,
+	# before sort and pagination, so they cannot be bypassed by caller criteria.
+	if (@{ $self->{_mandatory_filters} }) {
+		@result = grep { _pass_mandatory_filters($_, $self->{_mandatory_filters}) } @result;
+	}
+
+	# distinct: deduplicate merged rows.
+	# With columns: project to those columns and deduplicate on their values.
+	# Without columns: deduplicate on all column values (return distinct full rows).
+	if ($distinct) {
+		@result = @{ _apply_distinct_array(\@result, $columns) };
+	}
+
 	# Caller-specified ORDER BY.
 	# $ob_col / $ob_dir / $ob_override were parsed BEFORE the merge loop.
 	# Three cases:
@@ -3642,10 +3710,12 @@ sub _build_sqlite_cache :Protected {
 sub _sqlite_join :Protected {
 	my ($self, $params, %opts) = @_;
 	my $count_only   = $opts{count_only} // 0;
-	my $sort_by     = $opts{sort_by};
+	my $sort_by      = $opts{sort_by};
 	my $limit        = $opts{limit};
 	my $offset       = $opts{offset};
 	my $create_table = $opts{create_table};  # when set, materialize into a real table
+	my $distinct     = $opts{distinct};
+	my $columns      = $opts{columns};
 
 	# Transitive reduction: _validate_pagination is the single validation site.
 	# count() and dbi_source() never supply limit/offset (both methods delete them
@@ -3750,6 +3820,7 @@ sub _sqlite_join :Protected {
 	# "$prefix.$col"; removed columns are omitted.
 	my %pub_seen;
 	my @selects;
+	my @select_pubs;  # parallel to @selects: published column name for each expression
 
 	# Join-column expression: for outer joins, use COALESCE across all sources
 	# so that B-only (primary-absent) rows carry their join key rather than NULL.
@@ -3767,6 +3838,7 @@ sub _sqlite_join :Protected {
 			$jc_expr .= ' AS ' . _sql_quote_identifier($join_col) if $local_jc_0 ne $join_col;
 		}
 		push @selects, $jc_expr;
+		push @select_pubs, $join_col;
 		$pub_seen{$join_col} = 1;
 	}
 
@@ -3776,6 +3848,7 @@ sub _sqlite_join :Protected {
 		next if $self->{_removed_cols}{$col};
 		$pub_seen{$col} = 1;
 		push @selects, $table_refs[0] . '.' . _sql_quote_identifier($col);
+		push @select_pubs, $col;
 	}
 
 	# Non-join columns from secondary tables, with collision_prefix renaming.
@@ -3792,7 +3865,21 @@ sub _sqlite_join :Protected {
 			my $expr = $table_refs[$i] . '.' . _sql_quote_identifier($col);
 			$expr   .= ' AS ' . _sql_quote_identifier($pub) if $pub ne $col;
 			push @selects, $expr;
+			push @select_pubs, $pub;
 		}
+	}
+
+	# distinct + column projection: filter SELECT list to requested columns only.
+	# When both distinct and columns are specified, project to those columns and
+	# apply DISTINCT so the SQL engine deduplicates before returning rows.
+	# Without columns, DISTINCT applies to all selected columns.
+	if ($distinct && $columns && @{$columns}) {
+		my %want = map { $_ => 1 } @{$columns};
+		my @filtered;
+		for my $j (0 .. $#selects) {
+			push @filtered, $selects[$j] if $want{ $select_pubs[$j] };
+		}
+		@selects = @filtered;
 	}
 
 	# dbi_source() materialisation path: CREATE TABLE name AS SELECT ...
@@ -3837,7 +3924,8 @@ sub _sqlite_join :Protected {
 	          ? _sql_quote_identifier($join_col)
 	          : $table_refs[0] . '.' . _sql_quote_identifier($local_jc_0))
 	    : _sql_quote_identifier($ob_col);
-	my $sql = 'SELECT '
+	my $select_kw = $distinct ? 'SELECT DISTINCT' : 'SELECT';
+	my $sql = $select_kw . ' '
 	        . join(', ', @selects)
 	        . ' FROM ' . $from . $join_sql
 	        . $where_sql
@@ -3877,6 +3965,22 @@ sub _sqlite_criteria :Protected {
 	my $n        = scalar @{ $self->{_dbs} };
 
 	my $per_db_query = $self->_partition_criteria($params);
+
+	# Inject mandatory_filters into per_db_query BEFORE building per_db_full.
+	# Injecting here ensures they are present in:
+	#   - per_db_query (used by _sqlite_where for non-attached/spilled sources)
+	#   - per_db_full  (built below by merging base_filter + per_db_query, so
+	#                   mandatory criteria flow through automatically for attached sources)
+	# Mandatory wins over any caller-supplied value for the same column: the
+	# assignment overwrites any prior value in that slot.
+	if (my $mf = $self->{_mandatory_filters}) {
+		for my $pred (@{$mf}) {
+			my ($col, $op, $val) = @{$pred}{qw(col op val)};
+			my $db_idx = $self->{_col_db}{$col} // next;
+			my $orig   = $self->{_col_unrename}[$db_idx]{$col} // $col;
+			$per_db_query->[$db_idx]{$orig} = _mandatory_op_to_crit($op, $val);
+		}
+	}
 
 	my @per_db_full;
 	for my $i (0 .. $n - 1) {
@@ -4686,6 +4790,86 @@ sub _sqlite_aggregate :Protected {
 	}
 
 	return $rows;
+}
+
+# _mandatory_op_to_crit( $op, $val ) -> $criterion_value
+# Purpose: Convert a mandatory_filter {col, op, val} operator name to the
+#          internal criteria format used by _sqlite_where.
+# Entry:   $op is one of: eq ne lt lte gt gte like contains.
+#          $val is the comparison value.
+# Exit:    Returns a plain scalar (for eq) or an operator hashref.
+sub _mandatory_op_to_crit {
+	my ($op, $val) = @_;
+	return $val                  if $op eq 'eq';
+	return { '!='  => $val }     if $op eq 'ne';
+	return { '<'   => $val }     if $op eq 'lt';
+	return { '<='  => $val }     if $op eq 'lte';
+	return { '>'   => $val }     if $op eq 'gt';
+	return { '>='  => $val }     if $op eq 'gte';
+	return { LIKE  => $val }     if $op eq 'like';
+	return { LIKE  => "%$val%" } if $op eq 'contains';
+	return $val;  # unreachable: validated at construction
+}
+
+# _pass_mandatory_filters( \%row, \@filters ) -> bool
+# Purpose: Test a single merged row against all mandatory_filter predicates.
+# Entry:   $row is a merged row hashref; $filters is the _mandatory_filters arrayref.
+# Exit:    Returns 1 if ALL predicates pass, 0 if any fails.
+# Perl-side evaluation mirrors the SQL semantics produced by _mandatory_op_to_crit.
+sub _pass_mandatory_filters {
+	my ($row, $filters) = @_;
+	for my $pred (@{$filters}) {
+		my ($col, $op, $val) = @{$pred}{qw(col op val)};
+		my $rv = $row->{$col};
+		return 0 unless defined $rv;
+		if    ($op eq 'eq')       { return 0 unless $rv eq $val }
+		elsif ($op eq 'ne')       { return 0 unless $rv ne $val }
+		elsif ($op eq 'lt')       { return 0 unless $rv lt $val }
+		elsif ($op eq 'lte')      { return 0 unless $rv le $val }
+		elsif ($op eq 'gt')       { return 0 unless $rv gt $val }
+		elsif ($op eq 'gte')      { return 0 unless $rv ge $val }
+		elsif ($op eq 'contains') { return 0 unless index($rv, $val) >= 0 }
+		elsif ($op eq 'like') {
+			# Convert LIKE pattern (%=any, _=one char) to a Perl regex.
+			my $re = join('', map {
+				$_ eq '%' ? '.*'
+				: $_ eq '_' ? '.'
+				: quotemeta($_)
+			} split //, $val);
+			return 0 unless $rv =~ /\A$re\z/s;
+		}
+	}
+	return 1;
+}
+
+# _apply_distinct_array( \@rows, \@columns ) -> \@deduped_rows
+# Purpose: Deduplicate an array of merged row hashrefs.
+# Entry:   $rows is the full merged result arrayref (already sorted when called
+#          from _joined_query_array — distinct is applied before sort, but
+#          that is fine since dedup preserves relative order).
+#          $columns: when provided, project each row to only those columns and
+#          deduplicate on their combined value; when absent, deduplicate on all
+#          columns (full-row equality).
+# Exit:    Returns a new arrayref; first occurrence of each distinct key wins.
+sub _apply_distinct_array {
+	my ($rows, $columns) = @_;
+	my %seen;
+	my @result;
+	if ($columns && @{$columns}) {
+		my @cols = @{$columns};
+		for my $row (@{$rows}) {
+			my $key = join("\0", map { $row->{$_} // '' } @cols);
+			next if $seen{$key}++;
+			push @result, { map { $_ => $row->{$_} } @cols };
+		}
+	} else {
+		for my $row (@{$rows}) {
+			my $key = join("\0", map { ($row->{$_} // '') } sort keys %{$row});
+			next if $seen{$key}++;
+			push @result, $row;
+		}
+	}
+	return \@result;
 }
 
 # _merge_criteria( \%base, \%extra ) -> \%merged

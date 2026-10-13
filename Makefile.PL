@@ -20,8 +20,8 @@ WriteMakefile(
 	MIN_PERL_VERSION => '5.010001',
 	PREREQ_PM      => {
 		'autodie'                  => 0,
-		'Carp'                     => 0,
-		'Database::Abstraction'  => 0.49,
+		'Carp'                => 0,
+		'Database::Abstraction'  => 0.51,
 		'DBD::SQLite'              => '1.70',
 		'DBI'                      => 0,
 		'File::Spec'               => 0,
