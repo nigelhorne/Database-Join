@@ -312,4 +312,4 @@ subtest 'add_database: XLSX-backed DA added at runtime joins correctly' => sub {
 	ok $col_h{price}, '"price" available after add_database';
 };
 
-done_testing;
+done_testing();

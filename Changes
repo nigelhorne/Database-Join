@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.010.0
+0.010.0	Tue Oct 13 08:47:55 PM EDT 2026
 	[ Enhancements ]
 	- distinct => 1: selectall_arrayref (and selectall_array) now accept
 	  distinct => 1 to return deduplicated rows.  With columns => \@cols the
