@@ -54,8 +54,8 @@ WriteMakefile(
 			runtime => {
 				recommends => {
 					'threads'             => 0,
-					'DBD::Excel'          => 0,
-					'Excel::Writer::XLSX' => 0,
+					'DBD::Excel'          => '0.06',
+					'Excel::Writer::XLSX' => '1.09',
 				},
 			},
 		},

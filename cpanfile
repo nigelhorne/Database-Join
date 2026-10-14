@@ -18,8 +18,8 @@ requires 'Readonly', '2.00';
 requires 'Scalar::Util';
 requires 'Sub::Protected';
 requires 'autodie';
-recommends 'DBD::Excel';
-recommends 'Excel::Writer::XLSX';
+recommends 'DBD::Excel', '0.06';
+recommends 'Excel::Writer::XLSX', '1.09';
 recommends 'threads';
 
 on 'test' => sub {
