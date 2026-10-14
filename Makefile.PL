@@ -37,7 +37,6 @@ WriteMakefile(
 		'Sub::Protected'           => 0,
 	}, TEST_REQUIRES => {
 		'DBD::CSV'              => 0,
-		'IPC::System::Simple'   => 0,
 		'Test::DescribeMe'      => 0,
 		'Test::Exception'       => 0,
 		'Test::Memory::Cycle'   => 0,
@@ -51,6 +50,15 @@ WriteMakefile(
 		'Text::xSV::Slurp'      => 0,
 	}, META_MERGE => {
 		'meta-spec' => { version => 2 },
+		prereqs => {
+			runtime => {
+				recommends => {
+					'threads'             => 0,
+					'DBD::Excel'          => 0,
+					'Excel::Writer::XLSX' => 0,
+				},
+			},
+		},
 		resources => {
 			repository => {
 				type => 'git',

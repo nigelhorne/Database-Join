@@ -18,10 +18,12 @@ requires 'Readonly', '2.00';
 requires 'Scalar::Util';
 requires 'Sub::Protected';
 requires 'autodie';
+recommends 'DBD::Excel';
+recommends 'Excel::Writer::XLSX';
+recommends 'threads';
 
 on 'test' => sub {
 	requires 'DBD::CSV';
-	requires 'IPC::System::Simple';
 	requires 'Test::DescribeMe';
 	requires 'Test::Exception';
 	requires 'Test::Memory::Cycle';
