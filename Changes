@@ -1,5 +1,9 @@
 Revision history for Database::Join
 
+0.010.1
+	[ Tests ]
+	- Test user@host is supported as a username
+
 0.010.0	Tue Oct 13 08:47:55 PM EDT 2026
 	[ Enhancements ]
 	- distinct => 1: selectall_arrayref (and selectall_array) now accept

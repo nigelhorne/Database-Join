@@ -55,6 +55,7 @@ t/path.t
 t/pod.t
 t/redis.t
 t/redis_live.t
+t/remote.t
 t/sqlite-backend.t
 t/test1_2.t
 t/transaction.t
