@@ -158,9 +158,9 @@
 
 <tbody>
 
-<tr class="high"><td><a href="blib-lib-Database-Join-pm.html" title="View coverage line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/dcece8cf873afe41bf1689e4870889770db99545/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a><canvas class="sparkline" width="80" height="20" data-points="96.8,96.8,91.7,91.7,91.7,91.7,91.7,91.7,91.7,91.7"></canvas></td><td>97.5</td><td>81.6</td><td>79.5</td><td>100.0</td><td><span class="coverage-badge badge-good" title="Excellent coverage">91.8%</span></td><td class="neutral" title="Previous: 91.7%">&#9679; 0.0%</td></tr>
+<tr class="high"><td><a href="blib-lib-Database-Join-pm.html" title="View coverage line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/cfd5e538e0d454906b756f8f7748b0a01f1f5fe8/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a><canvas class="sparkline" width="80" height="20" data-points="96.8,91.7,91.7,91.7,91.7,91.7,91.7,91.7,91.7,91.8"></canvas></td><td>97.5</td><td>81.6</td><td>80.4</td><td>100.0</td><td><span class="coverage-badge badge-good" title="Excellent coverage">91.9%</span></td><td class="positive" title="Previous: 91.8%">&#9650; 0.1%</td></tr>
 <tr class="summary-row nosort"><td colspan="2"><strong>Summary</strong></td><td colspan="2">1 files</td><td colspan="3">Avg: 91%, Low: 0</td></tr>
-<tr class="high nosort"><td><strong>Total</strong></td><td>97.5</td><td>81.6</td><td>79.5</td><td>100.0</td><td colspan="2"><strong>91.8</strong></td></tr>
+<tr class="high nosort"><td><strong>Total</strong></td><td>97.5</td><td>81.6</td><td>80.4</td><td>100.0</td><td colspan="2"><strong>91.9</strong></td></tr>
 </tbody></table>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1em;">
 	<div>
@@ -216,8 +216,8 @@ const dataPoints = [ { x: "2026-10-12T11:58:40-04:00", y: 96.7542503863988, delt
 { x: "2026-10-25T13:12:31-04:00", y: 91.7396745932415, delta: 0.0, url: "https://github.com/nigelhorne/Database-Join/commit/431f7d72cf92319464ef4ea48264583a226a540e", label: "2026-10-25T13:12:31-04:00", pointBackgroundColor: "gray", comment: "Ensure user@host is supported as a username" },
 { x: "2026-10-25T20:13:05-04:00", y: 91.7396745932415, delta: 0.0, url: "https://github.com/nigelhorne/Database-Join/commit/d76be9a8dcffde98a262d6c25dd5e84e3e0ea9a1", label: "2026-10-25T20:13:05-04:00", pointBackgroundColor: "gray", comment: "Fix layout" },
 { x: "2026-10-27T03:20:52+00:00", y: 91.7396745932415, delta: 0.0, url: "https://github.com/nigelhorne/Database-Join/commit/37c5e53f024fbde5ac875b1e619a0bd4ded6b63b", label: "2026-10-27T03:20:52+00:00", pointBackgroundColor: "gray", comment: "Update mutation results (2026-10-27 cf8278e)" },
-{ x: "2026-10-27T15:25:47-04:00", y: 45.8698372966208, delta: -45.9, url: "https://github.com/nigelhorne/Database-Join/commit/38398075261d243da1988a038e12740f7ece4a21", label: "2026-10-27T15:25:47-04:00", pointBackgroundColor: "red", comment: "mutation.json" },
-{ x: "2026-10-27T19:34:52+00:00", y: 91.7705735660848, delta: 45.9, url: "https://github.com/nigelhorne/Database-Join/commit/dcece8cf873afe41bf1689e4870889770db99545", label: "2026-10-27T19:34:52+00:00", pointBackgroundColor: "green", comment: "Current run" } ];
+{ x: "2026-10-27T15:25:47-04:00", y: 91.7396745932415, delta: 0.0, url: "https://github.com/nigelhorne/Database-Join/commit/38398075261d243da1988a038e12740f7ece4a21", label: "2026-10-27T15:25:47-04:00", pointBackgroundColor: "gray", comment: "mutation.json" },
+{ x: "2026-10-27T21:15:31+00:00", y: 91.8952618453865, delta: 0.2, url: "https://github.com/nigelhorne/Database-Join/commit/cfd5e538e0d454906b756f8f7748b0a01f1f5fe8", label: "2026-10-27T21:15:31+00:00", pointBackgroundColor: "green", comment: "autoload_pk: new constructor parameter" } ];
 const regressionPoints = linearRegression(dataPoints);
 // Try to register the zoom plugin (handles different UMD builds)
 (function registerZoomPlugin(){
@@ -692,13 +692,13 @@ function refresh(){
 <h2>Mutation Report</h2>
 <h3>Mutation Summary</h3>
 <ul>
-<li><b>Score</b>: 100%</li>
-<li><b>Total</b>: 0</li>
+<li><b>Score</b>: 84.29%</li>
+<li><b>Total</b>: 350</li>
 <li><b>Killed</b>: 
-0
+295
 </li>
 <li><b>Survived</b>: 
-0
+55
 </li>
 <li><b>Duplication</b>: no duplicate code blocks detected</li>
 </ul>
@@ -721,6 +721,7 @@ function refresh(){
 </thead>
 <tbody>
 
+<tr class="med"><td><a href="mutation_html/lib/Database/Join.pm.html" title="View mutation line by line" target="_blank">lib/Database/Join.pm</a> <a href="https://github.com/nigelhorne/Database-Join/blob/cfd5e538e0d454906b756f8f7748b0a01f1f5fe8/lib/Database/Join.pm" class="icon-link" title="View source on GitHub">&#128269;</a></td><td>350</td><td>295</td><td>55</td><td>0</td><td><span class="coverage-badge badge-warn" title="Moderate">84.3%</span></td><td><span class="coverage-badge badge-bad" title="Needs improvement">580</span></td><td><span class="coverage-badge badge-good" title="Excellent">97.5%</span> / <span class="coverage-badge badge-warn" title="Moderate">81.6%</span> / <span class="coverage-badge badge-good" title="Excellent">100.0%</span></td><td><span class="coverage-badge badge-good" title="Low duplication">0.0%</span></td></tr>
 </tbody></table>
 
 <h2>Structural Coverage (Approximate)</h2>
@@ -731,11 +732,11 @@ Branch Coverage: 81.61% (142 / 174)<br>
 </div>
 <h2>Executive Summary</h2>
 <div class='summary'>
-Tests execute 97.54% of the code. No mutation data available yet — trigger the mutation workflow for fault detection analysis.
+Tests execute 97.54% of the code but detect only 84.29% of injected faults.
 </div>
 <footer>
 	<p>Project: <a href="https://github.com/nigelhorne/Database-Join">Database-Join</a></p>
-	<p><em>Last updated: 2026-10-27 19:34:33 - <a href="https://github.com/nigelhorne/Database-Join/commit/dcece8cf873afe41bf1689e4870889770db99545">commit <code>dcece8c</code></a></em></p>
+	<p><em>Last updated: 2026-10-27 20:53:49 - <a href="https://github.com/nigelhorne/Database-Join/commit/cfd5e538e0d454906b756f8f7748b0a01f1f5fe8">commit <code>cfd5e53</code></a></em></p>
 	<p style="float: right; font-size: 0.85em; color: #999;">Powered by <a href="https://metacpan.org/dist/App-Test-Generator">App::Test::Generator 0.46</a></p>
 </footer>
 </body>
