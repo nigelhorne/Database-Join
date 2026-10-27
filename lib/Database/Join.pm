@@ -820,6 +820,24 @@ to calling C<remove_column> once per name after construction.
                       # DOMAIN -- EP invalid: any other integer is treated as truthy/falsy.
                       # DOMAIN -- Default:    0.
 
+    autoload_pk     => { type => 'string',   optional => 1 }
+                      # The column name used as the positional-argument key when
+                      # AUTOLOAD performs a full join query (i.e. when join_map or
+                      # filters is active).  Calling $join->col('value') with a bare
+                      # scalar maps that scalar to { autoload_pk => 'value' } before
+                      # routing through the merged view.
+                      #
+                      # Defaults to join_column when omitted.  Override when the
+                      # primary DA's natural lookup key differs from join_column —
+                      # for example, when join_column is 'statecode' but you want to
+                      # look up by city name ('entry').
+                      #
+                      # DOMAIN -- EP valid:   any string that is a visible column in
+                      #                       the merged view (checked at call time by
+                      #                       _partition_criteria; unknown names are
+                      #                       carp'd and dropped).
+                      # DOMAIN -- EP absent:  defaults to join_column.
+
     mandatory_filters => { type => 'arrayref', optional => 1 }
                       # Arrayref of {col, op, val} predicate hashrefs.
                       # These filters are applied to every query result regardless
@@ -943,6 +961,7 @@ sub new {
 			tmpdir            => { type => 'string',   optional => 1 },
 			parallel          => { type => 'integer',  optional => 1, default => 0 },
 			mandatory_filters => { type => 'arrayref', optional => 1 },
+			autoload_pk       => { type => 'string',   optional => 1 },
 			logger		=> { type => 'object',   optional => 1 },
 			i18n		=> { type => 'object',   optional => 1 },
 		},
@@ -968,14 +987,10 @@ sub new {
 			    && $p->{databases}[$i]->can('columns');
 	}
 
-	# Cache the primary database's internal primary-key column name once at
-	# construction.  AUTOLOAD uses this to map a bare positional argument to the
-	# correct column when join_map is active and the primary DB's primary key
-	# differs from join_column (e.g. join_col='statecode' but primary key='entry').
-	# Accessing {id} here — at construction time, before the object is shared —
-	# is the single permitted point of coupling to DA's internal field; caching
-	# avoids repeating the hash intrusion on every AUTOLOAD call.
-	my $primary_pk = $p->{databases}[0]{id} // $p->{join_column};
+	# The positional-argument key AUTOLOAD uses when join_map or filters forces a
+	# full join query.  Callers set this explicitly via the autoload_pk constructor
+	# param; the default is join_column.
+	my $primary_pk = $p->{autoload_pk} // $p->{join_column};
 
 	my $self = bless {
 		_dbs          => $p->{databases},
@@ -998,7 +1013,7 @@ sub new {
 		_schema_cache     => undef,	# memoised schema() result
 		_col_rename       => [],	# per-db: { orig_col => published_col } for collisions
 		_col_unrename     => [],	# per-db: { published_col => orig_col } reverse map
-		_autoload_pk      => $primary_pk,	# primary DB's key col; positional arg for AUTOLOAD
+		_autoload_pk      => $primary_pk,	# positional arg key for AUTOLOAD full-join path
 		_backend          => $p->{backend},
 		_max_array_rows   => $p->{max_array_rows},
 		_tmpdir           => $p->{tmpdir} // File::Spec->tmpdir,
@@ -3123,9 +3138,7 @@ sub AUTOLOAD {
 	# delegation to the owning database would bypass the join key translation
 	# (join_map) and skip any permanent per-database row filters (filters).
 	if (%{ $self->{_join_map} } || %{ $self->{_filters} }) {
-		# _autoload_pk was captured once at construction from the primary DA's
-		# {id} field; using the cached value avoids re-introspecting the blessed
-		# hash on every call and isolates the coupling to a single known site.
+		# _autoload_pk is the autoload_pk constructor param (defaults to join_column).
 		my $params   = $self->_parse_query_args($self->{_autoload_pk}, @_);
 		my $sort_by = delete $params->{sort_by};
 		my $limit    = delete $params->{limit};
@@ -6071,7 +6084,7 @@ when the backend is C<'sqlite'> or C<'auto'>, just like any other query method.
          |
          | new( databases => [...], join_column => '...' )
          |   Side-effect: _col_db routing table built;
-         |                _autoload_pk cached from dbs[0]{id}
+         |                _autoload_pk set from autoload_pk param (default: join_column)
          v
     [CONSTRUCTED] <-----------------------------------------+
          |    |                                              |
