@@ -78,6 +78,7 @@ Readonly::Hash my %MESSAGES => (
 	warn_unknown_column	=> 'Column "%s" is not present in any configured database; criterion ignored',
 	error_join_criterion	=> 'join => criteria are not supported on Database::Join (SQL JOINs target a single DA; use multiple DAs in the databases => [] constructor instead)',
 	error_query_unsupported	=> 'query() chained builder is not supported on Database::Join (Database::Abstraction::Query targets a single DA, not the merged view); use selectall_arrayref, selectall_array, fetchrow_hashref, count, or each_row instead',
+	error_group_by_unsupported => 'group_by() fluent chain is not supported on Database::Join (Database::Abstraction::Query targets a single DA, not the merged view); use aggregate() instead',
 	error_execute_unsupported => 'execute() raw SQL is not supported on Database::Join',
 	error_unknown_message	=> 'Unknown message key "%s"',
 	error_invalid_prefix	=> 'collision_prefix[%d] must be a plain string, not a reference; passing a reference would leak a heap address into column names',
@@ -2979,6 +2980,22 @@ sub query {
 	croak $self->_err('error_query_unsupported');
 }
 
+=head2 group_by
+
+Not supported.  C<Database::Join> does not implement the
+C<Database::Abstraction::Query> fluent chain entry point because the chain's
+C<.all()> / C<.first()> methods would target a single component DA rather
+than the merged view.  Calling this method will always C<croak>.
+
+Use C<aggregate()> against the C<Database::Join> object instead.
+
+=cut
+
+sub group_by {
+	my $self = $_[0];
+	croak $self->_err('error_group_by_unsupported');
+}
+
 =head2 execute
 
 Not supported.  Raw SQL cannot span heterogeneous backends that may use
@@ -5350,6 +5367,13 @@ B<When:> C<query()> is called on a C<Database::Join> object.
 
 B<Fix:> Use C<selectall_arrayref>, C<selectall_array>, C<fetchrow_hashref>,
 or C<count> instead.
+
+=item C<error_group_by_unsupported>
+
+B<When:> C<group_by()> is called on a C<Database::Join> object.
+
+B<Fix:> Use C<aggregate()> instead.  The fluent C<Database::Abstraction::Query>
+chain targets a single component DA, not the merged view.
 
 =item C<error_execute_unsupported>
 

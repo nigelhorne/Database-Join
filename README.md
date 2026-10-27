@@ -2430,6 +2430,15 @@ rather than the merged view.  Calling this method will always `croak`.
 Use `selectall_arrayref`, `selectall_array`, `fetchrow_hashref`,
 `count`, or `each_row` against the `Database::Join` object instead.
 
+### Group\_by
+
+Not supported.  `Database::Join` does not implement the
+`Database::Abstraction::Query` fluent chain entry point because the chain's
+`.all()` / `.first()` methods would target a single component DA rather
+than the merged view.  Calling this method will always `croak`.
+
+Use `aggregate()` against the `Database::Join` object instead.
+
 ### Execute
 
 Not supported.  Raw SQL cannot span heterogeneous backends that may use
@@ -2664,6 +2673,13 @@ can be localised by supplying an `i18n` object to `new`.
 
     **Fix:** Use `selectall_arrayref`, `selectall_array`, `fetchrow_hashref`,
     or `count` instead.
+
+- `error_group_by_unsupported`
+
+    **When:** `group_by()` is called on a `Database::Join` object.
+
+    **Fix:** Use `aggregate()` instead.  The fluent `Database::Abstraction::Query`
+    chain targets a single component DA, not the merged view.
 
 - `error_execute_unsupported`
 
