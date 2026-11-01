@@ -79,16 +79,16 @@ https://pjcj.net
 <tr><td class="h"><a id="L3148">3148</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">@{$rows;} ? :</td></tr>
 <tr><td class="h"><a id="L3160">3160</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if (my $cache = delete $self-&gt;{&#39;_sqlite_cache&#39;})</td></tr>
 <tr><td class="h"><a id="L3162">3162</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if $cache-&gt;{&#39;dbh&#39;}</td></tr>
-<tr><td class="h"><a id="L5089">5089</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if $op eq &quot;eq&quot;</td></tr>
-<tr><td class="h"><a id="L5090">5090</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;ne&quot;</td></tr>
-<tr><td class="h"><a id="L5091">5091</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;lt&quot;</td></tr>
-<tr><td class="h"><a id="L5092">5092</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;lte&quot;</td></tr>
-<tr><td class="h"><a id="L5093">5093</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;gt&quot;</td></tr>
-<tr><td class="h"><a id="L5094">5094</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;gte&quot;</td></tr>
-<tr><td class="h"><a id="L5095">5095</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;like&quot;</td></tr>
-<tr><td class="h"><a id="L5096">5096</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;contains&quot;</td></tr>
-<tr><td class="h"><a id="L5110">5110</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless defined $rv</td></tr>
-<tr><td class="h"><a id="L5111">5111</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv eq $val</td></tr>
+<tr><td class="h"><a id="L5093">5093</a></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">if $op eq &quot;eq&quot;</td></tr>
+<tr><td class="h"><a id="L5094">5094</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;ne&quot;</td></tr>
+<tr><td class="h"><a id="L5095">5095</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;lt&quot;</td></tr>
+<tr><td class="h"><a id="L5096">5096</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;lte&quot;</td></tr>
+<tr><td class="h"><a id="L5097">5097</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;gt&quot;</td></tr>
+<tr><td class="h"><a id="L5098">5098</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;gte&quot;</td></tr>
+<tr><td class="h"><a id="L5099">5099</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;like&quot;</td></tr>
+<tr><td class="h"><a id="L5100">5100</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">if $op eq &quot;contains&quot;</td></tr>
+<tr><td class="h"><a id="L5114">5114</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">unless defined $rv</td></tr>
+<tr><td class="h"><a id="L5115">5115</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv eq $val</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($op eq &#39;eq&#39;) { }</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif ($op eq &#39;ne&#39;) { }</td></tr>
 <tr><td class="h"></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">elsif ($op eq &#39;lt&#39;) { }</td></tr>
@@ -97,21 +97,21 @@ https://pjcj.net
 <tr><td class="h"></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">elsif ($op eq &#39;gte&#39;) { }</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">elsif ($op eq &#39;contains&#39;) { }</td></tr>
 <tr><td class="h"></td><td class="c0">50</td><td class="c3">T</td><td class="c0">F</td><td class="s">elsif ($op eq &#39;like&#39;) { }</td></tr>
-<tr><td class="h"><a id="L5112">5112</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv ne $val</td></tr>
-<tr><td class="h"><a id="L5113">5113</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">unless $rv lt $val</td></tr>
-<tr><td class="h"><a id="L5114">5114</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">unless $rv le $val</td></tr>
-<tr><td class="h"><a id="L5115">5115</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv gt $val</td></tr>
-<tr><td class="h"><a id="L5116">5116</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">unless $rv ge $val</td></tr>
-<tr><td class="h"><a id="L5117">5117</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless index($rv, $val) != -1</td></tr>
-<tr><td class="h"><a id="L5121">5121</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">$_ eq &#39;_&#39; ? :</td></tr>
+<tr><td class="h"><a id="L5116">5116</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv ne $val</td></tr>
+<tr><td class="h"><a id="L5117">5117</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">unless $rv lt $val</td></tr>
+<tr><td class="h"><a id="L5118">5118</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">unless $rv le $val</td></tr>
+<tr><td class="h"><a id="L5119">5119</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv gt $val</td></tr>
+<tr><td class="h"><a id="L5120">5120</a></td><td class="c0">0</td><td class="c0">T</td><td class="c0">F</td><td class="s">unless $rv ge $val</td></tr>
+<tr><td class="h"><a id="L5121">5121</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless index($rv, $val) != -1</td></tr>
+<tr><td class="h"><a id="L5125">5125</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">$_ eq &#39;_&#39; ? :</td></tr>
 <tr><td class="h"></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">$_ eq &#39;%&#39; ? :</td></tr>
-<tr><td class="h"><a id="L5125">5125</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv =~ /\A$re\z/s</td></tr>
-<tr><td class="h"><a id="L5144">5144</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($columns and @{$columns;}) { }</td></tr>
-<tr><td class="h"><a id="L5148">5148</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $seen{$key}++</td></tr>
-<tr><td class="h"><a id="L5154">5154</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $seen{$key}++</td></tr>
-<tr><td class="h"><a id="L5194">5194</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $criteria and %{$criteria;}</td></tr>
-<tr><td class="h"><a id="L5199">5199</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $criteria-&gt;{$_} eq &#39;HASH&#39; ? :</td></tr>
-<tr><td class="h"><a id="L5212">5212</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $filters and %{$filters;}</td></tr>
+<tr><td class="h"><a id="L5129">5129</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $rv =~ /\A$re\z/s</td></tr>
+<tr><td class="h"><a id="L5148">5148</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if ($columns and @{$columns;}) { }</td></tr>
+<tr><td class="h"><a id="L5152">5152</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">if $seen{$key}++</td></tr>
+<tr><td class="h"><a id="L5158">5158</a></td><td class="c0">50</td><td class="c0">T</td><td class="c3">F</td><td class="s">if $seen{$key}++</td></tr>
+<tr><td class="h"><a id="L5198">5198</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $criteria and %{$criteria;}</td></tr>
+<tr><td class="h"><a id="L5203">5203</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">ref $criteria-&gt;{$_} eq &#39;HASH&#39; ? :</td></tr>
+<tr><td class="h"><a id="L5216">5216</a></td><td class="c3">100</td><td class="c3">T</td><td class="c3">F</td><td class="s">unless $filters and %{$filters;}</td></tr>
 </table>
 </body>
 </html>
