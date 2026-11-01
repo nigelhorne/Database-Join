@@ -732,6 +732,24 @@ parallel       => { type => 'integer',  optional => 1, default => 0 }
                   # DOMAIN -- EP invalid: any other integer is treated as truthy/falsy.
                   # DOMAIN -- Default:    0.
 
+autoload_pk     => { type => 'string',   optional => 1 }
+                  # The column name used as the positional-argument key when
+                  # AUTOLOAD performs a full join query (i.e. when join_map or
+                  # filters is active).  Calling $join->col('value') with a bare
+                  # scalar maps that scalar to { autoload_pk => 'value' } before
+                  # routing through the merged view.
+                  #
+                  # Defaults to join_column when omitted.  Override when the
+                  # primary DA's natural lookup key differs from join_column -
+                  # for example, when join_column is 'statecode' but you want to
+                  # look up by city name ('entry').
+                  #
+                  # DOMAIN -- EP valid:   any string that is a visible column in
+                  #                       the merged view (checked at call time by
+                  #                       _partition_criteria; unknown names are
+                  #                       carp'd and dropped).
+                  # DOMAIN -- EP absent:  defaults to join_column.
+
 mandatory_filters => { type => 'arrayref', optional => 1 }
                   # Arrayref of {col, op, val} predicate hashrefs.
                   # These filters are applied to every query result regardless
@@ -3398,7 +3416,7 @@ when the backend is `'sqlite'` or `'auto'`, just like any other query method.
      |
      | new( databases => [...], join_column => '...' )
      |   Side-effect: _col_db routing table built;
-     |                _autoload_pk cached from dbs[0]{id}
+     |                _autoload_pk set from autoload_pk param (default: join_column)
      v
 [CONSTRUCTED] <-----------------------------------------+
      |    |                                              |

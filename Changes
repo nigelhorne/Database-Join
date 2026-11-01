@@ -13,6 +13,11 @@ Revision history for Database::Join
 	  Database::Abstraction::Query fluent chain entry point on a
 	  Database::Join object fails fast instead of silently routing through
 	  AUTOLOAD to a single component DA.
+	[ Bug Fixes ]
+	- The SQLite backend hung, then failed with "database is locked", on a BSD
+	  with File::Temp older than 0.2307, as Perl 5.28 ships.  Such a File::Temp
+	  holds a new file under an exclusive lock.  The temporary database is now
+	  opened with EXLOCK => 0.
 	[ Tests ]
 	- Added MariaDB tests.  Can a MariaDB database be joined with another database
 

@@ -828,7 +828,7 @@ to calling C<remove_column> once per name after construction.
                       # routing through the merged view.
                       #
                       # Defaults to join_column when omitted.  Override when the
-                      # primary DA's natural lookup key differs from join_column —
+                      # primary DA's natural lookup key differs from join_column -
                       # for example, when join_column is 'statecode' but you want to
                       # look up by city name ('entry').
                       #
@@ -3845,7 +3845,7 @@ sub _sql_quote_identifier {
 # Exit:    $self->{_sqlite_cache} holds {dbh, tmpfile, table_refs, source_cols,
 #          is_attached, updated, n}.  Any previous cache is disconnected first.
 #          Each spilled table has a B-tree index on its join column.
-# Effects: Creates a File::Temp file (SUFFIX='.db', DIR=_tmpdir, UNLINK=1).
+# Effects: Creates a File::Temp file (SUFFIX='.db', DIR=_tmpdir, UNLINK=1, EXLOCK=0).
 #          Croaks with error_sqlite_connect if DBI::connect fails.
 sub _build_sqlite_cache :Protected {
 	my ($self) = @_;
@@ -3862,10 +3862,14 @@ sub _build_sqlite_cache :Protected {
 	my $join_col = $self->{_join_col};
 	my $n        = scalar @{ $self->{_dbs} };
 
+	# EXLOCK => 0: before 0.2307 File::Temp defaults to O_EXLOCK, as Perl 5.28's copy
+	# does.  On a BSD that lock stops SQLite writing to the file: CREATE TABLE waits
+	# out the busy timeout, then fails with "database is locked".
 	my $tmpfile = File::Temp->new(
 		SUFFIX => '.db',
 		DIR    => $self->{_tmpdir},
 		UNLINK => 1,
+		EXLOCK => 0,
 	);
 
 	my $tmpdbh = DBI->connect(
