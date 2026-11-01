@@ -13,6 +13,8 @@ Revision history for Database::Join
 	  Database::Abstraction::Query fluent chain entry point on a
 	  Database::Join object fails fast instead of silently routing through
 	  AUTOLOAD to a single component DA.
+	[ Tests ]
+	- Added MariaDB tests.  Can a MariaDB database be joined with another database
 
 0.010.0	Tue Oct 13 08:47:55 PM EDT 2026
 	[ Enhancements ]
