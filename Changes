@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.010.1
+0.010.1	Sun Nov  1 07:59:33 PM EST 2026
 	[ Enhancements ]
 	- autoload_pk: new constructor parameter that sets the column name used as
 	  the positional-argument key when AUTOLOAD performs a full join query
