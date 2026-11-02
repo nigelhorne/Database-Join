@@ -293,7 +293,7 @@ a.intra-dot:hover { color: #7700bb; }
 <div class="nav"><a href="../../../index.html">Index</a>
 </div><div class='summary'>
 <strong>Structural Coverage (Approximate)</strong><p>
-TER1 (Statement): 97.54%<br>
+TER1 (Statement): 97.56%<br>
 TER2 (Branch): 81.61%<br>
 TER3 (LCSAJ): 100.0% (80/80)<br>
 Approximate LCSAJ segments: 175<br>
@@ -399,7 +399,7 @@ Approximate LCSAJ segments: 175<br>
 </span><span class="">   58: 	contains =&gt; &#39;LIKE&#39;,
 </span><span class="">   59: );
 </span><span class="">   60: 
-</span><span class="">   61: our $VERSION = &#39;0.010.0&#39;;
+</span><span class="">   61: use version; our $VERSION = version-&gt;declare(&#39;0.010.1&#39;);
 </span><span class="">   62: 
 </span><span class="">   63: # Package-level cache for threads availability.  undef = not yet checked;
 </span><span class="">   64: # 1 = available; 0 = not available.  Checked lazily on the first parallel
@@ -452,7 +452,7 @@ Approximate LCSAJ segments: 175<br>
 </span><span class="">  111: 
 </span><span class="">  112: =head1 VERSION
 </span><span class="">  113: 
-</span><span class="">  114: Version 0.010.0
+</span><span class="">  114: Version 0.010.1
 </span><span class="">  115: 
 </span><span class="">  116: =head1 SYNOPSIS
 </span><span class="">  117: 
@@ -4230,29 +4230,29 @@ Approximate LCSAJ segments: 175<br>
 </span><span class=""> 3883: 		my $db       = $self-&gt;{_dbs}[$i];
 </span><span class=""> 3884: 		my $local_jc = $self-&gt;{_join_map}{$i} // $join_col;
 </span><span class=""> 3885: 
-</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 3886: 		# Zero-copy ATTACH path: unconditionally available when the source
+</span><span class=""> 3886: 		# Zero-copy ATTACH path: unconditionally available when the source
+</span><span class=""> 3887: 		# implements dbi_source() returning a live SQLite handle.  Query-time
+</span><span class=""> 3888: 		# criteria for this source will go into the SQL WHERE clause.
+</span><span class=""> 3889: 		# eval wraps can() to suppress ISA warnings from stub packages in tests.
+</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 3890: 		if (do { local $@; eval { $db-&gt;can(&#39;dbi_source&#39;) } }) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>COND_INV_3886_3: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>COND_INV_3890_3: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 3887: 		# implements dbi_source() returning a live SQLite handle.  Query-time
-</span><span class=""> 3888: 		# criteria for this source will go into the SQL WHERE clause.
-</span><span class=""> 3889: 		# eval wraps can() to suppress ISA warnings from stub packages in tests.
-</span><span class=""> 3890: 		if (do { local $@; eval { $db-&gt;can(&#39;dbi_source&#39;) } }) {
-</span><span class=""> 3891: 			# Probe dbi_source() in an isolated scope: local $@ prevents leaking
+<span class=""> 3891: 			# Probe dbi_source() in an isolated scope: local $@ prevents leaking
 </span><span class=""> 3892: 			# eval failure into the caller&#39;s $@; local $SIG{__WARN__} suppresses
 </span><span class=""> 3893: 			# spurious warnings from inherited dbi_source() probing non-SQLite DAs
 </span><span class=""> 3894: 			# (e.g. Database::Abstraction 0.46 base-class dbi_source() calling
 </span><span class=""> 3895: 			# _open() on a DA with no backing file).
 </span><span class=""> 3896: 			my $src = do {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3897: 				local $SIG{__WARN__} = sub {};
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3898: 				local $@;
+</span><span class=""> 3897: 				local $SIG{__WARN__} = sub {};
+</span><span class=""> 3898: 				local $@;
 </span><span class=""> 3899: 				eval { $db-&gt;dbi_source() }
 </span><span class=""> 3900: 			};
-</span><span class=""> 3901: 			if ($src &amp;&amp; ref($src) eq &#39;HASH&#39; &amp;&amp; $src-&gt;{dbh} &amp;&amp; $src-&gt;{table}
-</span><span class=""> 3902: 				&amp;&amp; eval { $src-&gt;{dbh}{Driver}{Name} } eq &#39;SQLite&#39;) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3901: 			if ($src &amp;&amp; ref($src) eq &#39;HASH&#39; &amp;&amp; $src-&gt;{dbh} &amp;&amp; $src-&gt;{table}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3902: 				&amp;&amp; eval { $src-&gt;{dbh}{Driver}{Name} } eq &#39;SQLite&#39;) {
 </span><span class=""> 3903: 				my ($db_file) = $src-&gt;{dbh}-&gt;selectrow_array(
 </span><span class=""> 3904: 					&quot;SELECT file FROM pragma_database_list WHERE name=&#39;main&#39;&quot;
 </span><span class=""> 3905: 				);
@@ -4287,22 +4287,26 @@ Approximate LCSAJ segments: 175<br>
 </span><span class=""> 3934: 		# Index on the join column: upgrades ON-clause equality lookups from
 </span><span class=""> 3935: 		# an O(N&Acirc;&sup2;) full-table nested-loop scan to O(N log N) b-tree seek.
 </span><span class=""> 3936: 		# SQLite query planner uses it for INNER JOIN / LEFT JOIN ON expressions.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3937: 		$tmpdbh-&gt;do(&#39;CREATE INDEX &#39; . _sql_quote_identifier(&quot;${tbl}_jc&quot;)
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3938: 			. &#39; ON &#39; . _sql_quote_identifier($tbl)
+</span><span class=""> 3937: 		$tmpdbh-&gt;do(&#39;CREATE INDEX &#39; . _sql_quote_identifier(&quot;${tbl}_jc&quot;)
+</span><span class=""> 3938: 			. &#39; ON &#39; . _sql_quote_identifier($tbl)
 </span><span class=""> 3939: 			. &#39; (&#39; . _sql_quote_identifier($local_jc) . &#39;)&#39;);
 </span><span class=""> 3940: 
-</span><span class=""> 3941: 		if (@{$rows}) {
-</span><span class=""> 3942: 			my $col_list     = join(&#39;, &#39;, map { _sql_quote_identifier($_) } @{$cols});
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 3941: 		if (@{$rows}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 3942: 			my $col_list     = join(&#39;, &#39;, map { _sql_quote_identifier($_) } @{$cols});
 </span><span class=""> 3943: 			my $placeholders = join(&#39;, &#39;, (&#39;?&#39;) x scalar @{$cols});
 </span><span class=""> 3944: 			my $sth = $tmpdbh-&gt;prepare(
 </span><span class=""> 3945: 				&#39;INSERT INTO &#39; . _sql_quote_identifier($tbl) . &quot; ($col_list) VALUES ($placeholders)&quot;
 </span><span class=""> 3946: 			);
-</span><span class="survived-3 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch. Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 3947: 			my $batch = 0;
+</span><span class=""> 3947: 			my $batch = 0;
+</span><span class=""> 3948: 			$tmpdbh-&gt;begin_work;
+</span><span class=""> 3949: 			for my $row (@{$rows}) {
+</span><span class=""> 3950: 				$sth-&gt;execute(map { $row-&gt;{$_} } @{$cols});
+</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one). Mutation survived. Add targeted tests to validate this branch."> 3951: 				if (++$batch &gt;= 1_000) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 4, Killed: 0, Survived: 4)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_3947_18_&gt;: Numeric boundary flip &gt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_3951_18_&gt;: Numeric boundary flip &gt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4310,7 +4314,7 @@ Approximate LCSAJ segments: 175<br>
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_3947_18_&lt;: Numeric boundary flip &gt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_3951_18_&lt;: Numeric boundary flip &gt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4318,7 +4322,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_3947_18_&lt;=: Numeric boundary flip &gt;= to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_3951_18_&lt;=: Numeric boundary flip &gt;= to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4326,13 +4330,9 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>COND_INV_3947_5: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+							</li><li><b>COND_INV_3951_5: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 3948: 			$tmpdbh-&gt;begin_work;
-</span><span class=""> 3949: 			for my $row (@{$rows}) {
-</span><span class=""> 3950: 				$sth-&gt;execute(map { $row-&gt;{$_} } @{$cols});
-</span><span class=""> 3951: 				if (++$batch &gt;= 1_000) {
-</span><span class=""> 3952: 					$tmpdbh-&gt;commit;
+<span class=""> 3952: 					$tmpdbh-&gt;commit;
 </span><span class=""> 3953: 					$tmpdbh-&gt;begin_work;
 </span><span class=""> 3954: 					$batch = 0;
 </span><span class=""> 3955: 				}
@@ -4403,31 +4403,31 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4020: 	my ($per_db_query, $per_db_full, $had_criteria) = $self-&gt;_sqlite_criteria($params);
 </span><span class=""> 4021: 
 </span><span class=""> 4022: 	# For &#39;auto&#39; mode: check total row count without fetching rows.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4023: 	# Count(*) is used for dbi_source() sources; count() for others.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4024: 	# If any source supports neither, fall back to the array path.
+</span><span class=""> 4023: 	# Count(*) is used for dbi_source() sources; count() for others.
+</span><span class=""> 4024: 	# If any source supports neither, fall back to the array path.
 </span><span class=""> 4025: 	# Skipped when create_table is set &acirc;&#128;&#148; dbi_source() has already committed to
 </span><span class=""> 4026: 	# the SQLite path and we must materialise regardless of row count.
-</span><span class=""> 4027: 	if ($backend eq &#39;auto&#39; &amp;&amp; !defined $create_table) {
-</span><span class=""> 4028: 		my $total     = 0;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4027: 	if ($backend eq &#39;auto&#39; &amp;&amp; !defined $create_table) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4028: 		my $total     = 0;
 </span><span class=""> 4029: 		my $can_count = 1;
-</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4030: 		for my $i (0 .. $n - 1) {
+</span><span class=""> 4030: 		for my $i (0 .. $n - 1) {
+</span><span class=""> 4031: 			my $db  = $self-&gt;{_dbs}[$i];
+</span><span class=""> 4032: 			# dbi_source() path: COUNT(*) against the entire source table
+</span><span class=""> 4033: 			# (no WHERE) gives a conservative upper bound on the spilled size.
+</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4034: 			if (do { local $@; eval { $db-&gt;can(&#39;dbi_source&#39;) } }) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>COND_INV_4030_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>COND_INV_4034_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 4031: 			my $db  = $self-&gt;{_dbs}[$i];
-</span><span class=""> 4032: 			# dbi_source() path: COUNT(*) against the entire source table
-</span><span class=""> 4033: 			# (no WHERE) gives a conservative upper bound on the spilled size.
-</span><span class=""> 4034: 			if (do { local $@; eval { $db-&gt;can(&#39;dbi_source&#39;) } }) {
-</span><span class=""> 4035: 				my $src = do {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4036: 					local $SIG{__WARN__} = sub {};
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4037: 					local $@;
+<span class=""> 4035: 				my $src = do {
+</span><span class=""> 4036: 					local $SIG{__WARN__} = sub {};
+</span><span class=""> 4037: 					local $@;
 </span><span class=""> 4038: 					eval { $db-&gt;dbi_source() }
 </span><span class=""> 4039: 				};
-</span><span class=""> 4040: 				if ($src &amp;&amp; ref($src) eq &#39;HASH&#39; &amp;&amp; $src-&gt;{dbh} &amp;&amp; $src-&gt;{table}
-</span><span class=""> 4041: 					&amp;&amp; eval { $src-&gt;{dbh}{Driver}{Name} } eq &#39;SQLite&#39;) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4040: 				if ($src &amp;&amp; ref($src) eq &#39;HASH&#39; &amp;&amp; $src-&gt;{dbh} &amp;&amp; $src-&gt;{table}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4041: 					&amp;&amp; eval { $src-&gt;{dbh}{Driver}{Name} } eq &#39;SQLite&#39;) {
 </span><span class=""> 4042: 					my ($cnt) = $src-&gt;{dbh}-&gt;selectrow_array(
 </span><span class=""> 4043: 						&#39;SELECT COUNT(*) FROM &#39;
 </span><span class=""> 4044: 						. _sql_quote_identifier($src-&gt;{table})
@@ -4437,28 +4437,28 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4048: 				}
 </span><span class=""> 4049: 			}
 </span><span class=""> 4050: 			# count() path: only use it when the DA&#39;s own class directly defines
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4051: 			# count() (not inherited).  Database::Abstraction&#39;s inherited count($entry)
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4052: 			# takes a key argument and emits uninitialized-value warnings when called
+</span><span class=""> 4051: 			# count() (not inherited).  Database::Abstraction&#39;s inherited count($entry)
+</span><span class=""> 4052: 			# takes a key argument and emits uninitialized-value warnings when called
 </span><span class=""> 4053: 			# with no args, so we must not invoke it for the threshold probe.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4054: 			my $pkg = ref($db) // &#39;&#39;;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4055: 			if ($pkg &amp;&amp; do { no strict &#39;refs&#39;; defined &amp;{&quot;${pkg}::count&quot;} }) {
-</span><span class=""> 4056: 				my ($cnt, $failed);
+</span><span class=""> 4054: 			my $pkg = ref($db) // &#39;&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4055: 			if ($pkg &amp;&amp; do { no strict &#39;refs&#39;; defined &amp;{&quot;${pkg}::count&quot;} }) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4056: 				my ($cnt, $failed);
 </span><span class=""> 4057: 				do { local $@; $cnt = eval { $db-&gt;count() }; $failed = $@ };
-</span><span class=""> 4058: 				if ($failed) {
-</span><span class=""> 4059: 					$can_count = 0;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4058: 				if ($failed) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4059: 					$can_count = 0;
 </span><span class=""> 4060: 					last;
 </span><span class=""> 4061: 				}
 </span><span class=""> 4062: 				$total += $cnt // 0;
 </span><span class=""> 4063: 				next;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4064: 			}
-</span><p> <b> Mutants (Total: 4, Killed: 4, Survived: 0)</b><p><span class=""> 4065: 			$can_count = 0;
+</span><span class=""> 4064: 			}
+</span><span class=""> 4065: 			$can_count = 0;
 </span><span class=""> 4066: 			last;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4067: 		}
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4068: 		if (!$can_count || $total &lt;= $self-&gt;{_max_array_rows}) {
-</span><span class=""> 4069: 			my $rows = $self-&gt;_joined_query_array($params,
+</span><span class=""> 4067: 		}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4068: 		if (!$can_count || $total &lt;= $self-&gt;{_max_array_rows}) {
+</span><p> <b> Mutants (Total: 4, Killed: 4, Survived: 0)</b><p><span class=""> 4069: 			my $rows = $self-&gt;_joined_query_array($params,
 </span><span class=""> 4070: 				sort_by =&gt; $sort_by, limit =&gt; $limit, offset =&gt; $offset);
-</span><span class=""> 4071: 			return $count_only ? scalar @{$rows} : $rows;
-</span><span class=""> 4072: 		}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4071: 			return $count_only ? scalar @{$rows} : $rows;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4072: 		}
 </span><span class=""> 4073: 	}
 </span><span class=""> 4074: 
 </span><span class=""> 4075: 	# Ensure the SQLite cache is valid; rebuild if stale or absent.
@@ -4479,18 +4479,18 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4090: 	# Build JOIN clauses.  Hoisted before the SELECT list so the count_only
 </span><span class=""> 4091: 	# path can return early without building the (unused) column expressions.
 </span><span class=""> 4092: 	my $from     = $table_refs[0];
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4093: 	my $join_sql = $self-&gt;_sqlite_join_clause(\@table_refs, $had_criteria, $local_jc_0);
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4094: 
+</span><span class=""> 4093: 	my $join_sql = $self-&gt;_sqlite_join_clause(\@table_refs, $had_criteria, $local_jc_0);
+</span><span class=""> 4094: 
 </span><span class=""> 4095: 	# COUNT(*) short-circuit: WHERE and JOIN are built; SELECT list and ORDER BY
 </span><span class=""> 4096: 	# are not needed.  selectrow_array returns a single integer without fetching rows.
-</span><span class=""> 4097: 	if ($count_only) {
-</span><span class=""> 4098: 		my ($cnt) = $tmpdbh-&gt;selectrow_array(
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4099: 			&#39;SELECT COUNT(*) FROM &#39; . $from . $join_sql . $where_sql,
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4100: 			undef,
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4097: 	if ($count_only) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4098: 		my ($cnt) = $tmpdbh-&gt;selectrow_array(
+</span><span class=""> 4099: 			&#39;SELECT COUNT(*) FROM &#39; . $from . $join_sql . $where_sql,
+</span><span class=""> 4100: 			undef,
 </span><span class=""> 4101: 			@bind_vals,
 </span><span class=""> 4102: 		);
-</span><span class=""> 4103: 		return $cnt // 0;
-</span><span class=""> 4104: 	}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4103: 		return $cnt // 0;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4104: 	}
 </span><span class=""> 4105: 
 </span><span class=""> 4106: 	# Build SELECT clause.
 </span><span class=""> 4107: 	# Walk sources in order, applying collision_prefix renaming exactly as
@@ -4499,14 +4499,14 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4110: 	# &quot;$prefix.$col&quot;; removed columns are omitted.
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4111 → 4117 → 4136</span></span> 4111: 	my %pub_seen;
 </span><span class=""> 4112: 	my @selects;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4113: 	my @select_pubs;  # parallel to @selects: published column name for each expression
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4114: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4115: 	# Join-column expression: for outer joins, use COALESCE across all sources
-</span><p> <b> Mutants (Total: 4, Killed: 4, Survived: 0)</b><p><span class=""> 4116: 	# so that B-only (primary-absent) rows carry their join key rather than NULL.
-</span><span class=""> 4117: 	unless ($self-&gt;{_removed_cols}{$join_col}) {
-</span><span class=""> 4118: 		my $jc_expr;
-</span><span class=""> 4119: 		if ($join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1) {
-</span><span class=""> 4120: 			$jc_expr = &#39;COALESCE(&#39;
+</span><span class=""> 4113: 	my @select_pubs;  # parallel to @selects: published column name for each expression
+</span><span class=""> 4114: 
+</span><span class=""> 4115: 	# Join-column expression: for outer joins, use COALESCE across all sources
+</span><span class=""> 4116: 	# so that B-only (primary-absent) rows carry their join key rather than NULL.
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4117: 	unless ($self-&gt;{_removed_cols}{$join_col}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4118: 		my $jc_expr;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4119: 		if ($join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1) {
+</span><p> <b> Mutants (Total: 4, Killed: 4, Survived: 0)</b><p><span class=""> 4120: 			$jc_expr = &#39;COALESCE(&#39;
 </span><span class=""> 4121: 			         . join(&#39;, &#39;, map {
 </span><span class=""> 4122: 			               my $lc = $self-&gt;{_join_map}{$_} // $join_col;
 </span><span class=""> 4123: 			               $table_refs[$_] . &#39;.&#39; . _sql_quote_identifier($lc)
@@ -4548,12 +4548,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4159: 		}
 </span><span class=""> 4160: 	}
 </span><span class=""> 4161: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4162: 	# distinct + column projection: filter SELECT list to requested columns only.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4163: 	# When both distinct and columns are specified, project to those columns and
+</span><span class=""> 4162: 	# distinct + column projection: filter SELECT list to requested columns only.
+</span><span class=""> 4163: 	# When both distinct and columns are specified, project to those columns and
 </span><span class=""> 4164: 	# apply DISTINCT so the SQL engine deduplicates before returning rows.
 </span><span class=""> 4165: 	# Without columns, DISTINCT applies to all selected columns.
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4166 → 4166 → 4183</span></span> 4166: 	if ($distinct &amp;&amp; $columns &amp;&amp; @{$columns}) {
-</span><span class=""> 4167: 		my %want = map { $_ =&gt; 1 } @{$columns};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4166 → 4166 → 4183</span></span> 4166: 	if ($distinct &amp;&amp; $columns &amp;&amp; @{$columns}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4167: 		my %want = map { $_ =&gt; 1 } @{$columns};
 </span><span class=""> 4168: 		my @filtered;
 </span><span class=""> 4169: 		for my $j (0 .. $#selects) {
 </span><span class=""> 4170: 			push @filtered, $selects[$j] if $want{ $select_pubs[$j] };
@@ -4565,12 +4565,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4176: 	# Executed BEFORE ORDER BY / LIMIT / OFFSET because they are irrelevant here &acirc;&#128;&#148;
 </span><span class=""> 4177: 	# the parent join will impose its own ordering and pagination per-call.
 </span><span class=""> 4178: 	# _sql_quote_identifier guards against any injection via the table name.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4179: 	# D~: $sort_by, $limit, $offset are dead stores on this path.  They were
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4180: 	# parsed and validated above (shared with the normal query path) but the
+</span><span class=""> 4179: 	# D~: $sort_by, $limit, $offset are dead stores on this path.  They were
+</span><span class=""> 4180: 	# parsed and validated above (shared with the normal query path) but the
 </span><span class=""> 4181: 	# caller of create_table always passes undef for these, so _validate_pagination
 </span><span class=""> 4182: 	# is a no-op and the variables are harmlessly abandoned at this return.
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4183 → 4183 → 4198</span></span> 4183: 	if (defined $create_table) {
-</span><span class=""> 4184: 		my $mat_sql = &#39;SELECT &#39; . join(&#39;, &#39;, @selects)
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4183 → 4183 → 4198</span></span> 4183: 	if (defined $create_table) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4184: 		my $mat_sql = &#39;SELECT &#39; . join(&#39;, &#39;, @selects)
 </span><span class=""> 4185: 		            . &#39; FROM &#39; . $from . $join_sql . $where_sql;
 </span><span class=""> 4186: 		$tmpdbh-&gt;do(&#39;DROP TABLE IF EXISTS &#39; . _sql_quote_identifier($create_table));
 </span><span class=""> 4187: 		$tmpdbh-&gt;do(&#39;CREATE TABLE &#39; . _sql_quote_identifier($create_table)
@@ -4581,26 +4581,30 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4192: 
 </span><span class=""> 4193: 	# ORDER BY: default is join_column ascending.  Caller may override via
 </span><span class=""> 4194: 	# sort_by =&gt; &#39;col&#39; or sort_by =&gt; [&#39;col&#39;, &#39;DESC&#39;].
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4195: 	# For the join column on an outer join, reference the COALESCE alias.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4196: 	# For any other column, reference the published SELECT-list alias &acirc;&#128;&#148;
+</span><span class=""> 4195: 	# For the join column on an outer join, reference the COALESCE alias.
+</span><span class=""> 4196: 	# For any other column, reference the published SELECT-list alias &acirc;&#128;&#148;
 </span><span class=""> 4197: 	# SQLite resolves ORDER BY aliases from the SELECT clause.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4198 → 4199 → 4212</span></span> 4198: 	my ($ob_col, $ob_dir) = ($join_col, &#39;ASC&#39;);
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4199: 	if (defined $sort_by) {
-</span><span class=""> 4200: 		my ($req_col, $req_dir) = ref($sort_by) eq &#39;ARRAY&#39; ? @{$sort_by} : ($sort_by, &#39;ASC&#39;);
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4198 → 4199 → 4212</span></span> 4198: 	my ($ob_col, $ob_dir) = ($join_col, &#39;ASC&#39;);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4199: 	if (defined $sort_by) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4200: 		my ($req_col, $req_dir) = ref($sort_by) eq &#39;ARRAY&#39; ? @{$sort_by} : ($sort_by, &#39;ASC&#39;);
 </span><span class=""> 4201: 		$req_dir = uc($req_dir // &#39;ASC&#39;);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4202: 		unless ($req_dir eq &#39;ASC&#39; || $req_dir eq &#39;DESC&#39;) {
 </span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4203: 			carp &quot;Database::Join: sort_by direction &#39;$req_dir&#39; is not supported; using ASC&quot;;
 </span><span class=""> 4204: 			$req_dir = &#39;ASC&#39;;
 </span><span class=""> 4205: 		}
-</span><span class=""> 4206: 		if ($req_col ne $join_col &amp;&amp; !exists $self-&gt;{_col_db}{$req_col}) {
-</span><span class=""> 4207: 			carp &quot;Database::Join: sort_by column &#39;$req_col&#39; is not in the merged view; result sorted by join_column&quot;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4206: 		if ($req_col ne $join_col &amp;&amp; !exists $self-&gt;{_col_db}{$req_col}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4207: 			carp &quot;Database::Join: sort_by column &#39;$req_col&#39; is not in the merged view; result sorted by join_column&quot;;
 </span><span class=""> 4208: 		} else {
-</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4209: 			($ob_col, $ob_dir) = ($req_col, $req_dir);
+</span><span class=""> 4209: 			($ob_col, $ob_dir) = ($req_col, $req_dir);
+</span><span class=""> 4210: 		}
+</span><span class=""> 4211: 	}
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4212 → 4228 → 4244</span></span> 4212: 	my $order_expr = ($ob_col eq $join_col)
+</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4213: 	    ? (($join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1)
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 3, Killed: 0, Survived: 3)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4209_38_&lt;: Numeric boundary flip &gt; to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4213_38_&lt;: Numeric boundary flip &gt; to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4608,7 +4612,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4209_38_&gt;=: Numeric boundary flip &gt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4213_38_&gt;=: Numeric boundary flip &gt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4616,7 +4620,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4209_38_&lt;=: Numeric boundary flip &gt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4213_38_&lt;=: Numeric boundary flip &gt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4625,11 +4629,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 4210: 		}
-</span><span class=""> 4211: 	}
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4212 → 4228 → 4244</span></span> 4212: 	my $order_expr = ($ob_col eq $join_col)
-</span><span class=""> 4213: 	    ? (($join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1)
-</span><span class=""> 4214: 	          ? _sql_quote_identifier($join_col)
+<span class=""> 4214: 	          ? _sql_quote_identifier($join_col)
 </span><span class=""> 4215: 	          : $table_refs[0] . &#39;.&#39; . _sql_quote_identifier($local_jc_0))
 </span><span class=""> 4216: 	    : _sql_quote_identifier($ob_col);
 </span><span class=""> 4217: 	my $select_kw = $distinct ? &#39;SELECT DISTINCT&#39; : &#39;SELECT&#39;;
@@ -4639,15 +4639,15 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4221: 	        . $where_sql
 </span><span class=""> 4222: 	        . &#39; ORDER BY &#39; . $order_expr . ($ob_dir eq &#39;DESC&#39; ? &#39; DESC&#39; : &#39;&#39;);
 </span><span class=""> 4223: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4224: 	# LIMIT / OFFSET pagination &acirc;&#128;&#148; appended after ORDER BY as bind parameters
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4225: 	# (never interpolated) to prevent any SQL injection from caller values.
+</span><span class=""> 4224: 	# LIMIT / OFFSET pagination &acirc;&#128;&#148; appended after ORDER BY as bind parameters
+</span><span class=""> 4225: 	# (never interpolated) to prevent any SQL injection from caller values.
 </span><span class=""> 4226: 	# OFFSET without LIMIT uses LIMIT -1 (SQLite extension: &quot;all rows from offset&quot;).
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4227: 	my @page_bind;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4228: 	if (defined $limit) {
-</span><span class=""> 4229: 		$sql .= &#39; LIMIT ?&#39;;
+</span><span class=""> 4227: 	my @page_bind;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4228: 	if (defined $limit) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4229: 		$sql .= &#39; LIMIT ?&#39;;
 </span><span class=""> 4230: 		push @page_bind, $limit;
-</span><span class=""> 4231: 		if (defined $offset) {
-</span><span class=""> 4232: 			$sql .= &#39; OFFSET ?&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4231: 		if (defined $offset) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4232: 			$sql .= &#39; OFFSET ?&#39;;
 </span><span class=""> 4233: 			push @page_bind, $offset;
 </span><span class=""> 4234: 		}
 </span><span class=""> 4235: 	} elsif (defined $offset) {
@@ -4657,12 +4657,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4239: 
 </span><span class=""> 4240: 	# prepare_cached reuses the parsed statement when the same SQL is executed
 </span><span class=""> 4241: 	# again (e.g. identical criteria pattern in a pagination or batch loop),
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4242: 	# avoiding repeated statement compilation overhead.  fetchall_arrayref
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4243: 	# always exhausts the result set, so the handle is never left active.
+</span><span class=""> 4242: 	# avoiding repeated statement compilation overhead.  fetchall_arrayref
+</span><span class=""> 4243: 	# always exhausts the result set, so the handle is never left active.
 </span><span class=""> 4244: 	my $sth = $tmpdbh-&gt;prepare_cached($sql);
 </span><span class=""> 4245: 	$sth-&gt;execute(@bind_vals, @page_bind);
-</span><span class=""> 4246: 	return $sth-&gt;fetchall_arrayref({});
-</span><span class=""> 4247: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4246: 	return $sth-&gt;fetchall_arrayref({});
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4247: }
 </span><span class=""> 4248: 
 </span><span class=""> 4249: # _sqlite_criteria( \%params ) -&gt; ( $per_db_query, \@per_db_full, \@had_criteria )
 </span><span class=""> 4250: # Purpose: Partition query-time criteria and overlay per-db filters.
@@ -4677,12 +4677,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4259: 	# Inject mandatory_filters into per_db_query BEFORE building per_db_full.
 </span><span class=""> 4260: 	# Injecting here ensures they are present in:
 </span><span class=""> 4261: 	#   - per_db_query (used by _sqlite_where for non-attached/spilled sources)
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4262: 	#   - per_db_full  (built below by merging base_filter + per_db_query, so
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4263: 	#                   mandatory criteria flow through automatically for attached sources)
+</span><span class=""> 4262: 	#   - per_db_full  (built below by merging base_filter + per_db_query, so
+</span><span class=""> 4263: 	#                   mandatory criteria flow through automatically for attached sources)
 </span><span class=""> 4264: 	# Mandatory wins over any caller-supplied value for the same column: the
 </span><span class=""> 4265: 	# assignment overwrites any prior value in that slot.
-</span><span class=""> 4266: 	if (my $mf = $self-&gt;{_mandatory_filters}) {
-</span><span class=""> 4267: 		for my $pred (@{$mf}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4266: 	if (my $mf = $self-&gt;{_mandatory_filters}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4267: 		for my $pred (@{$mf}) {
 </span><span class=""> 4268: 			my ($col, $op, $val) = @{$pred}{qw(col op val)};
 </span><span class=""> 4269: 			my $db_idx = $self-&gt;{_col_db}{$col} // next;
 </span><span class=""> 4270: 			my $orig   = $self-&gt;{_col_unrename}[$db_idx]{$col} // $col;
@@ -4720,12 +4720,16 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4302: 	my $n        = scalar @{ $self-&gt;{_dbs} };
 </span><span class=""> 4303: 
 </span><span class=""> 4304: 	my (@where_parts, @bind_vals);
-</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4305: 	for my $i (0 .. $n - 1) {
+</span><span class=""> 4305: 	for my $i (0 .. $n - 1) {
+</span><span class=""> 4306: 		my $crit = $is_attached-&gt;[$i] ? $per_db_full-&gt;[$i] : $per_db_query-&gt;[$i];
+</span><span class=""> 4307: 		next unless %{$crit};
+</span><span class=""> 4308: 		my $tref       = $table_refs-&gt;[$i];
+</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4309: 		my $local_jc_i = $i &gt; 0 ? ($self-&gt;{_join_map}{$i} // $join_col) : undef;
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 3, Killed: 0, Survived: 3)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4305_23_&lt;: Numeric boundary flip &gt; to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4309_23_&lt;: Numeric boundary flip &gt; to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4733,7 +4737,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4305_23_&gt;=: Numeric boundary flip &gt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4309_23_&gt;=: Numeric boundary flip &gt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4741,7 +4745,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4305_23_&lt;=: Numeric boundary flip &gt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4309_23_&lt;=: Numeric boundary flip &gt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4750,39 +4754,35 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 4306: 		my $crit = $is_attached-&gt;[$i] ? $per_db_full-&gt;[$i] : $per_db_query-&gt;[$i];
-</span><span class=""> 4307: 		next unless %{$crit};
-</span><span class=""> 4308: 		my $tref       = $table_refs-&gt;[$i];
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4309: 		my $local_jc_i = $i &gt; 0 ? ($self-&gt;{_join_map}{$i} // $join_col) : undef;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4310: 		for my $col (sort keys %{$crit}) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4311: 			next if defined $local_jc_i &amp;&amp; $col eq $local_jc_i;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4312: 			my $val = $crit-&gt;{$col};
+<span class=""> 4310: 		for my $col (sort keys %{$crit}) {
+</span><span class=""> 4311: 			next if defined $local_jc_i &amp;&amp; $col eq $local_jc_i;
+</span><span class=""> 4312: 			my $val = $crit-&gt;{$col};
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4313: 			if (ref($val) eq &#39;HASH&#39;) {
 </span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4314: 				for my $op (sort keys %{$val}) {
-</span><span class=""> 4315: 					if ($SAFE_LIST_OPS{$op}) {
-</span><span class=""> 4316: 						my $arr = $val-&gt;{$op};
-</span><span class=""> 4317: 						unless (ref($arr) eq &#39;ARRAY&#39;) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4318: 							carp &quot;Database::Join: operator &#39;$op&#39; requires an arrayref value; criterion skipped&quot;;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4319: 							next;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4315: 					if ($SAFE_LIST_OPS{$op}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4316: 						my $arr = $val-&gt;{$op};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4317: 						unless (ref($arr) eq &#39;ARRAY&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4318: 							carp &quot;Database::Join: operator &#39;$op&#39; requires an arrayref value; criterion skipped&quot;;
+</span><span class=""> 4319: 							next;
 </span><span class=""> 4320: 						}
 </span><span class=""> 4321: 						my @items = @{$arr};
-</span><span class=""> 4322: 						if (!@items) {
-</span><span class=""> 4323: 							push @where_parts, &#39;1 = 0&#39; if $op eq &#39;IN&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4322: 						if (!@items) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4323: 							push @where_parts, &#39;1 = 0&#39; if $op eq &#39;IN&#39;;
 </span><span class=""> 4324: 							next;
 </span><span class=""> 4325: 						}
 </span><span class=""> 4326: 						push @where_parts,
 </span><span class=""> 4327: 							$tref . &#39;.&#39; . _sql_quote_identifier($col)
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4328: 							. &quot; $op (&quot; . join(&#39;, &#39;, (&#39;?&#39;) x scalar @items) . &#39;)&#39;;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4329: 						push @bind_vals, @items;
+</span><span class=""> 4328: 							. &quot; $op (&quot; . join(&#39;, &#39;, (&#39;?&#39;) x scalar @items) . &#39;)&#39;;
+</span><span class=""> 4329: 						push @bind_vals, @items;
 </span><span class=""> 4330: 						next;
 </span><span class=""> 4331: 					}
-</span><span class=""> 4332: 					if ($SAFE_NOARG_OPS{$op}) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4333: 						push @where_parts,
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4334: 							$tref . &#39;.&#39; . _sql_quote_identifier($col) . &quot; $op&quot;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4332: 					if ($SAFE_NOARG_OPS{$op}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4333: 						push @where_parts,
+</span><span class=""> 4334: 							$tref . &#39;.&#39; . _sql_quote_identifier($col) . &quot; $op&quot;;
 </span><span class=""> 4335: 						next;
 </span><span class=""> 4336: 					}
-</span><span class=""> 4337: 					unless ($SAFE_SQL_OPS{$op}) {
-</span><span class=""> 4338: 						carp &quot;Database::Join: operator &#39;$op&#39; is not supported on the SQLite backend; criterion skipped (use the array backend or a supported operator)&quot;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4337: 					unless ($SAFE_SQL_OPS{$op}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4338: 						carp &quot;Database::Join: operator &#39;$op&#39; is not supported on the SQLite backend; criterion skipped (use the array backend or a supported operator)&quot;;
 </span><span class=""> 4339: 						next;
 </span><span class=""> 4340: 					}
 </span><span class=""> 4341: 					push @where_parts,
@@ -4818,36 +4818,36 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4371: 		my $join_kw  = ($had_criteria-&gt;[$i] || $join_type eq &#39;inner&#39;) ? &#39;JOIN&#39;
 </span><span class=""> 4372: 		             : ($join_type eq &#39;outer&#39;)                        ? &#39;FULL OUTER JOIN&#39;
 </span><span class=""> 4373: 		             :                                                   &#39;LEFT JOIN&#39;;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4374: 		$join_sql .= &quot; $join_kw $table_refs-&gt;[$i]&quot;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4375: 		          . &#39; ON &#39; . $table_refs-&gt;[0] . &#39;.&#39; . _sql_quote_identifier($local_jc_0)
+</span><span class=""> 4374: 		$join_sql .= &quot; $join_kw $table_refs-&gt;[$i]&quot;
+</span><span class=""> 4375: 		          . &#39; ON &#39; . $table_refs-&gt;[0] . &#39;.&#39; . _sql_quote_identifier($local_jc_0)
 </span><span class=""> 4376: 		          . &#39; = &#39;  . $table_refs-&gt;[$i] . &#39;.&#39; . _sql_quote_identifier($local_jc);
 </span><span class=""> 4377: 	}
-</span><span class=""> 4378: 	return $join_sql;
-</span><span class=""> 4379: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4378: 	return $join_sql;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4379: }
 </span><span class=""> 4380: 
 </span><span class=""> 4381: # _validate_having( \%having, \%valid_keys )
 </span><span class=""> 4382: # Purpose: Recursively validate a having hashref; croak on unknown keys or operators.
 </span><span class=""> 4383: # Entry:   $having is the caller&#39;s having hashref; $valid_keys maps allowed keys to 1.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4384: # Effects: Croaks on first violation; returns normally when the spec is clean.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4385: sub _validate_having :Protected {
+</span><span class=""> 4384: # Effects: Croaks on first violation; returns normally when the spec is clean.
+</span><span class=""> 4385: sub _validate_having :Protected {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4386 → 4387 → 0</span></span> 4386: 	my ($self, $having, $valid_keys) = @_;
 </span><span class=""> 4387: 	for my $key (keys %{$having}) {
-</span><span class=""> 4388: 		if ($key eq &#39;-or&#39; || $key eq &#39;-and&#39;) {
-</span><span class=""> 4389: 			my $list = $having-&gt;{$key};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4388: 		if ($key eq &#39;-or&#39; || $key eq &#39;-and&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4389: 			my $list = $having-&gt;{$key};
 </span><span class=""> 4390: 			croak $self-&gt;_err(&#39;error_aggregate_having_key&#39;, $key)
 </span><span class=""> 4391: 				unless ref($list) eq &#39;ARRAY&#39;;
 </span><span class=""> 4392: 			for my $sub (@{$list}) {
 </span><span class=""> 4393: 				$self-&gt;_validate_having($sub, $valid_keys);
 </span><span class=""> 4394: 			}
 </span><span class=""> 4395: 			next;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4396: 		}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4397: 		croak $self-&gt;_err(&#39;error_aggregate_having_key&#39;, $key)
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4398: 			unless exists $valid_keys-&gt;{$key};
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4399: 		my $val = $having-&gt;{$key};
-</span><span class=""> 4400: 		if (ref($val) eq &#39;HASH&#39;) {
-</span><span class=""> 4401: 			for my $op (keys %{$val}) {
-</span><span class=""> 4402: 				unless ($SAFE_SQL_OPS{$op} || $SAFE_LIST_OPS{$op} || $SAFE_NOARG_OPS{$op}) {
-</span><span class=""> 4403: 					croak $self-&gt;_err(&#39;error_aggregate_having_operator&#39;, $op, $key);
+</span><span class=""> 4396: 		}
+</span><span class=""> 4397: 		croak $self-&gt;_err(&#39;error_aggregate_having_key&#39;, $key)
+</span><span class=""> 4398: 			unless exists $valid_keys-&gt;{$key};
+</span><span class=""> 4399: 		my $val = $having-&gt;{$key};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4400: 		if (ref($val) eq &#39;HASH&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4401: 			for my $op (keys %{$val}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4402: 				unless ($SAFE_SQL_OPS{$op} || $SAFE_LIST_OPS{$op} || $SAFE_NOARG_OPS{$op}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4403: 					croak $self-&gt;_err(&#39;error_aggregate_having_operator&#39;, $op, $key);
 </span><span class=""> 4404: 				}
 </span><span class=""> 4405: 			}
 </span><span class=""> 4406: 		}
@@ -4891,12 +4891,16 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4444: 		croak $self-&gt;_err(&#39;error_aggregate_by_invalid&#39;)
 </span><span class=""> 4445: 			unless defined $col &amp;&amp; length $col;
 </span><span class=""> 4446: 		my $owner = $self-&gt;{_col_db}{$col};
-</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4447: 		croak $self-&gt;_err(&#39;error_aggregate_col_unknown&#39;, $col)
+</span><span class=""> 4447: 		croak $self-&gt;_err(&#39;error_aggregate_col_unknown&#39;, $col)
+</span><span class=""> 4448: 			unless defined $owner;
+</span><span class=""> 4449: 		# Ambiguity: any DB other than the owner also has the raw column name
+</span><span class=""> 4450: 		# without renaming it via collision_prefix &acirc;&#134;&#146; last-wins applied silently.
+</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4451: 		if ($col ne $join_col &amp;&amp; index($col, &#39;.&#39;) &lt; 0) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 4, Killed: 1, Survived: 3)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4447_45_&gt;: Numeric boundary flip &lt; to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4451_45_&gt;: Numeric boundary flip &lt; to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4904,7 +4908,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4447_45_&lt;=: Numeric boundary flip &lt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4451_45_&lt;=: Numeric boundary flip &lt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4912,7 +4916,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4447_45_&gt;=: Numeric boundary flip &lt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4451_45_&gt;=: Numeric boundary flip &lt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -4921,14 +4925,10 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 4448: 			unless defined $owner;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4449: 		# Ambiguity: any DB other than the owner also has the raw column name
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4450: 		# without renaming it via collision_prefix &acirc;&#134;&#146; last-wins applied silently.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4451: 		if ($col ne $join_col &amp;&amp; index($col, &#39;.&#39;) &lt; 0) {
-</span><span class=""> 4452: 			for my $j (0 .. $n - 1) {
-</span><span class=""> 4453: 				next if $j == $owner;
-</span><span class=""> 4454: 				if ($self-&gt;{_db_cols}[$j]{$col}
-</span><span class=""> 4455: 						&amp;&amp; !exists $self-&gt;{_col_rename}[$j]{$col}) {
+<span class=""> 4452: 			for my $j (0 .. $n - 1) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4453: 				next if $j == $owner;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4454: 				if ($self-&gt;{_db_cols}[$j]{$col}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4455: 						&amp;&amp; !exists $self-&gt;{_col_rename}[$j]{$col}) {
 </span><span class=""> 4456: 					croak $self-&gt;_err(&#39;error_col_conflict&#39;, $col);
 </span><span class=""> 4457: 				}
 </span><span class=""> 4458: 			}
@@ -4950,19 +4950,19 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4474: 
 </span><span class=""> 4475: 		my $fn = lc($m-&gt;{fn} // &#39;&#39;);
 </span><span class=""> 4476: 		croak $self-&gt;_err(&#39;error_aggregate_fn_unknown&#39;, $m-&gt;{fn} // &#39;&#39;)
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4477: 			unless $AGGREGATE_FNS{$fn};
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4478: 
+</span><span class=""> 4477: 			unless $AGGREGATE_FNS{$fn};
+</span><span class=""> 4478: 
 </span><span class=""> 4479: 		my $col = $m-&gt;{col};
 </span><span class=""> 4480: 		my ($m_owner, $m_db_col, $m_is_numeric);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4481: 		if (defined $col) {
-</span><p> <b> Mutants (Total: 4, Killed: 4, Survived: 0)</b><p><span class=""> 4482: 			my $col_owner = $self-&gt;{_col_db}{$col};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4483: 			croak $self-&gt;_err(&#39;error_aggregate_col_unknown&#39;, $col)
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4484: 				unless defined $col_owner;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4485: 			if ($col ne $join_col &amp;&amp; index($col, &#39;.&#39;) &lt; 0) {
-</span><span class=""> 4486: 				for my $j (0 .. $n - 1) {
-</span><span class=""> 4487: 					next if $j == $col_owner;
-</span><span class=""> 4488: 					if ($self-&gt;{_db_cols}[$j]{$col}
-</span><span class=""> 4489: 							&amp;&amp; !exists $self-&gt;{_col_rename}[$j]{$col}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4482: 			my $col_owner = $self-&gt;{_col_db}{$col};
+</span><span class=""> 4483: 			croak $self-&gt;_err(&#39;error_aggregate_col_unknown&#39;, $col)
+</span><span class=""> 4484: 				unless defined $col_owner;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4485: 			if ($col ne $join_col &amp;&amp; index($col, &#39;.&#39;) &lt; 0) {
+</span><p> <b> Mutants (Total: 4, Killed: 4, Survived: 0)</b><p><span class=""> 4486: 				for my $j (0 .. $n - 1) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4487: 					next if $j == $col_owner;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4488: 					if ($self-&gt;{_db_cols}[$j]{$col}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4489: 							&amp;&amp; !exists $self-&gt;{_col_rename}[$j]{$col}) {
 </span><span class=""> 4490: 						croak $self-&gt;_err(&#39;error_col_conflict&#39;, $col);
 </span><span class=""> 4491: 					}
 </span><span class=""> 4492: 				}
@@ -4997,30 +4997,30 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4521: 			db_col     =&gt; $m_db_col,
 </span><span class=""> 4522: 			is_numeric =&gt; $m_is_numeric,
 </span><span class=""> 4523: 		};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4524: 	}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4525: 
+</span><span class=""> 4524: 	}
+</span><span class=""> 4525: 
 </span><span class=""> 4526: 	# having: validate keys and operators recursively.
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4527 → 4528 → 4533</span></span> 4527: 	my %valid_having_keys = (%by_name_set, %aliases);
-</span><span class=""> 4528: 	if (defined $having_raw &amp;&amp; %{$having_raw}) {
-</span><span class=""> 4529: 		$self-&gt;_validate_having($having_raw, \%valid_having_keys);
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4530: 	}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4531: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4532: 	# sort_by: name must be a by-column or measure alias; direction ASC/DESC.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4533 → 4534 → 4553</span></span> 4533: 	my ($sort_col, $sort_dir) = (undef, &#39;ASC&#39;);
-</span><span class=""> 4534: 	if (defined $sort_by_raw) {
-</span><span class=""> 4535: 		my ($req_col, $req_dir);
-</span><span class=""> 4536: 		if (ref($sort_by_raw) eq &#39;ARRAY&#39;) {
-</span><span class=""> 4537: 			($req_col, $req_dir) = @{$sort_by_raw};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4538: 		} else {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4539: 			($req_col, $req_dir) = ($sort_by_raw, &#39;ASC&#39;);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4528: 	if (defined $having_raw &amp;&amp; %{$having_raw}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4529: 		$self-&gt;_validate_having($having_raw, \%valid_having_keys);
+</span><span class=""> 4530: 	}
+</span><span class=""> 4531: 
+</span><span class=""> 4532: 	# sort_by: name must be a by-column or measure alias; direction ASC/DESC.
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4533 → 4534 → 4553</span></span> 4533: 	my ($sort_col, $sort_dir) = (undef, &#39;ASC&#39;);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4534: 	if (defined $sort_by_raw) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4535: 		my ($req_col, $req_dir);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4536: 		if (ref($sort_by_raw) eq &#39;ARRAY&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4537: 			($req_col, $req_dir) = @{$sort_by_raw};
+</span><span class=""> 4538: 		} else {
+</span><span class=""> 4539: 			($req_col, $req_dir) = ($sort_by_raw, &#39;ASC&#39;);
 </span><span class=""> 4540: 		}
 </span><span class=""> 4541: 		$req_dir = uc($req_dir // &#39;ASC&#39;);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4542: 		unless ($req_dir eq &#39;ASC&#39; || $req_dir eq &#39;DESC&#39;) {
 </span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4543: 			carp &quot;Database::Join: sort_by direction &#39;$req_dir&#39; is not supported; using ASC&quot;;
 </span><span class=""> 4544: 			$req_dir = &#39;ASC&#39;;
 </span><span class=""> 4545: 		}
-</span><span class=""> 4546: 		if (exists $valid_having_keys{$req_col}) {
-</span><span class=""> 4547: 			($sort_col, $sort_dir) = ($req_col, $req_dir);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4546: 		if (exists $valid_having_keys{$req_col}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4547: 			($sort_col, $sort_dir) = ($req_col, $req_dir);
 </span><span class=""> 4548: 		} else {
 </span><span class=""> 4549: 			carp $self-&gt;_err(&#39;warn_aggregate_sort_key&#39;, $req_col);
 </span><span class=""> 4550: 		}
@@ -5044,12 +5044,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4568: # Called on both SQLite and array paths so they cannot drift.
 </span><span class=""> 4569: sub _normalise_aggregate :Protected {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4570 → 4571 → 0</span></span> 4570: 	my ($self, $rows, $measures) = @_;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4571: 	for my $row (@{$rows}) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4572: 		for my $m (@{$measures}) {
+</span><span class=""> 4571: 	for my $row (@{$rows}) {
+</span><span class=""> 4572: 		for my $m (@{$measures}) {
 </span><span class=""> 4573: 			my $fn = $m-&gt;{fn};
 </span><span class=""> 4574: 			next if defined $row-&gt;{ $m-&gt;{as} };
-</span><span class=""> 4575: 			if ($fn eq &#39;sum&#39; || $fn eq &#39;count&#39; || $fn eq &#39;count_distinct&#39;) {
-</span><span class=""> 4576: 				$row-&gt;{ $m-&gt;{as} } = 0;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4575: 			if ($fn eq &#39;sum&#39; || $fn eq &#39;count&#39; || $fn eq &#39;count_distinct&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4576: 				$row-&gt;{ $m-&gt;{as} } = 0;
 </span><span class=""> 4577: 			}
 </span><span class=""> 4578: 		}
 </span><span class=""> 4579: 	}
@@ -5060,64 +5060,42 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4584: #   Implements three-valued logic: a NULL (undef) lhs satisfies only IS NULL.
 </span><span class=""> 4585: sub _match_having_criterion :Protected {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4586 → 4591 → 4604</span></span> 4586: 	my ($self, $value, $criterion, $key) = @_;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4587: 
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4588: 	# Empty-list short-circuits precede three-valued logic:
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4589: 	#   NOT IN () &acirc;&#134;&#146; always true (vacuously nothing to exclude, including NULL).
+</span><span class=""> 4587: 
+</span><span class=""> 4588: 	# Empty-list short-circuits precede three-valued logic:
+</span><span class=""> 4589: 	#   NOT IN () &acirc;&#134;&#146; always true (vacuously nothing to exclude, including NULL).
 </span><span class=""> 4590: 	#   IN ()     &acirc;&#134;&#146; always false.
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4591: 	if (ref($criterion) eq &#39;HASH&#39;) {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4592: 		if (exists $criterion-&gt;{&#39;NOT IN&#39;}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4593: 				&amp;&amp; ref($criterion-&gt;{&#39;NOT IN&#39;}) eq &#39;ARRAY&#39;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4594: 				&amp;&amp; !@{ $criterion-&gt;{&#39;NOT IN&#39;} }) {
-</span><span class=""> 4595: 			return 1;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4596: 		}
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4597: 		if (exists $criterion-&gt;{&#39;IN&#39;}
-</span><span class=""> 4598: 				&amp;&amp; ref($criterion-&gt;{&#39;IN&#39;}) eq &#39;ARRAY&#39;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4592: 		if (exists $criterion-&gt;{&#39;NOT IN&#39;}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4593: 				&amp;&amp; ref($criterion-&gt;{&#39;NOT IN&#39;}) eq &#39;ARRAY&#39;
+</span><span class=""> 4594: 				&amp;&amp; !@{ $criterion-&gt;{&#39;NOT IN&#39;} }) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4595: 			return 1;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4596: 		}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4597: 		if (exists $criterion-&gt;{&#39;IN&#39;}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4598: 				&amp;&amp; ref($criterion-&gt;{&#39;IN&#39;}) eq &#39;ARRAY&#39;
 </span><span class=""> 4599: 				&amp;&amp; !@{ $criterion-&gt;{&#39;IN&#39;} }) {
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4600: 			return 0;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4601: 		}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4602: 	}
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4603: 
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4604 → 4604 → 4609</span></span> 4604: 	if (!defined $value) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4605: 		# NULL satisfies: (1) bare undef criterion (IS NULL shorthand), or (2) IS NULL.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4606: 		return 1 unless defined $criterion;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4607: 		return (ref($criterion) eq &#39;HASH&#39; &amp;&amp; exists $criterion-&gt;{&#39;IS NULL&#39;}) ? 1 : 0;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4601: 		}
+</span><span class=""> 4602: 	}
+</span><span class=""> 4603: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4604 → 4604 → 4609</span></span> 4604: 	if (!defined $value) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4605: 		# NULL satisfies: (1) bare undef criterion (IS NULL shorthand), or (2) IS NULL.
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4606: 		return 1 unless defined $criterion;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4607: 		return (ref($criterion) eq &#39;HASH&#39; &amp;&amp; exists $criterion-&gt;{&#39;IS NULL&#39;}) ? 1 : 0;
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4608: 	}
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4609 → 4609 → 4613</span></span> 4609: 	if (!defined $criterion) {
 </span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4610: 		# bare undef means IS NULL; value is defined &acirc;&#134;&#146; false
-</span><span class=""> 4611: 		return 0;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4612: 	}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4613 → 4613 → 4656</span></span> 4613: 	if (ref($criterion) eq &#39;HASH&#39;) {
-</span>
-					<details class="mutant-details">
-					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
-					<ul>
-				<li><b>BOOL_NEGATE_4613_5: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Boolean branch test suggestion
-ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
-</pre>
-								</div>
-							</li><li><b>RETURN_UNDEF_4613_5: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Return value assertion
-is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
-</pre>
-								</div>
-							</li></ul></details>
-<span class=""> 4614: 		for my $op (keys %{$criterion}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4611: 		return 0;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4612: 	}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4613 → 4613 → 4656</span></span> 4613: 	if (ref($criterion) eq &#39;HASH&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4614: 		for my $op (keys %{$criterion}) {
 </span><span class=""> 4615: 			my $rhs = $criterion-&gt;{$op};
-</span><span class=""> 4616: 			if ($SAFE_NOARG_OPS{$op}) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4617: 				return 0 if $op eq &#39;IS NULL&#39;;   # value is defined
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 4618: 				# IS NOT NULL &acirc;&#134;&#146; pass
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4616: 			if ($SAFE_NOARG_OPS{$op}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 4617: 				return 0 if $op eq &#39;IS NULL&#39;;   # value is defined
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
 					<ul>
-				<li><b>BOOL_NEGATE_4618_6: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>BOOL_NEGATE_4617_5: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5125,7 +5103,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>RETURN_UNDEF_4618_6: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+							</li><li><b>RETURN_UNDEF_4617_5: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5134,13 +5112,16 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 4619: 			} elsif ($SAFE_LIST_OPS{$op}) {
-</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 4620: 				my @items = ref($rhs) eq &#39;ARRAY&#39; ? @{$rhs} : ();
+<span class=""> 4618: 				# IS NOT NULL &acirc;&#134;&#146; pass
+</span><span class=""> 4619: 			} elsif ($SAFE_LIST_OPS{$op}) {
+</span><span class=""> 4620: 				my @items = ref($rhs) eq &#39;ARRAY&#39; ? @{$rhs} : ();
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4621: 				if ($op eq &#39;IN&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 4622: 					return 0 unless grep { defined $_ &amp;&amp; $_ eq $value } @items;
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
 					<ul>
-				<li><b>BOOL_NEGATE_4620_6: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>BOOL_NEGATE_4622_6: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5148,7 +5129,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>RETURN_UNDEF_4620_6: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+							</li><li><b>RETURN_UNDEF_4622_6: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5157,16 +5138,39 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 4621: 				if ($op eq &#39;IN&#39;) {
-</span><span class=""> 4622: 					return 0 unless grep { defined $_ &amp;&amp; $_ eq $value } @items;
-</span><span class=""> 4623: 				} else {
-</span><span class=""> 4624: 					return 0 if grep { defined $_ &amp;&amp; $_ eq $value } @items;
-</span><span class="survived-1 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4625: 				}
+<span class=""> 4623: 				} else {
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 4624: 					return 0 if grep { defined $_ &amp;&amp; $_ eq $value } @items;
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_4624_6: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_4624_6: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class=""> 4625: 				}
+</span><span class=""> 4626: 			} elsif ($SAFE_SQL_OPS{$op}) {
+</span><span class=""> 4627: 				my $num = looks_like_number($value) &amp;&amp; looks_like_number($rhs);
+</span><span class=""> 4628: 				my $ok;
+</span><span class="survived-1 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4629: 				if    ($op eq &#39;=&#39;)        { $ok = $num ? $value == $rhs : $value eq $rhs }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 1, Survived: 1)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4625_53_!=: Numeric boundary flip == to !=</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4629_53_!=: Numeric boundary flip == to !=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5175,12 +5179,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class="survived-1 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4626: 			} elsif ($SAFE_SQL_OPS{$op}) {
+<span class="survived-1 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4630: 				elsif ($op eq &#39;!=&#39;)       { $ok = $num ? $value != $rhs : $value ne $rhs }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4626_53_==: Numeric boundary flip != to ==</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4630_53_==: Numeric boundary flip != to ==</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5189,13 +5193,13 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4627: 				my $num = looks_like_number($value) &amp;&amp; looks_like_number($rhs);
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4628: 				my $ok;
+<span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4631: 				elsif ($op eq &#39;&gt;&#39;)        { $ok = $num ? $value &gt; $rhs  : $value gt $rhs }
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4632: 				elsif ($op eq &#39;&lt;&#39;)        { $ok = $num ? $value &lt; $rhs  : $value lt $rhs }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 3, Killed: 0, Survived: 3)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4628_53_&gt;: Numeric boundary flip &lt; to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4632_53_&gt;: Numeric boundary flip &lt; to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5203,7 +5207,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4628_53_&lt;=: Numeric boundary flip &lt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4632_53_&lt;=: Numeric boundary flip &lt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5211,7 +5215,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4628_53_&gt;=: Numeric boundary flip &lt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4632_53_&gt;=: Numeric boundary flip &lt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5220,12 +5224,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4629: 				if    ($op eq &#39;=&#39;)        { $ok = $num ? $value == $rhs : $value eq $rhs }
+<span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4633: 				elsif ($op eq &#39;&gt;=&#39;)       { $ok = $num ? $value &gt;= $rhs : $value ge $rhs }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 3, Killed: 0, Survived: 3)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4629_53_&gt;: Numeric boundary flip &gt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4633_53_&gt;: Numeric boundary flip &gt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5233,7 +5237,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4629_53_&lt;: Numeric boundary flip &gt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4633_53_&lt;: Numeric boundary flip &gt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5241,7 +5245,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4629_53_&lt;=: Numeric boundary flip &gt;= to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4633_53_&lt;=: Numeric boundary flip &gt;= to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5250,12 +5254,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4630: 				elsif ($op eq &#39;!=&#39;)       { $ok = $num ? $value != $rhs : $value ne $rhs }
+<span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4634: 				elsif ($op eq &#39;&lt;=&#39;)       { $ok = $num ? $value &lt;= $rhs : $value le $rhs }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 3, Killed: 0, Survived: 3)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4630_53_&lt;: Numeric boundary flip &lt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4634_53_&lt;: Numeric boundary flip &lt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5263,7 +5267,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4630_53_&gt;: Numeric boundary flip &lt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4634_53_&gt;: Numeric boundary flip &lt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5271,7 +5275,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4630_53_&gt;=: Numeric boundary flip &lt;= to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4634_53_&gt;=: Numeric boundary flip &lt;= to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5280,11 +5284,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 4631: 				elsif ($op eq &#39;&gt;&#39;)        { $ok = $num ? $value &gt; $rhs  : $value gt $rhs }
-</span><span class=""> 4632: 				elsif ($op eq &#39;&lt;&#39;)        { $ok = $num ? $value &lt; $rhs  : $value lt $rhs }
-</span><span class=""> 4633: 				elsif ($op eq &#39;&gt;=&#39;)       { $ok = $num ? $value &gt;= $rhs : $value ge $rhs }
-</span><span class=""> 4634: 				elsif ($op eq &#39;&lt;=&#39;)       { $ok = $num ? $value &lt;= $rhs : $value le $rhs }
-</span><span class=""> 4635: 				elsif ($op eq &#39;LIKE&#39;) {
+<span class=""> 4635: 				elsif ($op eq &#39;LIKE&#39;) {
 </span><span class=""> 4636: 					my $pat = quotemeta($rhs);
 </span><span class=""> 4637: 					$pat =~ s/\\%/.*/g;
 </span><span class=""> 4638: 					$pat =~ s/\\_/./g;
@@ -5293,21 +5293,25 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4641: 					my $pat = quotemeta($rhs);
 </span><span class=""> 4642: 					$pat =~ s/\\%/.*/g;
 </span><span class=""> 4643: 					$pat =~ s/\\_/./g;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4644: 					$ok = ($value !~ /\A$pat\z/i);
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4645: 				} else {
+</span><span class=""> 4644: 					$ok = ($value !~ /\A$pat\z/i);
+</span><span class=""> 4645: 				} else {
 </span><span class=""> 4646: 					$ok = 0;
 </span><span class=""> 4647: 				}
-</span><span class=""> 4648: 				return 0 unless $ok;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4649: 			} else {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4650: 				croak $self-&gt;_err(&#39;error_aggregate_having_operator&#39;, $op, $key);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4648: 				return 0 unless $ok;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4649: 			} else {
+</span><span class=""> 4650: 				croak $self-&gt;_err(&#39;error_aggregate_having_operator&#39;, $op, $key);
 </span><span class=""> 4651: 			}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4652: 		}
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-1 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4653: 		return 1;
+</span><span class=""> 4652: 		}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4653: 		return 1;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4654: 	}
+</span><span class=""> 4655: 	# Bare scalar: equality
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4656: 	return looks_like_number($value) &amp;&amp; looks_like_number($criterion)
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-1 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4657: 		? ($value == $criterion ? 1 : 0)
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4653_13_!=: Numeric boundary flip == to !=</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4657_13_!=: Numeric boundary flip == to !=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5316,37 +5320,33 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 4654: 	}
-</span><span class=""> 4655: 	# Bare scalar: equality
-</span><span class=""> 4656: 	return looks_like_number($value) &amp;&amp; looks_like_number($criterion)
-</span><span class=""> 4657: 		? ($value == $criterion ? 1 : 0)
-</span><span class=""> 4658: 		: ($value eq $criterion ? 1 : 0);
+<span class=""> 4658: 		: ($value eq $criterion ? 1 : 0);
 </span><span class=""> 4659: }
 </span><span class=""> 4660: 
 </span><span class=""> 4661: # _match_criteria( $row, \%criteria ) -&gt; bool
 </span><span class=""> 4662: # Purpose: Evaluate a HAVING criteria hashref against a folded group row.
 </span><span class=""> 4663: # Supports -or / -and groupings recursively; delegates leaves to
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4664: # _match_having_criterion.  Used by the array path&#39;s aggregate() only.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4665: sub _match_criteria :Protected {
+</span><span class=""> 4664: # _match_having_criterion.  Used by the array path&#39;s aggregate() only.
+</span><span class=""> 4665: sub _match_criteria :Protected {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4666 → 4667 → 4683</span></span> 4666: 	my ($self, $row, $criteria) = @_;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4667: 	for my $key (keys %{$criteria}) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4668: 		if ($key eq &#39;-or&#39;) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4669: 			my $any = 0;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4670: 			for my $sub (@{ $criteria-&gt;{$key} }) {
-</span><span class=""> 4671: 				if ($self-&gt;_match_criteria($row, $sub)) { $any = 1; last }
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4672: 			}
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4673: 			return 0 unless $any;
-</span><span class=""> 4674: 		} elsif ($key eq &#39;-and&#39;) {
+</span><span class=""> 4667: 	for my $key (keys %{$criteria}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4668: 		if ($key eq &#39;-or&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4669: 			my $any = 0;
+</span><span class=""> 4670: 			for my $sub (@{ $criteria-&gt;{$key} }) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4671: 				if ($self-&gt;_match_criteria($row, $sub)) { $any = 1; last }
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4672: 			}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4673: 			return 0 unless $any;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4674: 		} elsif ($key eq &#39;-and&#39;) {
 </span><span class=""> 4675: 			for my $sub (@{ $criteria-&gt;{$key} }) {
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4676: 				return 0 unless $self-&gt;_match_criteria($row, $sub);
 </span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4677: 			}
 </span><span class=""> 4678: 		} else {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4679: 			my $val = exists $row-&gt;{$key} ? $row-&gt;{$key} : undef;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4680: 			return 0 unless $self-&gt;_match_having_criterion($val, $criteria-&gt;{$key}, $key);
-</span><span class=""> 4681: 		}
+</span><span class=""> 4679: 			my $val = exists $row-&gt;{$key} ? $row-&gt;{$key} : undef;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4680: 			return 0 unless $self-&gt;_match_having_criterion($val, $criteria-&gt;{$key}, $key);
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4681: 		}
 </span><span class=""> 4682: 	}
-</span><span class=""> 4683: 	return 1;
-</span><span class=""> 4684: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4683: 	return 1;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4684: }
 </span><span class=""> 4685: 
 </span><span class=""> 4686: # _fold_aggregate( \@merged_rows, \%spec ) -&gt; \@groups
 </span><span class=""> 4687: # Purpose: Group merged rows and compute aggregate measures in Perl.
@@ -5363,24 +5363,24 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4698: 		my %g;
 </span><span class=""> 4699: 		for my $b (@by) {
 </span><span class=""> 4700: 			$g{ $b-&gt;{name} } = exists $row-&gt;{ $b-&gt;{name} }
-</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4701: 				? $row-&gt;{ $b-&gt;{name} } : undef;
+</span><span class=""> 4701: 				? $row-&gt;{ $b-&gt;{name} } : undef;
+</span><span class=""> 4702: 		}
+</span><span class=""> 4703: 		for my $m (@measures) {
+</span><span class=""> 4704: 			my ($fn, $as) = ($m-&gt;{fn}, $m-&gt;{as});
+</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4705: 			if    ($fn eq &#39;sum&#39;)            { $g{&quot;${as}__sum&quot;} = 0; $g{&quot;${as}__bad&quot;} = 0; $g{&quot;${as}__badval&quot;} = undef }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>COND_INV_4701_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>COND_INV_4705_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 4702: 		}
-</span><span class=""> 4703: 		for my $m (@measures) {
-</span><span class=""> 4704: 			my ($fn, $as) = ($m-&gt;{fn}, $m-&gt;{as});
-</span><span class=""> 4705: 			if    ($fn eq &#39;sum&#39;)            { $g{&quot;${as}__sum&quot;} = 0; $g{&quot;${as}__bad&quot;} = 0; $g{&quot;${as}__badval&quot;} = undef }
-</span><span class=""> 4706: 			elsif ($fn eq &#39;avg&#39;)            { $g{&quot;${as}__sum&quot;} = 0; $g{&quot;${as}__cnt&quot;} = 0; $g{&quot;${as}__bad&quot;} = 0; $g{&quot;${as}__badval&quot;} = undef }
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4707: 			elsif ($fn eq &#39;min&#39; || $fn eq &#39;max&#39;) { $g{&quot;${as}__val&quot;} = undef }
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4708: 			elsif ($fn eq &#39;count&#39;)          { $g{&quot;${as}__cnt&quot;} = 0 }
+<span class=""> 4706: 			elsif ($fn eq &#39;avg&#39;)            { $g{&quot;${as}__sum&quot;} = 0; $g{&quot;${as}__cnt&quot;} = 0; $g{&quot;${as}__bad&quot;} = 0; $g{&quot;${as}__badval&quot;} = undef }
+</span><span class=""> 4707: 			elsif ($fn eq &#39;min&#39; || $fn eq &#39;max&#39;) { $g{&quot;${as}__val&quot;} = undef }
+</span><span class=""> 4708: 			elsif ($fn eq &#39;count&#39;)          { $g{&quot;${as}__cnt&quot;} = 0 }
 </span><span class=""> 4709: 			elsif ($fn eq &#39;count_distinct&#39;) { $g{&quot;${as}__seen&quot;} = {} }
 </span><span class=""> 4710: 		}
-</span><span class=""> 4711: 		return \%g;
-</span><span class=""> 4712: 	};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4711: 		return \%g;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4712: 	};
 </span><span class=""> 4713: 
 </span><span class=""> 4714: 	for my $row (@{$rows}) {
 </span><span class=""> 4715: 		my $key = join(&quot;\x00&quot;,
@@ -5390,60 +5390,60 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4719: 
 </span><span class=""> 4720: 		for my $m (@measures) {
 </span><span class=""> 4721: 			my ($fn, $as, $col) = ($m-&gt;{fn}, $m-&gt;{as}, $m-&gt;{col});
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4722: 			my $val = defined $col
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4723: 				? (exists $row-&gt;{$col} ? $row-&gt;{$col} : undef)
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4724: 				: undef;
+</span><span class=""> 4722: 			my $val = defined $col
+</span><span class=""> 4723: 				? (exists $row-&gt;{$col} ? $row-&gt;{$col} : undef)
+</span><span class=""> 4724: 				: undef;
 </span><span class=""> 4725: 
-</span><span class=""> 4726: 			if ($fn eq &#39;sum&#39;) {
-</span><span class=""> 4727: 				if (defined $val &amp;&amp; $val ne &#39;&#39; &amp;&amp; looks_like_number($val)) {
-</span><span class=""> 4728: 					$g-&gt;{&quot;${as}__sum&quot;} += $val;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4726: 			if ($fn eq &#39;sum&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4727: 				if (defined $val &amp;&amp; $val ne &#39;&#39; &amp;&amp; looks_like_number($val)) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4728: 					$g-&gt;{&quot;${as}__sum&quot;} += $val;
 </span><span class=""> 4729: 				} elsif (defined $val &amp;&amp; $val ne &#39;&#39;) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4730: 					$g-&gt;{&quot;${as}__bad&quot;}++;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4731: 					$g-&gt;{&quot;${as}__badval&quot;} //= $val;
+</span><span class=""> 4730: 					$g-&gt;{&quot;${as}__bad&quot;}++;
+</span><span class=""> 4731: 					$g-&gt;{&quot;${as}__badval&quot;} //= $val;
 </span><span class=""> 4732: 				}
 </span><span class=""> 4733: 			} elsif ($fn eq &#39;avg&#39;) {
-</span><span class=""> 4734: 				if (defined $val &amp;&amp; $val ne &#39;&#39; &amp;&amp; looks_like_number($val)) {
-</span><span class=""> 4735: 					$g-&gt;{&quot;${as}__sum&quot;} += $val;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4734: 				if (defined $val &amp;&amp; $val ne &#39;&#39; &amp;&amp; looks_like_number($val)) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4735: 					$g-&gt;{&quot;${as}__sum&quot;} += $val;
 </span><span class=""> 4736: 					$g-&gt;{&quot;${as}__cnt&quot;}++;
 </span><span class=""> 4737: 				} elsif (defined $val &amp;&amp; $val ne &#39;&#39;) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4738: 					$g-&gt;{&quot;${as}__bad&quot;}++;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4739: 					$g-&gt;{&quot;${as}__badval&quot;} //= $val;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4740: 				}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4741: 			} elsif ($fn eq &#39;min&#39;) {
-</span><span class=""> 4742: 				if (defined $val) {
-</span><span class=""> 4743: 					my $cur = $g-&gt;{&quot;${as}__val&quot;};
+</span><span class=""> 4738: 					$g-&gt;{&quot;${as}__bad&quot;}++;
+</span><span class=""> 4739: 					$g-&gt;{&quot;${as}__badval&quot;} //= $val;
+</span><span class=""> 4740: 				}
+</span><span class=""> 4741: 			} elsif ($fn eq &#39;min&#39;) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4742: 				if (defined $val) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4743: 					my $cur = $g-&gt;{&quot;${as}__val&quot;};
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4744: 					if (!defined $cur) {
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 4745: 						$g-&gt;{&quot;${as}__val&quot;} = $val;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4745: 						$g-&gt;{&quot;${as}__val&quot;} = $val;
 </span><span class=""> 4746: 					} else {
 </span><span class=""> 4747: 						my $num = looks_like_number($cur) &amp;&amp; looks_like_number($val);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4748: 						$g-&gt;{&quot;${as}__val&quot;} = $val if $num ? $val &lt; $cur : $val lt $cur;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4749: 					}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4750: 				}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4751: 			} elsif ($fn eq &#39;max&#39;) {
-</span><span class=""> 4752: 				if (defined $val) {
-</span><span class=""> 4753: 					my $cur = $g-&gt;{&quot;${as}__val&quot;};
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 4749: 					}
+</span><span class=""> 4750: 				}
+</span><span class=""> 4751: 			} elsif ($fn eq &#39;max&#39;) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4752: 				if (defined $val) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4753: 					my $cur = $g-&gt;{&quot;${as}__val&quot;};
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4754: 					if (!defined $cur) {
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 4755: 						$g-&gt;{&quot;${as}__val&quot;} = $val;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4755: 						$g-&gt;{&quot;${as}__val&quot;} = $val;
 </span><span class=""> 4756: 					} else {
 </span><span class=""> 4757: 						my $num = looks_like_number($cur) &amp;&amp; looks_like_number($val);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4758: 						$g-&gt;{&quot;${as}__val&quot;} = $val if $num ? $val &gt; $cur : $val gt $cur;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4759: 					}
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 4759: 					}
 </span><span class=""> 4760: 				}
 </span><span class=""> 4761: 			} elsif ($fn eq &#39;count&#39;) {
-</span><span class=""> 4762: 				if (!defined $col) {
-</span><span class=""> 4763: 					$g-&gt;{&quot;${as}__cnt&quot;}++;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4762: 				if (!defined $col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4763: 					$g-&gt;{&quot;${as}__cnt&quot;}++;
 </span><span class=""> 4764: 				} else {
 </span><span class=""> 4765: 					$g-&gt;{&quot;${as}__cnt&quot;}++ if defined $val;
 </span><span class=""> 4766: 				}
 </span><span class=""> 4767: 			} elsif ($fn eq &#39;count_distinct&#39;) {
 </span><span class=""> 4768: 				$g-&gt;{&quot;${as}__seen&quot;}{$val} = 1 if defined $val;
 </span><span class=""> 4769: 			}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4770: 		}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4771: 	}
+</span><span class=""> 4770: 		}
+</span><span class=""> 4771: 	}
 </span><span class=""> 4772: 
 </span><span class=""> 4773: 	# Grand total with no rows and no by: synthesise one zeroed row.
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4774 → 4774 → 4780</span></span> 4774: 	if (!@by &amp;&amp; !@order) {
-</span><span class=""> 4775: 		push @order, &#39;&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4774 → 4774 → 4780</span></span> 4774: 	if (!@by &amp;&amp; !@order) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4775: 		push @order, &#39;&#39;;
 </span><span class=""> 4776: 		$groups{&#39;&#39;} = $new_group-&gt;({});
 </span><span class=""> 4777: 	}
 </span><span class=""> 4778: 
@@ -5451,26 +5451,26 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4780 → 4781 → 4813</span></span> 4780: 	my (@result, %bad_warned);
 </span><span class=""> 4781: 	for my $key (@order) {
 </span><span class=""> 4782: 		my $g = $groups{$key};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4783: 		my %row;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4784: 		for my $b (@by)     { $row{ $b-&gt;{name} } = $g-&gt;{ $b-&gt;{name} } }
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4785: 		for my $m (@measures) {
+</span><span class=""> 4783: 		my %row;
+</span><span class=""> 4784: 		for my $b (@by)     { $row{ $b-&gt;{name} } = $g-&gt;{ $b-&gt;{name} } }
+</span><span class=""> 4785: 		for my $m (@measures) {
 </span><span class=""> 4786: 			my ($fn, $as, $col) = ($m-&gt;{fn}, $m-&gt;{as}, $m-&gt;{col} // &#39;(row)&#39;);
-</span><span class=""> 4787: 			if ($fn eq &#39;sum&#39;) {
-</span><span class=""> 4788: 				if ($g-&gt;{&quot;${as}__bad&quot;} &amp;&amp; !$bad_warned{$as}) {
-</span><span class=""> 4789: 					carp $self-&gt;_err(&#39;warn_aggregate_non_numeric&#39;,
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4787: 			if ($fn eq &#39;sum&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4788: 				if ($g-&gt;{&quot;${as}__bad&quot;} &amp;&amp; !$bad_warned{$as}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4789: 					carp $self-&gt;_err(&#39;warn_aggregate_non_numeric&#39;,
 </span><span class=""> 4790: 						$col, $g-&gt;{&quot;${as}__bad&quot;}, $g-&gt;{&quot;${as}__badval&quot;});
-</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4791: 					$bad_warned{$as} = 1;
+</span><span class=""> 4791: 					$bad_warned{$as} = 1;
+</span><span class=""> 4792: 				}
+</span><span class=""> 4793: 				$row{$as} = $g-&gt;{&quot;${as}__sum&quot;};
+</span><span class=""> 4794: 			} elsif ($fn eq &#39;avg&#39;) {
+</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4795: 				if ($g-&gt;{&quot;${as}__bad&quot;} &amp;&amp; !$bad_warned{$as}) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>COND_INV_4791_5: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>COND_INV_4795_5: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 4792: 				}
-</span><span class=""> 4793: 				$row{$as} = $g-&gt;{&quot;${as}__sum&quot;};
-</span><span class=""> 4794: 			} elsif ($fn eq &#39;avg&#39;) {
-</span><span class=""> 4795: 				if ($g-&gt;{&quot;${as}__bad&quot;} &amp;&amp; !$bad_warned{$as}) {
-</span><span class=""> 4796: 					carp $self-&gt;_err(&#39;warn_aggregate_non_numeric&#39;,
+<span class=""> 4796: 					carp $self-&gt;_err(&#39;warn_aggregate_non_numeric&#39;,
 </span><span class=""> 4797: 						$col, $g-&gt;{&quot;${as}__bad&quot;}, $g-&gt;{&quot;${as}__badval&quot;});
 </span><span class=""> 4798: 					$bad_warned{$as} = 1;
 </span><span class=""> 4799: 				}
@@ -5483,12 +5483,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4806: 				$row{$as} = $g-&gt;{&quot;${as}__cnt&quot;};
 </span><span class=""> 4807: 			} elsif ($fn eq &#39;count_distinct&#39;) {
 </span><span class=""> 4808: 				$row{$as} = scalar keys %{ $g-&gt;{&quot;${as}__seen&quot;} };
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4809: 			}
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4810: 		}
+</span><span class=""> 4809: 			}
+</span><span class=""> 4810: 		}
 </span><span class=""> 4811: 		push @result, \%row;
 </span><span class=""> 4812: 	}
-</span><span class=""> 4813: 	return \@result;
-</span><span class=""> 4814: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4813: 	return \@result;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 4814: }
 </span><span class=""> 4815: 
 </span><span class=""> 4816: # _sort_and_page( \@rows, \%spec )
 </span><span class=""> 4817: # Purpose: Sort and splice the array-path aggregate result in place.
@@ -5496,23 +5496,23 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4819: sub _sort_and_page :Protected {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4820 → 4826 → 4859</span></span> 4820: 	my ($self, $rows, $spec) = @_;
 </span><span class=""> 4821: 	my $sort   = $spec-&gt;{sort};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4822: 	my $limit  = $spec-&gt;{limit};
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4823: 	my $offset = $spec-&gt;{offset};
+</span><span class=""> 4822: 	my $limit  = $spec-&gt;{limit};
+</span><span class=""> 4823: 	my $offset = $spec-&gt;{offset};
 </span><span class=""> 4824: 	my @by     = @{ $spec-&gt;{by} };
 </span><span class=""> 4825: 
-</span><span class=""> 4826: 	if (defined $sort) {
-</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4827: 		my ($sc, $sd) = @{$sort};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4826: 	if (defined $sort) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4827: 		my ($sc, $sd) = @{$sort};
+</span><span class=""> 4828: 		@{$rows} = sort {
+</span><span class=""> 4829: 			my ($va, $vb) = ($a-&gt;{$sc}, $b-&gt;{$sc});
+</span><span class=""> 4830: 			my $cmp;
+</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4831: 			if    (!defined $va &amp;&amp; !defined $vb) { $cmp = 0 }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>COND_INV_4827_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>COND_INV_4831_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 4828: 		@{$rows} = sort {
-</span><span class=""> 4829: 			my ($va, $vb) = ($a-&gt;{$sc}, $b-&gt;{$sc});
-</span><span class=""> 4830: 			my $cmp;
-</span><span class=""> 4831: 			if    (!defined $va &amp;&amp; !defined $vb) { $cmp = 0 }
-</span><span class=""> 4832: 			elsif (!defined $va)                 { $cmp = -1 }
+<span class=""> 4832: 			elsif (!defined $va)                 { $cmp = -1 }
 </span><span class=""> 4833: 			elsif (!defined $vb)                 { $cmp = 1 }
 </span><span class=""> 4834: 			else {
 </span><span class=""> 4835: 				$cmp = looks_like_number($va) &amp;&amp; looks_like_number($vb)
@@ -5522,18 +5522,18 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4839: 		} @{$rows};
 </span><span class=""> 4840: 	} elsif (@by) {
 </span><span class=""> 4841: 		@{$rows} = sort {
-</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4842: 			my $cmp = 0;
+</span><span class=""> 4842: 			my $cmp = 0;
+</span><span class=""> 4843: 			for my $dim (@by) {
+</span><span class=""> 4844: 				my $k = $dim-&gt;{name};
+</span><span class=""> 4845: 				my ($va, $vb) = ($a-&gt;{$k}, $b-&gt;{$k});
+</span><span class="survived-1 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch."> 4846: 				if    (!defined $va &amp;&amp; !defined $vb) { $cmp = 0 }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 1, Killed: 0, Survived: 1)</summary>
 					<ul>
-				<li><b>COND_INV_4842_5: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>COND_INV_4846_5: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 4843: 			for my $dim (@by) {
-</span><span class=""> 4844: 				my $k = $dim-&gt;{name};
-</span><span class=""> 4845: 				my ($va, $vb) = ($a-&gt;{$k}, $b-&gt;{$k});
-</span><span class=""> 4846: 				if    (!defined $va &amp;&amp; !defined $vb) { $cmp = 0 }
-</span><span class=""> 4847: 				elsif (!defined $va)                 { $cmp = -1 }
+<span class=""> 4847: 				elsif (!defined $va)                 { $cmp = -1 }
 </span><span class=""> 4848: 				elsif (!defined $vb)                 { $cmp = 1 }
 </span><span class=""> 4849: 				else {
 </span><span class=""> 4850: 					$cmp = looks_like_number($va) &amp;&amp; looks_like_number($vb)
@@ -5541,13 +5541,13 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4852: 				}
 </span><span class=""> 4853: 				last if $cmp;
 </span><span class=""> 4854: 			}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4855: 			$cmp;
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4856: 		} @{$rows};
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 4857: 	}
+</span><span class=""> 4855: 			$cmp;
+</span><span class=""> 4856: 		} @{$rows};
+</span><span class=""> 4857: 	}
 </span><span class=""> 4858: 
-</span><span class=""> 4859: 	splice(@{$rows}, 0, $offset) if defined $offset &amp;&amp; $offset &gt; 0;
-</span><span class=""> 4860: 	splice(@{$rows}, $limit)     if defined $limit  &amp;&amp; $limit &lt; scalar @{$rows};
-</span><span class=""> 4861: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4859: 	splice(@{$rows}, 0, $offset) if defined $offset &amp;&amp; $offset &gt; 0;
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4860: 	splice(@{$rows}, $limit)     if defined $limit  &amp;&amp; $limit &lt; scalar @{$rows};
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 4861: }
 </span><span class=""> 4862: 
 </span><span class=""> 4863: # _having_to_sql( \%having, \%have_map ) -&gt; ( $sql_fragment, \@binds )
 </span><span class=""> 4864: # Purpose: Recursively convert a having hashref to a SQL fragment with bind values.
@@ -5557,53 +5557,53 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4868: # Supports -or / -and recursion; delegates leaves to the same three operator tables
 </span><span class=""> 4869: # as _sqlite_where (_sqlite_join&#39;s WHERE builder), for vocabulary consistency.
 </span><span class=""> 4870: sub _having_to_sql :Protected {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4871 → 4874 → 4937</span></span> 4871: 	my ($self, $having, $have_map) = @_;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4872: 	my (@parts, @binds);
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">4871 → 4874 → 4937</span></span> 4871: 	my ($self, $having, $have_map) = @_;
+</span><span class=""> 4872: 	my (@parts, @binds);
 </span><span class=""> 4873: 
 </span><span class=""> 4874: 	for my $key (sort keys %{$having}) {
-</span><span class=""> 4875: 		if ($key eq &#39;-or&#39;) {
-</span><span class=""> 4876: 			my (@sp, @sb);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4875: 		if ($key eq &#39;-or&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4876: 			my (@sp, @sb);
 </span><span class=""> 4877: 			for my $sub (@{ $having-&gt;{$key} }) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4878: 				my ($s, $b) = $self-&gt;_having_to_sql($sub, $have_map);
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4879: 				push @sp, $s if length $s;
+</span><span class=""> 4878: 				my ($s, $b) = $self-&gt;_having_to_sql($sub, $have_map);
+</span><span class=""> 4879: 				push @sp, $s if length $s;
 </span><span class=""> 4880: 				push @sb, @{$b};
 </span><span class=""> 4881: 			}
-</span><span class=""> 4882: 			if (@sp) {
-</span><span class=""> 4883: 				push @parts, &#39;(&#39; . join(&#39; OR &#39;, @sp) . &#39;)&#39;;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4884: 				push @binds, @sb;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4885: 			}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4882: 			if (@sp) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4883: 				push @parts, &#39;(&#39; . join(&#39; OR &#39;, @sp) . &#39;)&#39;;
+</span><span class=""> 4884: 				push @binds, @sb;
+</span><span class=""> 4885: 			}
 </span><span class=""> 4886: 			next;
 </span><span class=""> 4887: 		}
-</span><span class=""> 4888: 		if ($key eq &#39;-and&#39;) {
-</span><span class=""> 4889: 			my (@sp, @sb);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4888: 		if ($key eq &#39;-and&#39;) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4889: 			my (@sp, @sb);
 </span><span class=""> 4890: 			for my $sub (@{ $having-&gt;{$key} }) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4891: 				my ($s, $b) = $self-&gt;_having_to_sql($sub, $have_map);
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4892: 				push @sp, $s if length $s;
+</span><span class=""> 4891: 				my ($s, $b) = $self-&gt;_having_to_sql($sub, $have_map);
+</span><span class=""> 4892: 				push @sp, $s if length $s;
 </span><span class=""> 4893: 				push @sb, @{$b};
 </span><span class=""> 4894: 			}
-</span><span class=""> 4895: 			if (@sp) {
-</span><span class=""> 4896: 				push @parts, &#39;(&#39; . join(&#39; AND &#39;, @sp) . &#39;)&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4895: 			if (@sp) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4896: 				push @parts, &#39;(&#39; . join(&#39; AND &#39;, @sp) . &#39;)&#39;;
 </span><span class=""> 4897: 				push @binds, @sb;
 </span><span class=""> 4898: 			}
 </span><span class=""> 4899: 			next;
 </span><span class=""> 4900: 		}
 </span><span class=""> 4901: 
 </span><span class=""> 4902: 		my $entry  = $have_map-&gt;{$key};
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4903: 		my $expr   = $entry ? $entry-&gt;{expr}   : _sql_quote_identifier($key);
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4904: 		my $is_agg = $entry ? $entry-&gt;{is_agg} : 0;
+</span><span class=""> 4903: 		my $expr   = $entry ? $entry-&gt;{expr}   : _sql_quote_identifier($key);
+</span><span class=""> 4904: 		my $is_agg = $entry ? $entry-&gt;{is_agg} : 0;
 </span><span class=""> 4905: 		my $val    = $having-&gt;{$key};
 </span><span class=""> 4906: 
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4907: 		if (!defined $val) {
 </span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4908: 			push @parts, &quot;$expr IS NULL&quot;;
 </span><span class=""> 4909: 		} elsif (ref($val) eq &#39;HASH&#39;) {
 </span><span class=""> 4910: 			for my $op (sort keys %{$val}) {
-</span><span class=""> 4911: 				if ($SAFE_NOARG_OPS{$op}) {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4912: 					push @parts, &quot;$expr $op&quot;;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4913: 				} elsif ($SAFE_LIST_OPS{$op}) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4911: 				if ($SAFE_NOARG_OPS{$op}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4912: 					push @parts, &quot;$expr $op&quot;;
+</span><span class=""> 4913: 				} elsif ($SAFE_LIST_OPS{$op}) {
 </span><span class=""> 4914: 					my $arr   = $val-&gt;{$op};
 </span><span class=""> 4915: 					my @items = ref($arr) eq &#39;ARRAY&#39; ? @{$arr} : ();
-</span><span class=""> 4916: 					if (!@items) {
-</span><span class=""> 4917: 						push @parts, &#39;1 = 0&#39; if $op eq &#39;IN&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4916: 					if (!@items) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4917: 						push @parts, &#39;1 = 0&#39; if $op eq &#39;IN&#39;;
 </span><span class=""> 4918: 						next;
 </span><span class=""> 4919: 					}
 </span><span class=""> 4920: 					push @parts,
@@ -5656,13 +5656,17 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4967: 	my @by_exprs;
 </span><span class=""> 4968: 	my @by_select;
 </span><span class=""> 4969: 	my %have_map;   # key =&gt; { expr, is_agg } for _having_to_sql
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4970: 
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one). Mutation survived. Add targeted tests to validate this branch."> 4971: 	for my $b (@{ $spec-&gt;{by} }) {
+</span><span class=""> 4970: 
+</span><span class=""> 4971: 	for my $b (@{ $spec-&gt;{by} }) {
+</span><span class=""> 4972: 		my ($bname, $owner, $db_col) = @{$b}{qw(name owner db_col)};
+</span><span class=""> 4973: 		my $expr;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4974: 		if ($bname eq $join_col) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one). Mutation survived. Add targeted tests to validate this branch."> 4975: 			if ($join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 4, Killed: 0, Survived: 4)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_4971_36_&lt;: Numeric boundary flip &gt; to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_4975_36_&lt;: Numeric boundary flip &gt; to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5670,7 +5674,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4971_36_&gt;=: Numeric boundary flip &gt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4975_36_&gt;=: Numeric boundary flip &gt; to &gt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5678,7 +5682,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_4971_36_&lt;=: Numeric boundary flip &gt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_4975_36_&lt;=: Numeric boundary flip &gt; to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5686,13 +5690,9 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>COND_INV_4971_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
+							</li><li><b>COND_INV_4975_4: Invert condition if to unless</b><br>MEDIUM: Add tests asserting both true and false outcomes
 </li></ul></details>
-<span class=""> 4972: 		my ($bname, $owner, $db_col) = @{$b}{qw(name owner db_col)};
-</span><span class=""> 4973: 		my $expr;
-</span><span class=""> 4974: 		if ($bname eq $join_col) {
-</span><span class=""> 4975: 			if ($join_type eq &#39;outer&#39; &amp;&amp; $n &gt; 1) {
-</span><span class=""> 4976: 				$expr = &#39;COALESCE(&#39;
+<span class=""> 4976: 				$expr = &#39;COALESCE(&#39;
 </span><span class=""> 4977: 				      . join(&#39;, &#39;, map {
 </span><span class=""> 4978: 				            my $lc = $self-&gt;{_join_map}{$_} // $join_col;
 </span><span class=""> 4979: 				            $table_refs[$_] . &#39;.&#39; . _sql_quote_identifier($lc)
@@ -5721,12 +5721,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5002: 		$is_numeric //= 0;
 </span><span class=""> 5003: 
 </span><span class=""> 5004: 		my $col_ref = defined $db_col
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5005: 			? $table_refs[$owner] . &#39;.&#39; . _sql_quote_identifier($db_col)
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5006: 			: undef;
+</span><span class=""> 5005: 			? $table_refs[$owner] . &#39;.&#39; . _sql_quote_identifier($db_col)
+</span><span class=""> 5006: 			: undef;
 </span><span class=""> 5007: 
 </span><span class=""> 5008: 		my $sql_expr;
-</span><span class=""> 5009: 		if    ($fn eq &#39;sum&#39;)            { $sql_expr = &quot;SUM(CAST($col_ref AS REAL))&quot; }
-</span><span class=""> 5010: 		elsif ($fn eq &#39;avg&#39;)            { $sql_expr = &quot;AVG(CAST($col_ref AS REAL))&quot; }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5009: 		if    ($fn eq &#39;sum&#39;)            { $sql_expr = &quot;SUM(CAST($col_ref AS REAL))&quot; }
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5010: 		elsif ($fn eq &#39;avg&#39;)            { $sql_expr = &quot;AVG(CAST($col_ref AS REAL))&quot; }
 </span><span class=""> 5011: 		elsif ($fn eq &#39;min&#39;)            {
 </span><span class=""> 5012: 			$sql_expr = $is_numeric ? &quot;MIN(CAST($col_ref AS REAL))&quot; : &quot;MIN($col_ref)&quot; }
 </span><span class=""> 5013: 		elsif ($fn eq &#39;max&#39;)            {
@@ -5741,22 +5741,22 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5022: 
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5023 → 5029 → 5038</span></span> 5023: 	my $groupby_sql = @by_exprs
 </span><span class=""> 5024: 		? &#39; GROUP BY &#39; . join(&#39;, &#39;, @by_exprs)
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5025: 		: &#39;&#39;;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5026: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5027: 	# HAVING clause.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5028: 	my ($having_sql, $having_binds) = (&#39;&#39;, []);
-</span><span class=""> 5029: 	if (defined $spec-&gt;{having} &amp;&amp; %{ $spec-&gt;{having} }) {
-</span><span class=""> 5030: 		my ($h_sql, $h_binds) = $self-&gt;_having_to_sql($spec-&gt;{having}, \%have_map);
-</span><span class=""> 5031: 		if (length $h_sql) {
-</span><span class=""> 5032: 			$having_sql   = &#39; HAVING &#39; . $h_sql;
+</span><span class=""> 5025: 		: &#39;&#39;;
+</span><span class=""> 5026: 
+</span><span class=""> 5027: 	# HAVING clause.
+</span><span class=""> 5028: 	my ($having_sql, $having_binds) = (&#39;&#39;, []);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5029: 	if (defined $spec-&gt;{having} &amp;&amp; %{ $spec-&gt;{having} }) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5030: 		my ($h_sql, $h_binds) = $self-&gt;_having_to_sql($spec-&gt;{having}, \%have_map);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5031: 		if (length $h_sql) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5032: 			$having_sql   = &#39; HAVING &#39; . $h_sql;
 </span><span class=""> 5033: 			$having_binds = $h_binds;
 </span><span class=""> 5034: 		}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5035: 	}
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5036: 
+</span><span class=""> 5035: 	}
+</span><span class=""> 5036: 
 </span><span class=""> 5037: 	# ORDER BY: default = by expressions ascending; override via spec-&gt;{sort}.
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5038 → 5039 → 5050</span></span> 5038: 	my $order_sql;
-</span><span class=""> 5039: 	if (defined $spec-&gt;{sort}) {
-</span><span class=""> 5040: 		my ($sc, $sd) = @{ $spec-&gt;{sort} };
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5039: 	if (defined $spec-&gt;{sort}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5040: 		my ($sc, $sd) = @{ $spec-&gt;{sort} };
 </span><span class=""> 5041: 		my $sort_expr = $have_map{$sc} ? $have_map{$sc}{expr}
 </span><span class=""> 5042: 		                               : _sql_quote_identifier($sc);
 </span><span class=""> 5043: 		$order_sql = &#39; ORDER BY &#39; . $sort_expr . ($sd eq &#39;DESC&#39; ? &#39; DESC&#39; : &#39;&#39;);
@@ -5772,15 +5772,15 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5053: 	        . $where_sql
 </span><span class=""> 5054: 	        . $groupby_sql
 </span><span class=""> 5055: 	        . $having_sql
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5056: 	        . $order_sql;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5057: 
+</span><span class=""> 5056: 	        . $order_sql;
+</span><span class=""> 5057: 
 </span><span class=""> 5058: 	my @page_bind;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5059: 	my ($limit, $offset) = ($spec-&gt;{limit}, $spec-&gt;{offset});
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5060: 	if (defined $limit) {
-</span><span class=""> 5061: 		$sql .= &#39; LIMIT ?&#39;;
+</span><span class=""> 5059: 	my ($limit, $offset) = ($spec-&gt;{limit}, $spec-&gt;{offset});
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5060: 	if (defined $limit) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5061: 		$sql .= &#39; LIMIT ?&#39;;
 </span><span class=""> 5062: 		push @page_bind, $limit;
-</span><span class=""> 5063: 		if (defined $offset) { $sql .= &#39; OFFSET ?&#39;; push @page_bind, $offset }
-</span><span class=""> 5064: 	} elsif (defined $offset) {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5063: 		if (defined $offset) { $sql .= &#39; OFFSET ?&#39;; push @page_bind, $offset }
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5064: 	} elsif (defined $offset) {
 </span><span class=""> 5065: 		$sql .= &#39; LIMIT -1 OFFSET ?&#39;;
 </span><span class=""> 5066: 		push @page_bind, $offset;
 </span><span class=""> 5067: 	}
@@ -5788,37 +5788,41 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5069 → 5076 → 5082</span></span> 5069: 	my $sth = $tmpdbh-&gt;prepare_cached($sql);
 </span><span class=""> 5070: 	$sth-&gt;execute(@{$where_binds}, @{$having_binds}, @page_bind);
 </span><span class=""> 5071: 	my $rows = $sth-&gt;fetchall_arrayref({}) // [];
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5072: 
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5073: 	$self-&gt;_normalise_aggregate($rows, $spec-&gt;{measures});
+</span><span class=""> 5072: 
+</span><span class=""> 5073: 	$self-&gt;_normalise_aggregate($rows, $spec-&gt;{measures});
 </span><span class=""> 5074: 
 </span><span class=""> 5075: 	# Grand total with no by and no matching rows: synthesise one normalised row.
-</span><span class=""> 5076: 	if (!@{ $spec-&gt;{by} } &amp;&amp; !@{$rows}) {
-</span><span class=""> 5077: 		my %row = map { $_-&gt;{as} =&gt; undef } @{ $spec-&gt;{measures} };
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5078: 		$self-&gt;_normalise_aggregate([\%row], $spec-&gt;{measures});
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5079: 		return [\%row];
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5076: 	if (!@{ $spec-&gt;{by} } &amp;&amp; !@{$rows}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5077: 		my %row = map { $_-&gt;{as} =&gt; undef } @{ $spec-&gt;{measures} };
+</span><span class=""> 5078: 		$self-&gt;_normalise_aggregate([\%row], $spec-&gt;{measures});
+</span><span class=""> 5079: 		return [\%row];
 </span><span class=""> 5080: 	}
 </span><span class=""> 5081: 
-</span><span class=""> 5082: 	return $rows;
-</span><span class=""> 5083: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5082: 	return $rows;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5083: }
 </span><span class=""> 5084: 
 </span><span class=""> 5085: # _mandatory_op_to_crit( $op, $val ) -&gt; $criterion_value
 </span><span class=""> 5086: # Purpose: Convert a mandatory_filter {col, op, val} operator name to the
 </span><span class=""> 5087: #          internal criteria format used by _sqlite_where.
 </span><span class=""> 5088: # Entry:   $op is one of: eq ne lt lte gt gte like contains.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5089: #          $val is the comparison value.
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5090: # Exit:    Returns a plain scalar (for eq) or an operator hashref.
+</span><span class=""> 5089: #          $val is the comparison value.
+</span><span class=""> 5090: # Exit:    Returns a plain scalar (for eq) or an operator hashref.
 </span><span class=""> 5091: sub _mandatory_op_to_crit {
 </span><span class=""> 5092: 	my ($op, $val) = @_;
-</span><span class=""> 5093: 	return $val                  if $op eq &#39;eq&#39;;
-</span><span class=""> 5094: 	return { &#39;!=&#39;  =&gt; $val }     if $op eq &#39;ne&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5093: 	return $val                  if $op eq &#39;eq&#39;;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5094: 	return { &#39;!=&#39;  =&gt; $val }     if $op eq &#39;ne&#39;;
 </span><span class=""> 5095: 	return { &#39;&lt;&#39;   =&gt; $val }     if $op eq &#39;lt&#39;;
 </span><span class=""> 5096: 	return { &#39;&lt;=&#39;  =&gt; $val }     if $op eq &#39;lte&#39;;
-</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5097: 	return { &#39;&gt;&#39;   =&gt; $val }     if $op eq &#39;gt&#39;;
+</span><span class=""> 5097: 	return { &#39;&gt;&#39;   =&gt; $val }     if $op eq &#39;gt&#39;;
+</span><span class=""> 5098: 	return { &#39;&gt;=&#39;  =&gt; $val }     if $op eq &#39;gte&#39;;
+</span><span class=""> 5099: 	return { LIKE  =&gt; $val }     if $op eq &#39;like&#39;;
+</span><span class=""> 5100: 	return { LIKE  =&gt; &quot;%$val%&quot; } if $op eq &#39;contains&#39;;
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5101: 	return $val;  # unreachable: validated at construction
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
 					<ul>
-				<li><b>BOOL_NEGATE_5097_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>BOOL_NEGATE_5101_2: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5826,7 +5830,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>RETURN_UNDEF_5097_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+							</li><li><b>RETURN_UNDEF_5101_2: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5835,11 +5839,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 5098: 	return { &#39;&gt;=&#39;  =&gt; $val }     if $op eq &#39;gte&#39;;
-</span><span class=""> 5099: 	return { LIKE  =&gt; $val }     if $op eq &#39;like&#39;;
-</span><span class=""> 5100: 	return { LIKE  =&gt; &quot;%$val%&quot; } if $op eq &#39;contains&#39;;
-</span><span class=""> 5101: 	return $val;  # unreachable: validated at construction
-</span><span class=""> 5102: }
+<span class=""> 5102: }
 </span><span class=""> 5103: 
 </span><span class=""> 5104: # _pass_mandatory_filters( \%row, \@filters ) -&gt; bool
 </span><span class=""> 5105: # Purpose: Test a single merged row against all mandatory_filter predicates.
@@ -5847,12 +5847,16 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 5107: # Exit:    Returns 1 if ALL predicates pass, 0 if any fails.
 </span><span class=""> 5108: # Perl-side evaluation mirrors the SQL semantics produced by _mandatory_op_to_crit.
 </span><span class=""> 5109: sub _pass_mandatory_filters {
-</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5110 → 5111 → 5132</span></span> 5110: 	my ($row, $filters) = @_;
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5110 → 5111 → 5132</span></span> 5110: 	my ($row, $filters) = @_;
+</span><span class=""> 5111: 	for my $pred (@{$filters}) {
+</span><span class=""> 5112: 		my ($col, $op, $val) = @{$pred}{qw(col op val)};
+</span><span class=""> 5113: 		my $rv = $row-&gt;{$col};
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5114: 		return 0 unless defined $rv;
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
 					<ul>
-				<li><b>BOOL_NEGATE_5110_3: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>BOOL_NEGATE_5114_3: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5860,53 +5864,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>RETURN_UNDEF_5110_3: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Return value assertion
-is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
-</pre>
-								</div>
-							</li></ul></details>
-<span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5111: 	for my $pred (@{$filters}) {
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5112: 		my ($col, $op, $val) = @{$pred}{qw(col op val)};
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5113: 		my $rv = $row-&gt;{$col};
-</span>
-					<details class="mutant-details">
-					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
-					<ul>
-				<li><b>BOOL_NEGATE_5113_31: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Boolean branch test suggestion
-ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
-</pre>
-								</div>
-							</li><li><b>RETURN_UNDEF_5113_31: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Return value assertion
-is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
-</pre>
-								</div>
-							</li></ul></details>
-<span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5114: 		return 0 unless defined $rv;
-</span>
-					<details class="mutant-details">
-					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
-					<ul>
-				<li><b>BOOL_NEGATE_5114_31: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
-
-								<div class="suggested-test">
-								<div class="suggest-label">🧪 Suggested Test</div>
-								<pre># Boolean branch test suggestion
-ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
-</pre>
-								</div>
-							</li><li><b>RETURN_UNDEF_5114_31: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+							</li><li><b>RETURN_UNDEF_5114_3: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5916,12 +5874,13 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 								</div>
 							</li></ul></details>
 <span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5115: 		if    ($op eq &#39;eq&#39;)       { return 0 unless $rv eq $val }
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5116: 		elsif ($op eq &#39;ne&#39;)       { return 0 unless $rv ne $val }
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5116: 		elsif ($op eq &#39;ne&#39;)       { return 0 unless $rv ne $val }
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5117: 		elsif ($op eq &#39;lt&#39;)       { return 0 unless $rv lt $val }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
 					<ul>
-				<li><b>BOOL_NEGATE_5116_31: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+				<li><b>BOOL_NEGATE_5117_31: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5929,7 +5888,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>RETURN_UNDEF_5116_31: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+							</li><li><b>RETURN_UNDEF_5117_31: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5938,12 +5897,57 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 5117: 		elsif ($op eq &#39;lt&#39;)       { return 0 unless $rv lt $val }
+<span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5118: 		elsif ($op eq &#39;lte&#39;)      { return 0 unless $rv le $val }
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_5118_31: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_5118_31: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5119: 		elsif ($op eq &#39;gt&#39;)       { return 0 unless $rv gt $val }
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5120: 		elsif ($op eq &#39;gte&#39;)      { return 0 unless $rv ge $val }
+</span>
+					<details class="mutant-details">
+					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
+					<ul>
+				<li><b>BOOL_NEGATE_5120_31: Negate boolean return expression</b><br>MEDIUM: Add tests asserting both true and false outcomes
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Boolean branch test suggestion
+ok( !func(INPUT), &#39;Verify boolean branch behaviour&#39; );
+</pre>
+								</div>
+							</li><li><b>RETURN_UNDEF_5120_31: Replace return expression with undef</b><br>LOW: Mutation survived, but impact may be minor
+
+								<div class="suggested-test">
+								<div class="suggest-label">🧪 Suggested Test</div>
+								<pre># Return value assertion
+is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
+</pre>
+								</div>
+							</li></ul></details>
+<span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 5121: 		elsif ($op eq &#39;contains&#39;) { return 0 unless index($rv, $val) &gt;= 0 }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 5, Killed: 2, Survived: 3)</summary>
 					<ul>
-				<li><b>NUM_BOUNDARY_5117_64_&gt;: Numeric boundary flip &gt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+				<li><b>NUM_BOUNDARY_5121_64_&gt;: Numeric boundary flip &gt;= to &gt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5951,7 +5955,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_5117_64_&lt;: Numeric boundary flip &gt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_5121_64_&lt;: Numeric boundary flip &gt;= to &lt;</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5959,7 +5963,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
-							</li><li><b>NUM_BOUNDARY_5117_64_&lt;=: Numeric boundary flip &gt;= to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
+							</li><li><b>NUM_BOUNDARY_5121_64_&lt;=: Numeric boundary flip &gt;= to &lt;=</b><br>HIGH: Likely missing edge-case test (boundary value)
 
 								<div class="suggested-test">
 								<div class="suggest-label">🧪 Suggested Test</div>
@@ -5968,22 +5972,18 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </pre>
 								</div>
 							</li></ul></details>
-<span class=""> 5118: 		elsif ($op eq &#39;lte&#39;)      { return 0 unless $rv le $val }
-</span><span class=""> 5119: 		elsif ($op eq &#39;gt&#39;)       { return 0 unless $rv gt $val }
-</span><span class=""> 5120: 		elsif ($op eq &#39;gte&#39;)      { return 0 unless $rv ge $val }
-</span><span class=""> 5121: 		elsif ($op eq &#39;contains&#39;) { return 0 unless index($rv, $val) &gt;= 0 }
-</span><span class=""> 5122: 		elsif ($op eq &#39;like&#39;) {
+<span class=""> 5122: 		elsif ($op eq &#39;like&#39;) {
 </span><span class=""> 5123: 			# Convert LIKE pattern (%=any, _=one char) to a Perl regex.
 </span><span class=""> 5124: 			my $re = join(&#39;&#39;, map {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5125: 				$_ eq &#39;%&#39; ? &#39;.*&#39;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5126: 				: $_ eq &#39;_&#39; ? &#39;.&#39;
+</span><span class=""> 5125: 				$_ eq &#39;%&#39; ? &#39;.*&#39;
+</span><span class=""> 5126: 				: $_ eq &#39;_&#39; ? &#39;.&#39;
 </span><span class=""> 5127: 				: quotemeta($_)
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5128: 			} split //, $val);
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5129: 			return 0 unless $rv =~ /\A$re\z/s;
-</span><span class=""> 5130: 		}
+</span><span class=""> 5128: 			} split //, $val);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5129: 			return 0 unless $rv =~ /\A$re\z/s;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5130: 		}
 </span><span class=""> 5131: 	}
-</span><span class=""> 5132: 	return 1;
-</span><span class=""> 5133: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5132: 	return 1;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5133: }
 </span><span class=""> 5134: 
 </span><span class=""> 5135: # _apply_distinct_array( \@rows, \@columns ) -&gt; \@deduped_rows
 </span><span class=""> 5136: # Purpose: Deduplicate an array of merged row hashrefs.
@@ -5994,12 +5994,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5141: #          deduplicate on their combined value; when absent, deduplicate on all
 </span><span class=""> 5142: #          columns (full-row equality).
 </span><span class=""> 5143: # Exit:    Returns a new arrayref; first occurrence of each distinct key wins.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5144: sub _apply_distinct_array {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5145 → 5148 → 5162</span></span> 5145: 	my ($rows, $columns) = @_;
+</span><span class=""> 5144: sub _apply_distinct_array {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5145 → 5148 → 5162</span></span> 5145: 	my ($rows, $columns) = @_;
 </span><span class=""> 5146: 	my %seen;
 </span><span class=""> 5147: 	my @result;
-</span><span class=""> 5148: 	if ($columns &amp;&amp; @{$columns}) {
-</span><span class=""> 5149: 		my @cols = @{$columns};
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5148: 	if ($columns &amp;&amp; @{$columns}) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5149: 		my @cols = @{$columns};
 </span><span class=""> 5150: 		for my $row (@{$rows}) {
 </span><span class=""> 5151: 			my $key = join(&quot;\0&quot;, map { $row-&gt;{$_} // &#39;&#39; } @cols);
 </span><span class=""> 5152: 			next if $seen{$key}++;
@@ -6008,12 +6008,12 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5155: 	} else {
 </span><span class=""> 5156: 		for my $row (@{$rows}) {
 </span><span class=""> 5157: 			my $key = join(&quot;\0&quot;, map { ($row-&gt;{$_} // &#39;&#39;) } sort keys %{$row});
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5158: 			next if $seen{$key}++;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5159: 			push @result, $row;
+</span><span class=""> 5158: 			next if $seen{$key}++;
+</span><span class=""> 5159: 			push @result, $row;
 </span><span class=""> 5160: 		}
 </span><span class=""> 5161: 	}
-</span><span class=""> 5162: 	return \@result;
-</span><span class=""> 5163: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5162: 	return \@result;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5163: }
 </span><span class=""> 5164: 
 </span><span class=""> 5165: # _merge_criteria( \%base, \%extra ) -&gt; \%merged
 </span><span class=""> 5166: # Purpose: Merge two criteria hashrefs for the same database column set.
@@ -6023,20 +6023,20 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5170: #   (e.g. { &#39;&gt;&#39; =&gt; 60 } and { &#39;&lt;&#39; =&gt; 365 }), the operators are combined
 </span><span class=""> 5171: #   so both constraints apply simultaneously (AND semantics).
 </span><span class=""> 5172: #   Otherwise the extra (query-time) value overwrites the base value.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5173: sub _merge_criteria :Protected {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5174 → 5176 → 5185</span></span> 5174: 	my ($base, $extra) = @_;
+</span><span class=""> 5173: sub _merge_criteria :Protected {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5174 → 5176 → 5185</span></span> 5174: 	my ($base, $extra) = @_;
 </span><span class=""> 5175: 	my %merged = %{$base};
 </span><span class=""> 5176: 	for my $col (keys %{$extra}) {
-</span><span class=""> 5177: 		if (exists $merged{$col}
-</span><span class=""> 5178: 		        &amp;&amp; ref($merged{$col}) eq &#39;HASH&#39;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5177: 		if (exists $merged{$col}
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 5178: 		        &amp;&amp; ref($merged{$col}) eq &#39;HASH&#39;
 </span><span class=""> 5179: 		        &amp;&amp; ref($extra-&gt;{$col}) eq &#39;HASH&#39;) {
 </span><span class=""> 5180: 			$merged{$col} = { %{ $merged{$col} }, %{ $extra-&gt;{$col} } };
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5181: 		} else {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5182: 			$merged{$col} = $extra-&gt;{$col};
+</span><span class=""> 5181: 		} else {
+</span><span class=""> 5182: 			$merged{$col} = $extra-&gt;{$col};
 </span><span class=""> 5183: 		}
 </span><span class=""> 5184: 	}
-</span><span class=""> 5185: 	return \%merged;
-</span><span class=""> 5186: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5185: 	return \%merged;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5186: }
 </span><span class=""> 5187: 
 </span><span class=""> 5188: # _copy_criteria( \%criteria ) -&gt; \%copy
 </span><span class=""> 5189: # Purpose: Return a two-level deep copy of a single criteria hashref so that
@@ -6074,19 +6074,19 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5221: # Purpose: Format a user-facing message, routing through the i18n object when
 </span><span class=""> 5222: #          one is provided.  Falls back to the built-in %MESSAGES dictionary.
 </span><span class=""> 5223: # Entry:   $i18n may be undef.  $key must be a key in %MESSAGES.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5224: # Exit:    Returns the formatted string.
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5225: sub _msg :Protected {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5226 → 5228 → 5232</span></span> 5226: 	my ($i18n, $key, @args) = @_;
+</span><span class=""> 5224: # Exit:    Returns the formatted string.
+</span><span class=""> 5225: sub _msg :Protected {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">5226 → 5228 → 5232</span></span> 5226: 	my ($i18n, $key, @args) = @_;
 </span><span class=""> 5227: 
-</span><span class=""> 5228: 	if ($i18n &amp;&amp; $i18n-&gt;can(&#39;translate&#39;)) {
-</span><span class=""> 5229: 		return $i18n-&gt;translate($key, @args);
-</span><span class=""> 5230: 	}
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5231: 
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5232: 	my $fmt = $MESSAGES{$key}
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5228: 	if ($i18n &amp;&amp; $i18n-&gt;can(&#39;translate&#39;)) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5229: 		return $i18n-&gt;translate($key, @args);
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5230: 	}
+</span><span class=""> 5231: 
+</span><span class=""> 5232: 	my $fmt = $MESSAGES{$key}
 </span><span class=""> 5233: 		// sprintf($MESSAGES{error_unknown_message}, $key);
 </span><span class=""> 5234: 
-</span><span class=""> 5235: 	return @args ? sprintf($fmt, @args) : $fmt;
-</span><span class=""> 5236: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5235: 	return @args ? sprintf($fmt, @args) : $fmt;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 5236: }
 </span><span class=""> 5237: 
 </span><span class=""> 5238: 1;
 </span><span class=""> 5239: 
