@@ -12,7 +12,7 @@ use Params::Validate::Strict qw(validate_strict);
 use Readonly;
 use Scalar::Util qw(blessed);
 
-use version; our $VERSION = version->declare('0.011.0');
+use version; our $VERSION = version->declare('0.011.1');
 
 # What a caller needs to know about a database before it opens a table of it
 # through Database::Abstraction, and the one write it may need: a table of
@@ -36,6 +36,7 @@ Readonly::Hash my %MESSAGES => (
 	error_row_not_hash	=> 'rows[%d] is not a hash of column values',
 	error_file_exists	=> '"%s" already exists; write_sqlite makes a new file and never replaces one',
 	error_temp_file		=> 'Cannot make a temporary file: %s',
+	error_no_reason		=> 'The database driver failed and gave no reason',
 );
 
 sub _msg {
@@ -51,6 +52,7 @@ sub _fail {
 	# and "DBI connect('dsn','user',...) failed: ...", which names the data source.
 	$why =~ s/\A(?:DBD::\w+::\w+ \w+|DBI \w+\(.*?\)) failed: //s;
 	$why =~ s/\s+at \S+ line \d+\.?\s*\z//;
+	$why = _msg('error_no_reason') unless length $why;
 	croak(Database::Join::Catalog::Error->new(stage => $stage, message => $why));
 }
 
@@ -77,7 +79,7 @@ sub _connect {
 		$attr{sqlite_open_flags} = DBD::SQLite::Constants::SQLITE_OPEN_READONLY();
 	}
 	my $dbh = eval { DBI->connect($dsn, $username, $password, \%attr) };
-	_fail('connect', $@ || $DBI::errstr) unless $dbh;
+	_fail('connect', $@) unless $dbh;
 	return $dbh;
 }
 
@@ -87,7 +89,7 @@ sub _query {
 	my $got = eval { [ $code->() ] };
 	my $why = $@;
 	eval { $dbh->disconnect };
-	_fail('query', $why || $DBI::errstr) unless $got;
+	_fail('query', $why) unless $got;
 	return wantarray ? @{$got} : $got->[0];
 }
 
@@ -188,7 +190,7 @@ sub _write {
 	my $columns = $p->{columns};
 	my $table   = $p->{table} // 'data';
 	my $dbh = eval { DBI->connect("dbi:SQLite:dbname=$file", '', '', { RaiseError => 1, PrintError => 0, AutoCommit => 1 }) };
-	_fail('connect', $@ || $DBI::errstr) unless $dbh;
+	_fail('connect', $@) unless $dbh;
 	my $ok = eval {
 		my $t = $dbh->quote_identifier($table);
 		my @c = map { $dbh->quote_identifier($_) } @{$columns};
@@ -206,7 +208,7 @@ sub _write {
 	my $why = $@;
 	eval { $dbh->rollback } unless $ok || $dbh->{AutoCommit};
 	eval { $dbh->disconnect };
-	_fail('query', $why || $DBI::errstr) unless $ok;
+	_fail('query', $why) unless $ok;
 	return 1;
 }
 
@@ -290,7 +292,7 @@ Database::Join::Catalog - List a database's tables and columns, and write a tabl
 
 =head1 VERSION
 
-0.011.0
+0.011.1
 
 =head1 SYNOPSIS
 
@@ -457,6 +459,7 @@ message (C<"$err">), and:
     error_row_not_hash       -- an element of rows is not a hashref
     error_file_exists        -- write_sqlite() to a name that exists
     error_temp_file          -- sqlite_bytes() could not make its temporary file
+    error_no_reason          -- the driver failed without a message (connect returned undef)
 
 =head1 SEE ALSO
 

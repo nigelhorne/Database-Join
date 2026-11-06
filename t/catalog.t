@@ -168,4 +168,16 @@ subtest "the caller's \$@ and \$! survive" => sub {
 	is $! + 0, $errno, '$!';
 };
 
+subtest 'a driver that fails without a reason' => sub {
+	no warnings 'redefine';
+	local *DBI::connect = sub { return undef };
+	my $out = File::Spec->catfile($dir, 'no-reason.db');
+	eval { $C->write_sqlite(file => $out, columns => ['a'], rows => []) };
+	my $err = $@;
+	isa_ok $err, 'Database::Join::Catalog::Error';
+	is eval { $err->stage }, 'connect', 'stage';
+	like "$err", qr/gave no reason/, 'the message is never empty';
+	ok !-e $out, 'no file is left';
+};
+
 done_testing();
