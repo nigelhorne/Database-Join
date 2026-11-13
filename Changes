@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.011.2
+0.011.2	Fri Nov 13 02:14:28 PM EST 2026
 	[ Enhancements ]
 	- Key pushdown on the array backend: under a left or inner join, a
 	  secondary database with no criterion on its join column is asked for
