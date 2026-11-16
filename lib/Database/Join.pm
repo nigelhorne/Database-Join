@@ -72,7 +72,7 @@ Readonly::Hash my %MANDATORY_OP_SQL => (
 	contains => 'LIKE',
 );
 
-use version; our $VERSION = version->declare('0.011.2');
+use version; our $VERSION = version->declare('0.011.3');
 
 # Package-level cache for threads availability.  undef = not yet checked;
 # 1 = available; 0 = not available.  Checked lazily on the first parallel
@@ -125,7 +125,7 @@ Database::Join - Read-only combined view across two or more Database::Abstractio
 
 =head1 VERSION
 
-Version 0.011.2
+Version 0.011.3
 
 =head1 SYNOPSIS
 

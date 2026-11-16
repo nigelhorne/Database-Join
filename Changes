@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.011.3
+0.011.3	Mon Nov 16 02:16:04 PM EST 2026
 	[ Performance ]
 	- mandatory_filters: LIKE patterns are now compiled to a qr// at
 	  construction time and reused on every row evaluation.  Previously the
