@@ -413,7 +413,7 @@ Approximate LCSAJ segments: 187<br>
 </span><span class="">   72: 	contains =&gt; &#39;LIKE&#39;,
 </span><span class="">   73: );
 </span><span class="">   74: 
-</span><span class="">   75: use version; our $VERSION = version-&gt;declare(&#39;0.011.2&#39;);
+</span><span class="">   75: use version; our $VERSION = version-&gt;declare(&#39;0.011.3&#39;);
 </span><span class="">   76: 
 </span><span class="">   77: # Package-level cache for threads availability.  undef = not yet checked;
 </span><span class="">   78: # 1 = available; 0 = not available.  Checked lazily on the first parallel
@@ -466,7 +466,7 @@ Approximate LCSAJ segments: 187<br>
 </span><span class="">  125: 
 </span><span class="">  126: =head1 VERSION
 </span><span class="">  127: 
-</span><span class="">  128: Version 0.011.2
+</span><span class="">  128: Version 0.011.3
 </span><span class="">  129: 
 </span><span class="">  130: =head1 SYNOPSIS
 </span><span class="">  131: 
@@ -4496,7 +4496,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 4114: 			$tmpdbh-&gt;begin_work;
 </span><span class=""> 4115: 			for my $row (@{$rows}) {
 </span><span class=""> 4116: 				$sth-&gt;execute(map { $row-&gt;{$_} } @{$cols});
-</span><span class="survived-3 tooltip" data-tooltip="Mutation survived. Add targeted tests to validate this branch. Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one)."> 4117: 				if (++$batch &gt;= 1_000) {
+</span><span class="survived-3 tooltip" data-tooltip="Boundary mutation survived. Add tests around edge values (e.g. min, max, off-by-one). Mutation survived. Add targeted tests to validate this branch."> 4117: 				if (++$batch &gt;= 1_000) {
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 4, Killed: 0, Survived: 4)</summary>
@@ -5288,7 +5288,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 4783: 		for my $op (keys %{$criterion}) {
 </span><span class=""> 4784: 			my $rhs = $criterion-&gt;{$op};
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4785: 			if ($SAFE_NOARG_OPS{$op}) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 4786: 				return 0 if $op eq &#39;IS NULL&#39;;   # value is defined
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 4786: 				return 0 if $op eq &#39;IS NULL&#39;;   # value is defined
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -5314,7 +5314,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 4788: 			} elsif ($SAFE_LIST_OPS{$op}) {
 </span><span class=""> 4789: 				my @items = ref($rhs) eq &#39;ARRAY&#39; ? @{$rhs} : ();
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 4790: 				if ($op eq &#39;IN&#39;) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 4791: 					return 0 unless grep { defined $_ &amp;&amp; $_ eq $value } @items;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 4791: 					return 0 unless grep { defined $_ &amp;&amp; $_ eq $value } @items;
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -5337,7 +5337,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 								</div>
 							</li></ul></details>
 <span class=""> 4792: 				} else {
-</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 4793: 					return 0 if grep { defined $_ &amp;&amp; $_ eq $value } @items;
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 4793: 					return 0 if grep { defined $_ &amp;&amp; $_ eq $value } @items;
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -6015,7 +6015,7 @@ is( func(VALUE_AT_BOUNDARY), EXPECTED, &#39;Test boundary behaviour&#39; );
 </span><span class=""> 5267: 	return { &#39;&gt;=&#39;  =&gt; $val }     if $op eq &#39;gte&#39;;
 </span><span class=""> 5268: 	return { LIKE  =&gt; $val }     if $op eq &#39;like&#39;;
 </span><span class=""> 5269: 	return { LIKE  =&gt; &quot;%$val%&quot; } if $op eq &#39;contains&#39;;
-</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5270: 	return $val;  # unreachable: validated at construction
+</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5270: 	return $val;  # unreachable: validated at construction
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -6049,7 +6049,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 </span><span class=""> 5280: 	for my $pred (@{$filters}) {
 </span><span class=""> 5281: 		my ($col, $op, $val) = @{$pred}{qw(col op val)};
 </span><span class=""> 5282: 		my $rv = $row-&gt;{$col};
-</span><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5283: 		return 0 unless defined $rv;
+</span><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5283: 		return 0 unless defined $rv;
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -6073,7 +6073,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 							</li></ul></details>
 <span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5284: 		if    ($op eq &#39;eq&#39;)       { return 0 unless $rv eq $val }
 </span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5285: 		elsif ($op eq &#39;ne&#39;)       { return 0 unless $rv ne $val }
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5286: 		elsif ($op eq &#39;lt&#39;)       { return 0 unless $rv lt $val }
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5286: 		elsif ($op eq &#39;lt&#39;)       { return 0 unless $rv lt $val }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
@@ -6118,7 +6118,7 @@ is( func(INPUT), EXPECTED, &#39;Verify correct return value&#39; );
 								</div>
 							</li></ul></details>
 <span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 5288: 		elsif ($op eq &#39;gt&#39;)       { return 0 unless $rv gt $val }
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Return value mutation survived. Add tests asserting exact return values. Boolean logic mutation survived. Add tests covering both true and false paths."> 5289: 		elsif ($op eq &#39;gte&#39;)      { return 0 unless $rv ge $val }
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="survived-2 tooltip" data-tooltip="Boolean logic mutation survived. Add tests covering both true and false paths. Return value mutation survived. Add tests asserting exact return values."> 5289: 		elsif ($op eq &#39;gte&#39;)      { return 0 unless $rv ge $val }
 </span>
 					<details class="mutant-details">
 					<summary>Mutants (Total: 2, Killed: 0, Survived: 2)</summary>
