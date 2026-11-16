@@ -68,3 +68,4 @@ t/transition.t
 t/tsv.t
 t/unit.t
 t/xlsx.t
+t/xml-document.t
