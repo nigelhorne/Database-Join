@@ -1,6 +1,6 @@
 Revision history for Database::Join
 
-0.011.4
+0.011.4	Thu Nov 19 08:54:10 PM EST 2026
 	[ Bug fixes ]
 	- Joining a join (for example merging an already merged table with a third
 	  file) failed with "no such table: ext0._dj_result". The outer join's
